@@ -1,0 +1,32 @@
+name: Iris preview
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install GLSL validator
+        run: sudo apt-get update && sudo apt-get install --yes glslang-tools
+      - name: Link both shader variants
+        run: |
+          cp shaders/final.vsh "$RUNNER_TEMP/final.vert"
+          cp shaders/final.fsh "$RUNNER_TEMP/soft.frag"
+          sed '/^#define SOFT_COLOR$/d' shaders/final.fsh > "$RUNNER_TEMP/neutral.frag"
+          glslangValidator -l "$RUNNER_TEMP/final.vert" "$RUNNER_TEMP/soft.frag"
+          glslangValidator -l "$RUNNER_TEMP/final.vert" "$RUNNER_TEMP/neutral.frag"
+      - name: Package and check ZIP
+        run: |
+          python3 tools/package.py
+          python3 -m zipfile --test dist/LumenWeave-Shaders-P0.zip
+      - uses: actions/upload-artifact@v4
+        with:
+          name: LumenWeave-Shaders-P0
+          path: dist/LumenWeave-Shaders-P0.zip
+          if-no-files-found: error
