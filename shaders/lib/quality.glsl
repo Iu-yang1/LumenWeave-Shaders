@@ -1,0 +1,16 @@
+//#define LITE_LIGHTING
+#define SCENE_SHADOWS
+#define DEFERRED_LIGHTING
+#define SCREEN_AO
+#define SOFT_SHADOWS
+#define ADVANCED_WATER
+#define TEMPORAL_AA
+//#define SPATIAL_AA
+//#define VOLUME_EFFECTS
+//#define VOXEL_LIGHTING
+//#define SCREEN_GI
+//#define SCREEN_GI_HISTORY
+//#define SCREEN_GI_SPATIAL
+//#define VOXEL_GI
+#define SHADOW_MAP 2048 // [0 512 1024 2048 4096]
+#define SHADOW_RANGE 128.0 // [48.0 64.0 96.0 128.0 160.0 192.0]

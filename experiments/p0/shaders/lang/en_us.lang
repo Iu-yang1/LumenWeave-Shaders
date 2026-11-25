@@ -1,0 +1,4 @@
+profile.Neutral=Neutral
+profile.Soft=Soft
+option.SOFT_COLOR=Soft color
+option.SOFT_COLOR.comment=Gently reduces saturation and contrast.

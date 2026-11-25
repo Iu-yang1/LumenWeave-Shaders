@@ -1,32 +1,97 @@
-name: Iris preview
+name: Build shader packs
 
 on:
   push:
+    branches:
+      - main
   pull_request:
+    branches:
+      - main
+  workflow_dispatch:
 
 permissions:
   contents: read
 
+concurrency:
+  group: shader-packs-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build:
     runs-on: ubuntu-24.04
+    timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
+        with:
+          python-version: "3.12"
       - name: Install GLSL validator
-        run: sudo apt-get update && sudo apt-get install --yes glslang-tools
-      - name: Link both shader variants
         run: |
-          cp shaders/final.vsh "$RUNNER_TEMP/final.vert"
-          cp shaders/final.fsh "$RUNNER_TEMP/soft.frag"
-          sed '/^#define SOFT_COLOR$/d' shaders/final.fsh > "$RUNNER_TEMP/neutral.frag"
-          glslangValidator -l "$RUNNER_TEMP/final.vert" "$RUNNER_TEMP/soft.frag"
-          glslangValidator -l "$RUNNER_TEMP/final.vert" "$RUNNER_TEMP/neutral.frag"
+          sudo apt-get update
+          sudo apt-get install --yes --no-install-recommends glslang-tools
+          glslangValidator --version
+      - name: Validate profiles, locales and GLSL
+        run: python tools/check_shaders.py
+      - name: Run numerical and tooling tests
+        run: python -m unittest discover -s tests -v
       - name: Package and check ZIP
         run: |
-          python3 tools/package.py
-          python3 -m zipfile --test dist/LumenWeave-Shaders-P0.zip
-      - uses: actions/upload-artifact@v4
+          python tools/package.py
+          python tools/package.py --p0
+          python tools/package.py --voxel-probe
+          python -m zipfile --test dist/LumenWeave-Shaders-P5-Preview.zip
+          python -m zipfile --test dist/LumenWeave-Shaders-P0.zip
+          python -m zipfile --test dist/LumenWeave-Voxel-Probe.zip
+          cd dist
+          sha256sum --check -- *.sha256
+      - name: Upload preview
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: LumenWeave-Shaders-P5-Preview
+          path: |
+            dist/LumenWeave-Shaders-P5-Preview.zip
+            dist/LumenWeave-Shaders-P5-Preview.zip.sha256
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 30
+      - name: Upload P0 baseline
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: LumenWeave-Shaders-P0
-          path: dist/LumenWeave-Shaders-P0.zip
+          path: |
+            dist/LumenWeave-Shaders-P0.zip
+            dist/LumenWeave-Shaders-P0.zip.sha256
           if-no-files-found: error
+          compression-level: 0
+          retention-days: 30
+      - name: Upload voxel probe
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: LumenWeave-Voxel-Probe
+          path: |
+            dist/LumenWeave-Voxel-Probe.zip
+            dist/LumenWeave-Voxel-Probe.zip.sha256
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 30
+      - name: Summarize build
+        env:
+          BUILD_COMMIT: ${{ github.sha }}
+          BUILD_EVENT: ${{ github.event_name }}
+        run: |
+          {
+            echo "## Shader packs"
+            echo
+            echo "Commit: $BUILD_COMMIT"
+            echo "Trigger: $BUILD_EVENT"
+            echo
+            echo "Download a pack from Artifacts below, extract the artifact, and copy the inner shader ZIP into Minecraft's shaderpacks folder."
+            echo
+            echo "Offline GLSL checks do not replace in-game GPU validation."
+            echo
+            echo '```text'
+            cat dist/*.sha256
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"

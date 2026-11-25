@@ -1,0 +1,6 @@
+#ifndef LW_VOXEL_SETTINGS
+#define LW_VOXEL_SETTINGS
+
+#define VOXEL_GRID_SIZE 64 // [32 64 96 128]
+
+#endif

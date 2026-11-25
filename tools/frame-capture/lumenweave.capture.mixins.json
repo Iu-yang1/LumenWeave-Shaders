@@ -1,0 +1,7 @@
+{
+  "required": true,
+  "package": "lumenweave.bench",
+  "compatibilityLevel": "JAVA_21",
+  "client": ["FrameCapture"],
+  "injectors": {"defaultRequire": 1}
+}

@@ -1,2 +1,6 @@
 /dist/
+/.codex/
+/.aislop/
+/docs/
+/.ruff_cache/
 __pycache__/

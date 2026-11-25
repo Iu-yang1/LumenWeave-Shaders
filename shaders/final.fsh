@@ -2,6 +2,10 @@
 
 #define SOFT_COLOR
 
+#ifdef SOFT_COLOR
+#include "/lib/soft_color.glsl"
+#endif
+
 uniform sampler2D colortex0;
 
 in vec2 texCoord;
@@ -11,9 +15,7 @@ void main() {
     vec4 scene = texture(colortex0, texCoord);
 
 #ifdef SOFT_COLOR
-    float luma = dot(scene.rgb, vec3(0.2126, 0.7152, 0.0722));
-    vec3 muted = mix(vec3(luma), scene.rgb, 0.92);
-    scene.rgb = mix(vec3(0.5), muted, 0.94);
+    scene.rgb = applySoftColor(scene.rgb);
 #endif
 
     outputColor = scene;
