@@ -64,7 +64,9 @@ def main():
     output.parent.mkdir(exist_ok=True)
     with ZipFile(output, "w", compression=ZIP_DEFLATED) as archive:
         for name, data in sorted(members.items()):
-            archive.writestr(ZipInfo(name), data, compress_type=ZIP_DEFLATED)
+            entry = ZipInfo(name)
+            entry.create_system = 0
+            archive.writestr(entry, data, compress_type=ZIP_DEFLATED)
 
     with ZipFile(output) as archive:
         if archive.namelist() != sorted(members) or archive.testzip() is not None:
