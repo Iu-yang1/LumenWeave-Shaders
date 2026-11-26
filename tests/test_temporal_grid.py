@@ -53,3 +53,22 @@ class StableGridTests(unittest.TestCase):
         source = (SHADERS / "lib/lighting/screen_gi_spatial.glsl").read_text()
         self.assertIn("smoothstep(0.15, 0.55, coverage)", source)
         self.assertIn("mix(full.sky, filtered.sky", source)
+
+    def test_projection_mode_is_separate_from_aa(self):
+        quality = (SHADERS / "lib/quality.glsl").read_text()
+        jitter = (SHADERS / "lib/temporal/jitter.glsl").read_text()
+        self.assertIn("#define PROJECTION_JITTER 0 // [0 1 2]", quality)
+        self.assertIn("#define LW_TAA_ACTIVE", quality)
+        self.assertIn("PROJECTION_JITTER == 2", quality)
+        self.assertIn("!defined(VOLUME_EFFECTS) && !defined(SCREEN_GI) && !defined(VOXEL_LIGHTING)", quality)
+        self.assertIn("#ifndef LW_DYNAMIC_JITTER\n    return vec2(0.0);", jitter)
+
+    def test_advanced_profiles_keep_all_lighting_and_taa(self):
+        props = (SHADERS / "shaders.properties").read_text()
+        for name in ("Ultra", "Extreme"):
+            line = next(line for line in props.splitlines() if line.startswith(f"profile.{name} ="))
+            tokens = line.split()
+            self.assertTrue({"AA_MODE:2", "VOLUME_EFFECTS", "VOXEL_LIGHTING", "SCREEN_GI",
+                             "SCREEN_GI_HISTORY", "SCREEN_GI_SPATIAL", "SOFT_SHADOWS"} <= set(tokens))
+            self.assertIn("VOXEL_GRID_SIZE:" + ("96" if name == "Ultra" else "128"), tokens)
+            self.assertIn("VOXEL_GI" if name == "Extreme" else "!VOXEL_GI", tokens)

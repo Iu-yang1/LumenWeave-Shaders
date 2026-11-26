@@ -46,3 +46,7 @@ Each pack includes a `.zip.sha256` checksum file. The run summary records the so
 This remains a preview with incomplete compatibility and visual acceptance. Iris 1.8.8 with Distant Horizons 2.3.2-b has logged a startup combined-render-pass diagnostic whose first-frame impact is unresolved. First-frame behavior when returning to a cached dimension, sustained LOD transitions, and Intel/AMD hardware remain unverified.
 
 The code is independently implemented and licensed under LGPL-3.0-only. See [third-party notices](THIRD_PARTY_NOTICES.md) for the upstream reference.
+
+### Projection sampling and flicker compatibility
+
+V2.2 runtime isolation identified dynamic projection jitter as a necessary trigger in the tested Ultra configuration: fixed pixel centers eliminated the flicker while TAA, volume effects, SSGI and voxel lighting stayed enabled. V2.3 separates projection sampling from AA. Auto uses fixed centers whenever volume effects, SSGI or voxel lighting are selected; Medium/High retain their dynamic sampling. Fixed mode retains history reprojection, rejection and temporal filtering, but not subpixel supersampling. Temporal + spatial AA is available for additional edge smoothing. Dynamic sampling remains selectable. Exact underlying interaction, Extreme fixed mode and the new build still require runtime validation.
