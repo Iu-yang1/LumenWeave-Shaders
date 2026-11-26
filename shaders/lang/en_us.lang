@@ -153,3 +153,10 @@ option.GI_REUSE_MODE.comment=Auto reuses half-resolution GI in Nether and End on
 value.GI_REUSE_MODE.0=Off
 value.GI_REUSE_MODE.1=Auto
 value.GI_REUSE_MODE.2=All dimensions
+
+option.EMISSION_STRENGTH=Emissive material intensity
+option.EMISSION_STRENGTH.comment=Increase linear HDR emission while retaining texture hue and detail.
+option.LOCAL_GLOW_STRENGTH=Local fog glow
+option.LOCAL_GLOW_STRENGTH.comment=Strength of colored voxel light scattering, without lifting global haze.
+option.DARK_AMBIENT=Dark ambient lighting
+option.DARK_AMBIENT.comment=Reduce ambient floor and low skylight, 1.0 restores previous ambient strength.

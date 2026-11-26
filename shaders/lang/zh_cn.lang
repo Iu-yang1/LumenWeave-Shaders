@@ -153,3 +153,10 @@ option.GI_REUSE_MODE.comment=自动模式仅在地狱与末地隔帧刷新，主
 value.GI_REUSE_MODE.0=关闭
 value.GI_REUSE_MODE.1=自动
 value.GI_REUSE_MODE.2=所有维度
+
+option.EMISSION_STRENGTH=发光材质亮度
+option.EMISSION_STRENGTH.comment=提升强光源的线性HDR亮度，保留原始材质颜色与纹理。
+option.LOCAL_GLOW_STRENGTH=局部迷雾辉光
+option.LOCAL_GLOW_STRENGTH.comment=增强真实彩色体素光源的空气散射，不提高全局雾色。
+option.DARK_AMBIENT=暗部环境光
+option.DARK_AMBIENT.comment=减少无光与弱光区域的环境底光，1.0恢复原环境光强度。

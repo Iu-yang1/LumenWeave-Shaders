@@ -23,7 +23,9 @@ uint packVoxelEmitter(uint kind,uint strength) {
 vec3 voxelEmission(uint kind,uint strength) {
     float level = float(strength)/15.0;
     float power = kind==5u ? 1.65 : ((kind==6u || kind==11u) ? 1.45 : 1.5);
-    return emitterColor(kind) * level * power;
+    // Lift high-level sources without flooding dim emitters.
+    float shaped=level*mix(0.62,1.15,level);
+    return emitterColor(kind) * shaped * power;
 }
 vec3 voxelSeedEmission(uint seed) {
     return voxelEmission(seed & 15u, seed >> 4u);

@@ -107,7 +107,7 @@ ScreenBounce screenBounceRay(vec3 origin, vec3 direction, mat3 toView, vec3 sun,
                 }
 #endif
                 vec3 sky = max(ambientIrradiance(vec2(0.0, geometry.w), hitNormal.y, sun)
-                    - vec3((hasSkylight ? 0.010 : 0.008) * AMBIENT_STRENGTH), vec3(0.0));
+                    - vec3(ambientFloor()), vec3(0.0));
                 float confidence = facing * smoothstep(0.0, 0.08, min(edge.x, edge.y));
                 confidence *= (1.0 - smoothstep(1.3, 3.9, travel)) * (1.0 - smoothstep(0.6, 1.0, delta / thickness));
                 ScreenBounce hit = ScreenBounce(diffuse * (direct * daylightWeight / LW_PI + sky * 0.5) * confidence, vec3(0.0), 0.0);

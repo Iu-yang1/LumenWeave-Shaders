@@ -8,8 +8,8 @@ ROOT = Path(__file__).resolve().parents[1] / "shaders"
 class DimensionLightingTests(unittest.TestCase):
     def test_blocklight_contrast(self):
         source = (ROOT / "lib/lighting/overworld.glsl").read_text()
-        self.assertIn("x*x*(0.45 + 1.35*x)", source)
-        values = [x*x*(0.45 + 1.35*x) for x in (i/15 for i in range(16))]
+        self.assertIn("x*x*(0.20 + 1.60*x)", source)
+        values = [x*x*(0.20 + 1.60*x) for x in (i/15 for i in range(16))]
         self.assertEqual(values[0], 0.0)
         self.assertTrue(all(a < b for a, b in zip(values, values[1:])))
         self.assertLess(values[5], (5/15)**2)
@@ -48,5 +48,5 @@ class DimensionLightingTests(unittest.TestCase):
 
     def test_gi_nonnegative_ambient(self):
         source = (ROOT / "lib/lighting/screen_gi.glsl").read_text()
-        self.assertIn("(hasSkylight ? 0.010 : 0.008) * AMBIENT_STRENGTH", source)
+        self.assertIn("vec3(ambientFloor())", source)
         self.assertIn("vec3(0.0));", source)

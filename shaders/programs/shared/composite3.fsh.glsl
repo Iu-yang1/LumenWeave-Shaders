@@ -24,7 +24,8 @@ void main() {
         for (int column = -1; column <= 1; ++column) {
             vec2 uv = clamp(texCoord + vec2(column, row) * texel * 2.0, texel * 0.5, 1.0 - texel * 0.5);
             vec3 sampleColor = texture(colortex0, uv).rgb;
-            float brightness = luminance(sampleColor);
+            // Saturated orange/red emitters need not have a high photopic luma.
+            float brightness=max(luminance(sampleColor),0.50*max(sampleColor.r,max(sampleColor.g,sampleColor.b)));
             float contribution = smoothstep(threshold * 0.6, threshold * 1.4, brightness);
             result += sampleColor * contribution;
         }

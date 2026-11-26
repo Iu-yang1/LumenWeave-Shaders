@@ -29,7 +29,9 @@ Material vanillaMaterial(int blockId, vec3 albedo) {
         // Visible texels retain resource-pack chromaticity. The light field uses
         // the separate, softer illuminant palette.
         vec3 tint = albedo;
-        material.emission = tint*emitterRadiance(kind)*mask;
+        // Strong emitters gain HDR headroom; redstone/magma remain indicators.
+        float gain=(kind==4u || kind==14u) ? mix(1.0,EMISSION_STRENGTH,0.35) : EMISSION_STRENGTH;
+        material.emission = tint*emitterRadiance(kind)*mask*gain;
     }
     if (kind==5u) {
         material.roughness = 0.32;

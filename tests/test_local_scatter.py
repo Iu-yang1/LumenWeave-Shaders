@@ -6,14 +6,14 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1] / "shaders"
 
 
-def integrate(distance, radius, extinction, sample, cap=24):
+def integrate(distance, radius, extinction, sample, cap=24, glow=1.7):
     end = min(max(distance - .08, 0.), radius - 1.)
     if end <= .001 or extinction <= 0.:
         return (0., 0., 0.), 0
     steps = max(1, min(cap, math.ceil(end / 1.5)))
     dt = end / steps
     segment = math.exp(-extinction * dt)
-    weight = (1. - segment) * .75 * .90
+    weight = (1. - segment) * .75 * .90 * glow
     result = [0., 0., 0.]
     through = 1.
     for i in range(steps):

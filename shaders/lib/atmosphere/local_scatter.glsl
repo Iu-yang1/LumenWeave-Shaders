@@ -9,7 +9,7 @@ uniform usampler3D lwVoxelDirtySampler;
 vec3 integrateLocalScatter(vec3 direction, float surfaceDistance) {
     float radius = float(LW_GRID_SIZE) * 0.5;
     float end = min(max(surfaceDistance - 0.08, 0.0), radius - 1.0);
-    if (end <= 0.001 || BLOCKLIGHT_STRENGTH == 0.0) return vec3(0.0);
+    if (end <= 0.001 || BLOCKLIGHT_STRENGTH == 0.0 || LOCAL_GLOW_STRENGTH == 0.0) return vec3(0.0);
     float extinction = hasSkylight
         ? mix(0.006, 0.018, rainStrength) * AERIAL_DENSITY
         : dimensionFogDensity(direction);
@@ -21,7 +21,7 @@ vec3 integrateLocalScatter(vec3 direction, float surfaceDistance) {
     float stepSize = end / float(steps);
     float segmentTransmission = exp(-extinction * stepSize);
     // Exact constant-source segment integral: sigma_s / sigma_t = 0.75.
-    float segmentWeight = (1.0 - segmentTransmission) * (0.75 * 0.90 * BLOCKLIGHT_STRENGTH);
+    float segmentWeight = (1.0 - segmentTransmission) * (0.75 * 0.90 * BLOCKLIGHT_STRENGTH * LOCAL_GLOW_STRENGTH);
     float transmission = 1.0;
     vec3 cell = cameraPositionFract + vec3(radius);
     vec3 delta = direction * stepSize;
