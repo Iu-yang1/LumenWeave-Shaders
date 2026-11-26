@@ -39,6 +39,8 @@ float visibleArc(float horizon, float gamma) {
 }
 
 float groundTruthOcclusion(vec2 uv, vec3 position, vec3 normal) {
+    // The existing distance fade is exactly one beyond 52 blocks.
+    if (-position.z >= 52.0 || AO_STRENGTH == 0.0) return 1.0;
     vec3 observer = normalize(-position);
 #ifdef LW_STABLE_DYNAMIC
     uv += jitterOffset(frameCounter);
