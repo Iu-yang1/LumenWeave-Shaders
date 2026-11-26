@@ -15,8 +15,16 @@ uniform vec3 fogColor;
 #include "/lib/dimensions/nether.glsl"
 #include "/lib/dimensions/end.glsl"
 #ifdef LW_ATMOSPHERE_LUT_ACTIVE
-#include "/lib/atmosphere/physical_common.glsl"
+#include "/lib/atmosphere/physical_lookup.glsl"
 uniform sampler2D lwAtmoSky;
+#ifndef LW_CAMERA_INT_UNIFORM
+#define LW_CAMERA_INT_UNIFORM
+uniform ivec3 cameraPositionInt;
+#endif
+#ifndef LW_CAMERA_FRACT_UNIFORM
+#define LW_CAMERA_FRACT_UNIFORM
+uniform vec3 cameraPositionFract;
+#endif
 #endif
 
 vec3 worldDirection(vec3 viewDirection) {
@@ -42,6 +50,12 @@ vec3 celestialIrradiance(vec3 sun) {
     if (!hasSkylight) {
         return vec3(0.0);
     }
+#ifdef LW_ATMOSPHERE_LUT_ACTIVE
+    if(sun.y>=0.0) {
+        float radius=atmoRadius(float(cameraPositionInt.y)+cameraPositionFract.y);
+        return atmoSolar(radius,sun.y)*(5.4*SUNLIGHT_STRENGTH);
+    }
+#endif
     return (sun.y >= 0.0 ? sunTint(sun) * 5.4 : vec3(0.095, 0.13, 0.20)) * SUNLIGHT_STRENGTH;
 }
 

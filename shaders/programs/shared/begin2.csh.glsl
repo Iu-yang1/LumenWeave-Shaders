@@ -1,24 +1,34 @@
 #version 430 core
 #include "/lib/quality.glsl"
-layout(local_size_x=4,local_size_y=4,local_size_z=4) in;
-const ivec3 workGroups=ivec3(8,8,4);
+layout(local_size_x = 8, local_size_y = 8) in;
+const ivec3 workGroups = ivec3(4, 4, 1);
 #ifdef LW_ATMOSPHERE_LUT_ACTIVE
 #include "/lib/atmosphere/physical_integrate.glsl"
-uniform vec3 cameraPosition;
+uniform ivec3 cameraPositionInt;
+uniform vec3 cameraPositionFract;
 uniform vec3 sunPosition;
 uniform mat4 gbufferModelViewInverse;
 layout(rgba16f) writeonly uniform image3D lwAtmoScatterImage;
 layout(rgba16f) writeonly uniform image3D lwAtmoThroughImage;
 void main(){
-    ivec3 p=ivec3(gl_GlobalInvocationID);
-    vec3 uv=vec3(p)/vec3(31,31,15);
+    ivec2 pixel=ivec2(gl_GlobalInvocationID.xy);
+    vec2 uv=vec2(pixel)/vec2(31,31);
     float mu=normalize(mat3(gbufferModelViewInverse)*sunPosition).y;
-    float distanceKm=exp(log(1.0+ATMO_MAX_DISTANCE)*uv.z)-1.0;
-    vec3 l,t,f;
-    atmoIntegrate(atmoRadius(cameraPosition.y),atmoDirection(uv.y*2.0-1.0,uv.x*ATMO_PI),
-        atmoDirection(mu,0.0),distanceKm,false,24,l,t,f);
-    imageStore(lwAtmoScatterImage,p,vec4(l,1.0));
-    imageStore(lwAtmoThroughImage,p,vec4(t,1.0));
+    vec3 sun=atmoDirection(mu,0.0);
+    vec3 direction=atmoDirection(atmoElevationMu(uv.y),uv.x*ATMO_PI);
+    float radius=atmoRadius(float(cameraPositionInt.y)+cameraPositionFract.y);
+    float boundary=atmoBoundary(radius,direction.y).x;
+    vec3 l=vec3(0.0),t=vec3(1.0),f=vec3(0.0);
+    float previous=0.0;
+    // Prefix integral: each direction is integrated once, not from the
+    // camera separately for every slice. 15 intervals * 4 substeps.
+    for(int z=0;z<16;++z) {
+        float distanceKm=min(boundary,exp(log(1.0+ATMO_MAX_DISTANCE)*float(z)/15.0)-1.0);
+        atmoIntegrateSegment(radius,direction,sun,previous,distanceKm,4,l,t,f);
+        imageStore(lwAtmoScatterImage,ivec3(pixel,z),vec4(l,1.0));
+        imageStore(lwAtmoThroughImage,ivec3(pixel,z),vec4(t,1.0));
+        previous=distanceKm;
+    }
 }
 #else
 void main(){}

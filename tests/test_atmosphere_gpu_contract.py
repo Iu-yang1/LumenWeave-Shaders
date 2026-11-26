@@ -21,3 +21,30 @@ class AtmosphereGpuContract(unittest.TestCase):
         for line in props.splitlines():
             if line.startswith("profile."):
                 self.assertNotIn(" PHYSICAL_ATMOSPHERE",line)
+
+    def test_prefix_integration_and_horizon_warp(self):
+        import math
+        common=(ROOT/"lib/atmosphere/physical_common.glsl").read_text()
+        self.assertIn("atmoElevationUv",common)
+        self.assertIn("atmoAltitudeUv",common)
+        for mu in (-1.,-.5,-.01,0.,.01,.5,1.):
+            u=.5+.5*math.copysign(math.sqrt(abs(mu)),mu)
+            x=2*u-1
+            self.assertAlmostEqual(math.copysign(x*x,x),mu)
+        # Closed-form constant medium: prefix integral equals direct integral.
+        extinction=.028
+        source=.0021
+        radiance=0.
+        throughput=1.
+        previous=0.
+        for z in range(16):
+            d=math.expm1(math.log1p(120.)*z/15)
+            segment=math.exp(-extinction*(d-previous))
+            radiance+=throughput*source*(1-segment)/extinction
+            throughput*=segment
+            self.assertAlmostEqual(throughput,math.exp(-extinction*d),places=12)
+            self.assertAlmostEqual(radiance,source*(1-math.exp(-extinction*d))/extinction,places=12)
+            previous=d
+        stage=(ROOT/"programs/shared/begin2.csh.glsl").read_text()
+        self.assertIn("atmoIntegrateSegment(radius,direction,sun,previous,distanceKm,4,l,t,f)",stage)
+        self.assertIn("for(int z=0;z<16;++z)",stage)

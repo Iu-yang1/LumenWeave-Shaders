@@ -1,6 +1,12 @@
 uniform float frameTimeCounter;
+#ifndef LW_CAMERA_INT_UNIFORM
+#define LW_CAMERA_INT_UNIFORM
 uniform ivec3 cameraPositionInt;
+#endif
+#ifndef LW_CAMERA_FRACT_UNIFORM
+#define LW_CAMERA_FRACT_UNIFORM
 uniform vec3 cameraPositionFract;
+#endif
 
 float cloudHash(vec2 cell) {
     vec3 hash = fract(vec3(cell.xyx) * 0.1031);
