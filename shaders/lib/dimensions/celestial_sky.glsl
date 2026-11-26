@@ -1,6 +1,7 @@
 #ifndef LW_CELESTIAL_SKY
 #define LW_CELESTIAL_SKY
 uniform vec3 moonPosition;
+uniform int moonPhase;
 
 float skyHash(vec3 p) {
     p=fract(p*0.1031);
@@ -52,7 +53,8 @@ vec3 celestialSkyGlow(vec3 direction,vec3 sun) {
     vec3 moon=normalize(worldDirection(moonPosition));
     float lunarAngle=max(1.0-clamp(dot(direction,moon),-1.0,1.0),0.0);
     float moonHalo=0.12*exp(-lunarAngle*160.0)+0.035*exp(-lunarAngle*20.0);
-    color+=vec3(0.53,0.68,1.0)*moonHalo*smoothstep(-0.035,0.08,moon.y)*(1.0-daylight(sun));
+    float phase=0.5+0.5*cos(float(moonPhase)*LW_PI*0.25);
+    color+=vec3(0.53,0.68,1.0)*moonHalo*phase*smoothstep(-0.035,0.08,moon.y)*(1.0-daylight(sun));
     return color*(1.0-rainStrength)*(1.0-rainStrength*0.65);
 }
 #endif
