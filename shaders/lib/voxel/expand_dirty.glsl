@@ -18,10 +18,20 @@ void main(){
         if(other[LW_DIRTY_AXIS]<0 || other[LW_DIRTY_AXIS]>=limit) continue;
         uint value=imageLoad(lwVoxelDirtyTiles,other+ivec3(32*LW_DIRTY_AXIS,0,0)).r;
 #if LW_DIRTY_AXIS == 0
+        // Bit 16 tracks walls within one tile (two-cell bounce reach).
+#ifdef VOXEL_GI
+        value=(value&1u)*3u | (value&4u) | ((value&8u)<<1u);
+#else
         value=(value&1u)*3u | (value&4u);
 #endif
+#endif
+        #ifdef VOXEL_GI
+        mask|=value & (abs(d)<=1 ? 23u : 6u);
+        if(mask==23u) break;
+#else
         mask|=value & (abs(d)<=1 ? 7u : 6u);
         if(mask==7u) break;
+#endif
     }
 #if LW_DIRTY_AXIS == 2
     // Wall classification belongs to the original local tile, not its halo.

@@ -21,8 +21,10 @@ uniform sampler2D depthtex0;
 uniform mat4 gbufferModelViewInverse;
 uniform mat4 gbufferPreviousModelView;
 uniform mat4 gbufferPreviousProjection;
-uniform vec3 cameraPosition;
-uniform vec3 previousCameraPosition;
+uniform ivec3 cameraPositionInt;
+uniform ivec3 previousCameraPositionInt;
+uniform vec3 cameraPositionFract;
+uniform vec3 previousCameraPositionFract;
 #ifdef DISTANT_HORIZONS
 uniform sampler2D dhDepthTex0;
 uniform mat4 dhProjectionInverse;
@@ -32,7 +34,7 @@ uniform mat4 dhPreviousProjection;
 vec3 motionBlur(vec3 center) {
     // Vertex-stage uniform check avoids per-pixel reprojection while still.
     if(lwMotionActive==0) return center;
-    vec3 cameraDelta = cameraPosition - previousCameraPosition;
+    vec3 cameraDelta=vec3(cameraPositionInt-previousCameraPositionInt)+cameraPositionFract-previousCameraPositionFract;
     if (dot(cameraDelta, cameraDelta) > 16.0) {
         return center;
     }

@@ -45,9 +45,9 @@ float receiverDepthAt(vec3 receiver,vec2 gradient,ivec2 pixel,ivec2 resolution) 
     return receiver.z+dot(gradient/vec2(resolution),offset);
 }
 
-float compareShadowTexel(vec3 receiver,vec2 gradient,ivec2 pixel,ivec2 resolution) {
+float compareShadowPlaneTexel(vec2 receiverPixel,float receiverDepth,vec2 gradientPixel,ivec2 pixel,ivec2 resolution) {
     pixel=clamp(pixel,ivec2(0),resolution-1);
-    return step(receiverDepthAt(receiver,gradient,pixel,resolution),texelFetch(shadowtex0,pixel,0).r);
+    return step(receiverDepth+dot(gradientPixel,vec2(pixel)+0.5-receiverPixel),texelFetch(shadowtex0,pixel,0).r);
 }
 
 float filteredReceiverShadow(vec2 uv,vec3 receiver,vec2 gradient,ivec2 resolution) {
@@ -63,10 +63,14 @@ float filteredReceiverShadow(vec2 uv,vec3 receiver,vec2 gradient,ivec2 resolutio
     vec2 position=uv*vec2(resolution)-0.5;
     ivec2 base=ivec2(floor(position));
     vec2 fraction=fract(position);
-    float ll=compareShadowTexel(receiver,gradient,base,resolution);
-    float lr=compareShadowTexel(receiver,gradient,base+ivec2(1,0),resolution);
-    float ul=compareShadowTexel(receiver,gradient,base+ivec2(0,1),resolution);
-    float ur=compareShadowTexel(receiver,gradient,base+ivec2(1,1),resolution);
+    // Receiver plane is invariant across the four taps. Hoist scale and
+    // reference coordinates out of the per-texel comparison.
+    vec2 receiverPixel=receiver.xy*vec2(resolution);
+    vec2 gradientPixel=gradient/vec2(resolution);
+    float ll=compareShadowPlaneTexel(receiverPixel,receiver.z,gradientPixel,base,resolution);
+    float lr=compareShadowPlaneTexel(receiverPixel,receiver.z,gradientPixel,base+ivec2(1,0),resolution);
+    float ul=compareShadowPlaneTexel(receiverPixel,receiver.z,gradientPixel,base+ivec2(0,1),resolution);
+    float ur=compareShadowPlaneTexel(receiverPixel,receiver.z,gradientPixel,base+ivec2(1,1),resolution);
     return mix(mix(ll,lr,fraction.x),mix(ul,ur,fraction.x),fraction.y);
 }
 
@@ -98,12 +102,14 @@ float softShadow(vec3 receiver,vec2 gradient,float viewDistance) {
     if(viewDistance>48.0) filterTaps=min(4,SHADOW_FILTER_TAPS);
 #endif
     int blockerStride=blockerTaps==8 ? 1 : 2;
+    vec2 receiverPixel=receiver.xy*vec2(resolution);
+    vec2 gradientPixel=gradient*texel;
     for (int index = 0; index < SHADOW_FILTER_TAPS; ++index) {
         if(index>=blockerTaps) break;
         int tap=index*blockerStride;
-        ivec2 p=clamp(ivec2((receiver.xy+taps[tap]*texel*3.5)*vec2(resolution)),ivec2(0),resolution-1);
+        ivec2 p=clamp(ivec2(receiverPixel+taps[tap]*3.5),ivec2(0),resolution-1);
         float depth=texelFetch(shadowtex0,p,0).r;
-        float plane=receiverDepthAt(receiver,gradient,p,resolution);
+        float plane=receiver.z+dot(gradientPixel,vec2(p)+0.5-receiverPixel);
         if(depth<plane) {
             sum+=plane-depth;
             count += 1.0;

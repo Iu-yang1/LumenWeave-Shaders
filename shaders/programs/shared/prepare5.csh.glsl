@@ -66,7 +66,9 @@ void main() {
     ivec3 storageCell=cell;
 #endif
     #ifdef LW_VOXEL_INCREMENTAL_ACTIVE
-    if((tileMask&4u)==0u) {
+    // No wall within the two-cell gather reach: the diffuse target is
+    // identically zero even when direct emitters are present.
+    if((tileMask&4u)==0u || (tileMask&16u)==0u) {
         imageStore(lwVoxelSecond,storageCell,vec4(0.0));
         return;
     }

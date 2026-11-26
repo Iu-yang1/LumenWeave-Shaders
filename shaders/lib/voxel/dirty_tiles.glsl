@@ -1,5 +1,6 @@
 // The expanded flags are uniform within a workgroup. Radius bits 0/1,
-// conservative emitter support bit 2, and original tile wall bit 3.
+// conservative emitter support bit 2, original tile wall bit 3,
+// and radius-one wall support bit 4 (diffuse GI only).
 layout(r8ui) readonly uniform uimage3D lwVoxelDirtyTiles;
 shared uint lwTileNeedsUpdate;
 uint voxelTileMask(ivec3 tile) {

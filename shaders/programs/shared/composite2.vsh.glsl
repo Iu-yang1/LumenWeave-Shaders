@@ -6,8 +6,14 @@ uniform mat4 gbufferModelView;
 uniform mat4 gbufferPreviousModelView;
 uniform mat4 gbufferProjection;
 uniform mat4 gbufferPreviousProjection;
-uniform vec3 cameraPosition;
-uniform vec3 previousCameraPosition;
+uniform ivec3 cameraPositionInt;
+uniform ivec3 previousCameraPositionInt;
+uniform vec3 cameraPositionFract;
+uniform vec3 previousCameraPositionFract;
+#ifdef DISTANT_HORIZONS
+uniform mat4 dhProjection;
+uniform mat4 dhPreviousProjection;
+#endif
 flat out int lwMotionActive;
 #endif
 void main(){
@@ -17,6 +23,11 @@ void main(){
     // Same value at every fullscreen vertex; exact unchanged transforms only.
     lwMotionActive=(gbufferModelView!=gbufferPreviousModelView ||
         gbufferProjection!=gbufferPreviousProjection ||
-        any(notEqual(cameraPosition,previousCameraPosition)))?1:0;
+        any(notEqual(cameraPositionInt,previousCameraPositionInt)) ||
+        any(notEqual(cameraPositionFract,previousCameraPositionFract))
+#ifdef DISTANT_HORIZONS
+        || dhProjection!=dhPreviousProjection
+#endif
+        )?1:0;
 #endif
 }
