@@ -14,7 +14,7 @@ vec3 temporalScreenBounce(vec3 current, vec3 viewPosition, vec3 normal, vec2 uv)
 #endif
         return current;
     }
-    ivec2 size = textureSize(colortex6, 0);
+    ivec2 size = lwRasterSize(colortex6);
     vec2 previousTexel = previousUv * vec2(size) - 0.5;
     ivec2 base = ivec2(floor(previousTexel));
     vec2 fraction = fract(previousTexel);

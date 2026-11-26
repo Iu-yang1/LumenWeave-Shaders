@@ -44,7 +44,7 @@ vec3 filterReflection(vec3 center,vec2 uv,float travel,int kind,float roughness)
     if(radius<0.65) return center;
     float depth=reflectedDepth(uv,kind);
     if(depth<=0.0) return center;
-    vec2 texel=1.0/vec2(textureSize(colortex8,0));
+    vec2 texel=1.0/vec2(lwRasterSize(colortex8));
     vec3 sum=center;float total=1.0;
     const vec2 taps[4]=vec2[4](vec2(1,0),vec2(-1,0),vec2(0,1),vec2(0,-1));
     for(int i=0;i<4;++i) {
@@ -53,7 +53,7 @@ vec3 filterReflection(vec3 center,vec2 uv,float travel,int kind,float roughness)
         float other=reflectedDepth(p,kind);
         if(other<=0.0 || abs(other-depth)>max(0.25,depth*0.02)) continue;
         float w=0.5;
-        sum+=texture(colortex8,p).rgb*w;total+=w;
+        sum+=lwRasterTexture(colortex8,p).rgb*w;total+=w;
     }
     return sum/total;
 }
@@ -89,7 +89,7 @@ vec4 traceMaterialCorrection(ivec2 pixel,vec3 viewPosition,vec3 normal,vec4 geom
     // Projected footprint of a one-block feature: retain more taps at high
     // display resolution / narrow FOV where the same distance is more visible.
     float pixelsPerBlock=0.5*abs(gbufferProjection[1][1])
-        *float(textureSize(depthtex0,0).y)/max(-viewPosition.z,0.1);
+        *float(lwRasterSize(depthtex0).y)/max(-viewPosition.z,0.1);
     if((-viewPosition.z>36.0 && pixelsPerBlock<14.0) || roughness>0.38)
         steps=min(steps,max(9,steps/2));
 #endif

@@ -107,7 +107,7 @@ void main() {
 #if defined(ADVANCED_WATER) && defined(DEFERRED_LIGHTING)
         vec3 waterPosition = viewPosition;
 #ifdef LW_STABLE_DYNAMIC
-        vec2 stableUv=gl_FragCoord.xy/vec2(textureSize(depthtex1,0));
+        vec2 stableUv=gl_FragCoord.xy/vec2(lwRasterSize(depthtex1));
         waterPosition=stableViewSurfacePosition(viewPosition,stableUv,
             transpose(mat3(gbufferModelViewInverse))*normal,gbufferProjectionInverse);
         view=normalize(worldDirection(-waterPosition));
@@ -122,13 +122,13 @@ void main() {
         float fresnel = waterFresnel(clamp(dot(normal, view), 0.0, 1.0), isEyeInWater == 1);
         vec3 reflection = skyRadiance(reflect(-view, normal), sun);
         float thickness = isEyeInWater == 1 ? 0.0
-            : waterThickness(viewPosition, gl_FragCoord.xy / vec2(textureSize(depthtex1, 0)));
+            : waterThickness(viewPosition, gl_FragCoord.xy / vec2(lwRasterSize(depthtex1)));
         float opacity = 1.0 - luminance(exp(-waterExtinction() * thickness));
         vec3 scatter = waterScatteringColor(radiance)
             * (ambientIrradiance(lightLevels, 1.0, sun) + celestialIrradiance(sun) * (0.16 * smoothstep(0.0,1.0,lightLevels.y)));
         if (isEyeInWater == 1) {
-            vec2 screen = gl_FragCoord.xy / vec2(textureSize(depthtex1, 0));
-            if (texture(depthtex1, screen).r >= 1.0) {
+            vec2 screen = gl_FragCoord.xy / vec2(lwRasterSize(depthtex1));
+            if (lwRasterTexture(depthtex1, screen).r >= 1.0) {
                 vec3 airDirection = waterToAirDirection(-view, normal);
                 vec3 air = dot(airDirection, airDirection) > 0.0 ? skyRadiance(airDirection, sun) : scatter;
                 gl_FragData[0] = vec4(applySceneFog(mix(air, scatter, fresnel), viewPosition), 1.0);
@@ -151,7 +151,7 @@ void main() {
     if (blockId == 10015) {
         vec3 lavaPosition = viewPosition;
 #ifdef LW_STABLE_DYNAMIC
-        vec2 stableUv = gl_FragCoord.xy / vec2(textureSize(depthtex1,0));
+        vec2 stableUv = gl_FragCoord.xy / vec2(lwRasterSize(depthtex1));
         lavaPosition = stableViewSurfacePosition(viewPosition,stableUv,
             transpose(mat3(gbufferModelViewInverse))*normal,gbufferProjectionInverse);
         view = normalize(worldDirection(-lavaPosition));

@@ -8,7 +8,7 @@ struct ScreenBounce {
 
 ScreenBounce screenBounceRay(vec3 origin, vec3 direction, mat3 toView, vec3 sun, vec3 direct) {
     float travel = 0.16;
-    ivec2 resolution = textureSize(depthtex0, 0);
+    ivec2 resolution = lwRasterSize(depthtex0);
 #if defined(LW_HIZ_ACTIVE) && HIZ_MODE == 2
     ivec2 candidate;float candidateTravel,candidateDelta;
     int status=hizTrace(depthtex0,gbufferProjection,gbufferProjectionInverse,
@@ -151,7 +151,7 @@ ScreenBounce screenDiffuseBounce(vec3 viewPosition, vec3 normal, vec3 sun) {
 #endif
 #if SCENE_BUDGET == 1 && LW_DIMENSION_BUDGET != 0
     float depth=-viewPosition.z;
-    float footprint=0.5*abs(gbufferProjection[1][1])*float(textureSize(depthtex0,0).y)/max(depth,0.1);
+    float footprint=0.5*abs(gbufferProjection[1][1])*float(lwRasterSize(depthtex0).y)/max(depth,0.1);
     float threshold=LW_DIMENSION_BUDGET==2 ? 16.0 : 22.0;
     rayCount=lwReduceDistantWork(depth,threshold,distanceFade,footprint) ? 2 : 4;
 #endif

@@ -15,7 +15,7 @@ vec3 physicalWater(vec3 tint, vec3 originalNormal, vec3 viewPosition, vec3 view,
         vec2 hitUv;float hitTravel;int hitKind;
         int steps=WATER_REFLECTION_STEPS;
 #ifdef ADAPTIVE_SHADING
-        float projected=0.5*abs(gbufferProjection[1][1])*float(textureSize(depthtex1,0).y)/max(-viewPosition.z,0.1);
+        float projected=0.5*abs(gbufferProjection[1][1])*float(lwRasterSize(depthtex1).y)/max(-viewPosition.z,0.1);
         if(!submerged && projected<9.0 && steps>8) steps=max(8,steps/2);
 #endif
         vec4 hit = traceScreenReflection(viewPosition+toView*normal*0.045, toView * reflected, steps,hitUv,hitTravel,hitKind);
@@ -58,7 +58,7 @@ vec3 physicalWater(vec3 tint, vec3 originalNormal, vec3 viewPosition, vec3 view,
         return mix(through,reflection,fresnel);
     }
 
-    vec2 screen = gl_FragCoord.xy / vec2(textureSize(depthtex1, 0));
+    vec2 screen = gl_FragCoord.xy / vec2(lwRasterSize(depthtex1));
 #ifdef LW_STABLE_DYNAMIC
     screen = clamp(screen + jitterOffset(frameCounter),vec2(0.0),vec2(1.0));
 #endif
@@ -84,7 +84,7 @@ vec3 physicalWater(vec3 tint, vec3 originalNormal, vec3 viewPosition, vec3 view,
     float thickness = sampledDepth >= 1.0 ? 48.0
         : clamp(dot(background - viewPosition, normalize(viewPosition)), 0.0, 48.0);
     vec3 transmission = exp(-waterExtinction() * thickness);
-    vec3 through = mix(scatter, texture(colortex8, refractedUv).rgb, transmission);
+    vec3 through = mix(scatter, lwRasterTexture(colortex8, refractedUv).rgb, transmission);
 #ifdef SCENE_SHADOWS
     if (hasSkylight && skyAccess > 0.0) {
         skyAccess *= sceneShadow(position - cameraPosition, originalNormal, sun.y >= 0.0 ? sun : -sun);

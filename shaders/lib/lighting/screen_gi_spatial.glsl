@@ -9,8 +9,8 @@ ScreenBounce spatialScreenBounce(vec3 viewPosition, vec3 normal, vec3 sun, vec2 
     if (sceneDepth >= 30.0) {
         return bounce;
     }
-    ivec2 traceSize = textureSize(colortex9, 0);
-    ivec2 fullSize = textureSize(colortex1, 0);
+    ivec2 traceSize = lwRasterSize(colortex9);
+    ivec2 fullSize = lwRasterSize(colortex1);
     vec2 samplePosition = uv * vec2(traceSize) - 0.5;
     ivec2 base = ivec2(floor(samplePosition));
     vec2 fraction = fract(samplePosition);

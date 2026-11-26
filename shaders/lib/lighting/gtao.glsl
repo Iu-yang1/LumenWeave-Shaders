@@ -10,7 +10,7 @@ float horizonCosine(vec2 originUv, vec2 stepUv, vec3 position, vec3 observer, ve
 #endif
 #if SCENE_BUDGET == 1 && LW_DIMENSION_BUDGET != 0
     float depth=-position.z;
-    float footprint=length(stepUv*vec2(textureSize(depthtex0,0)));
+    float footprint=length(stepUv*vec2(lwRasterSize(depthtex0)));
     float contribution=1.0-smoothstep(20.0,52.0,depth);
     float threshold=LW_DIMENSION_BUDGET==2 ? 24.0 : 32.0;
     taps=lwReduceDistantWork(depth,threshold,contribution,footprint) ? 2 : 4;
@@ -60,7 +60,7 @@ float groundTruthOcclusion(vec2 uv, vec3 position, vec3 normal) {
 #ifdef LW_STABLE_DYNAMIC
     uv += jitterOffset(frameCounter);
 #endif
-    vec2 resolution = vec2(textureSize(depthtex0, 0));
+    vec2 resolution = vec2(lwRasterSize(depthtex0));
     float scale = min(1.6 / max(-position.z, 0.01), 56.0 / resolution.y);
     vec2 projectionScale = 0.5 * vec2(gbufferProjection[0][0], gbufferProjection[1][1]);
     float visible = 0.0;

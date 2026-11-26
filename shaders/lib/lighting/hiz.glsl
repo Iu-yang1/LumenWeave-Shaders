@@ -10,6 +10,10 @@ bool hizRejectInterval(vec4 a,vec4 b,ivec2 resolution,bool dhFallback) {
     if(a.w<=0.0 || b.w<=0.0 || !hizAtlasFits(resolution,textureSize(lwHiZ,0))) return false;
     vec2 p=(a.xy/a.w*0.5+0.5)*vec2(resolution);
     vec2 q=(b.xy/b.w*0.5+0.5)*vec2(resolution);
+#ifdef LW_GEOMETRY_TAAU
+    vec2 offset=jitterOffset(frameCounter)*vec2(resolution);
+    p+=offset;q+=offset;
+#endif
     if(any(lessThan(min(p,q),vec2(0))) || any(greaterThanEqual(max(p,q),vec2(resolution)))) return false;
     ivec2 first=ivec2(p)/64,last=ivec2(q)/64;
     if(any(notEqual(first,last))) return false;
@@ -48,11 +52,15 @@ int hizTrace(sampler2D depthBuffer,mat4 projection,mat4 inverseProjection,
              vec3 origin,vec3 direction,float start,float limit,int budget,
              bool dhFallback,bool requireFront,
              out ivec2 hitPixel,out float hitTravel,out float hitDelta) {
-    ivec2 resolution=textureSize(depthBuffer,0);
+    ivec2 resolution=lwRasterSize(depthBuffer);
     hitPixel=ivec2(0);hitTravel=0.0;hitDelta=0.0;
     if(!hizAtlasFits(resolution,textureSize(lwHiZ,0))) return -1;
     vec4 c=projection*vec4(origin,1);
     vec4 d=projection*vec4(direction,0);
+#ifdef LW_GEOMETRY_TAAU
+    vec2 offset=2.0*jitterOffset(frameCounter);
+    c.xy+=offset*c.w;d.xy+=offset*d.w;
+#endif
     if(direction.z>0.0) limit=min(limit,(-0.12-origin.z)/direction.z);
     vec2 velocity=d.xy*c.w-c.xy*d.w;
     float t=start;
@@ -85,7 +93,7 @@ int hizTrace(sampler2D depthBuffer,mat4 projection,mat4 inverseProjection,
             frontSeen=true;t=end;continue;
         }
         vec2 center=(vec2(pixel)+0.5)/vec2(resolution);
-        vec4 surface=inverseProjection*vec4(center*2.0-1.0,depth*2.0-1.0,1);
+        vec4 surface=inverseProjection*vec4(unjitteredUv(center,true)*2.0-1.0,depth*2.0-1.0,1);
         float z=surface.z/surface.w;
         float a=z-(origin.z+direction.z*t);
         float b=z-(origin.z+direction.z*end);

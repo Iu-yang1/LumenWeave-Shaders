@@ -4,8 +4,8 @@ float spatialGroundTruthOcclusion(vec2 uv,vec3 position,vec3 normal,vec3 normalV
     float depth=-position.z;
     if(depth>=52.0 || AO_STRENGTH==0.0) return 1.0;
     if(depth<4.0) return groundTruthOcclusion(uv,position,normalView);
-    ivec2 size=textureSize(colortex3,0);
-    ivec2 fullSize=textureSize(colortex1,0);
+    ivec2 size=lwRasterSize(colortex3);
+    ivec2 fullSize=lwRasterSize(colortex1);
     vec2 coordinate=uv*vec2(size)-0.5;
     ivec2 base=ivec2(floor(coordinate));
     vec2 fraction=fract(coordinate);

@@ -4,8 +4,12 @@ uniform sampler2D colortex15;
 
 vec3 temporalReflectionCorrection(vec3 current,float confidence,vec3 position,vec3 normal,vec2 uv) {
     vec2 previousUv;float expectedDepth;
+#ifdef LW_GEOMETRY_TAAU
+    if(!reprojectTerrain(position,previousUv,expectedDepth)) return current;
+#else
     if(!reprojectStableTerrain(position,previousUv,expectedDepth,gbufferPreviousProjection)) return current;
-    ivec2 size=textureSize(colortex14,0);
+#endif
+    ivec2 size=lwRasterSize(colortex14);
     vec2 p=previousUv*vec2(size)-0.5;
     ivec2 base=ivec2(floor(p));
     vec2 f=fract(p);vec3 accumulated=vec3(0.0);float total=0.0;

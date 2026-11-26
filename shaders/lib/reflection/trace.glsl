@@ -92,7 +92,7 @@ vec4 traceScreenReflection(vec3 origin,vec3 direction,int steps,out vec2 hitUv,o
             float confidence=smoothstep(0.0,0.08,min(edge.x,edge.y))
                 *(1.0-smoothstep(18.0,48.0,hitTravel))
                 *(1.0-smoothstep(thickness*0.65,thickness,candidateDelta));
-            return vec4(texture(colortex8,hitUv).rgb,confidence);
+            return vec4(lwRasterTexture(colortex8,hitUv).rgb,confidence);
         }
     } else if(status==0) {
         hitUv=vec2(0);hitTravel=0.0;hitKind=0;
@@ -112,7 +112,7 @@ vec4 traceScreenReflection(vec3 origin,vec3 direction,int steps,out vec2 hitUv,o
         vec3 endRay=origin+direction*last;
         if(endRay.z< -0.12 && hizRejectInterval(
             gbufferProjection*vec4(origin+direction*travel,1.0),
-            gbufferProjection*vec4(endRay,1.0),textureSize(LW_REFLECTION_DEPTH,0),
+            gbufferProjection*vec4(endRay,1.0),lwRasterSize(LW_REFLECTION_DEPTH),
 #ifdef DISTANT_HORIZONS
             true
 #else
@@ -148,7 +148,7 @@ vec4 traceScreenReflection(vec3 origin,vec3 direction,int steps,out vec2 hitUv,o
                 confidence*=1.0-smoothstep(18.0,48.0,hi);
                 confidence*=1.0-smoothstep(thickness*0.65,thickness,delta);
                 hitUv=uv;hitTravel=hi;hitKind=kind;
-                return vec4(texture(colortex8,uv).rgb,confidence);
+                return vec4(lwRasterTexture(colortex8,uv).rgb,confidence);
             }
         }
         previousFront=delta<0.0;previousTravel=travel;

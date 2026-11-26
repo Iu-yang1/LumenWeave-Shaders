@@ -16,7 +16,7 @@ float dhShadowMapCoverage(vec3 position) {
 // occluders can be observed, so confidence fades at screen/depth discontinuities.
 float distantTerrainVisibility(vec3 position,vec3 normalView,vec3 lightView) {
     float depth=-position.z;
-    float pixelFootprint=2.0*depth/(max(float(textureSize(dhDepthTex0,0).y),1.0)*max(abs(dhProjection[1][1]),0.01));
+    float pixelFootprint=2.0*depth/(max(float(lwRasterSize(dhDepthTex0).y),1.0)*max(abs(dhProjection[1][1]),0.01));
     float bias=clamp(pixelFootprint*1.4,0.65,5.0);
     vec3 origin=position+normalView*bias;
     float travel=max(2.5,bias*1.6);
@@ -30,6 +30,9 @@ float distantTerrainVisibility(vec3 position,vec3 normalView,vec3 lightView) {
         vec4 clip=dhProjection*vec4(ray,1.0);
         if(clip.w<=0.0) break;
         vec2 uv=clip.xy/clip.w*0.5+0.5;
+#ifdef LW_GEOMETRY_TAAU
+        uv+=jitterOffset(frameCounter);
+#endif
 #ifdef LW_TAA_ACTIVE
         uv+=jitterOffset(frameCounter);
 #endif
