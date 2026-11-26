@@ -4,7 +4,7 @@
 #ifdef LW_SCATTER_UPSAMPLE_ACTIVE
 uniform sampler2D colortex11;
 vec3 upsampleLocalScatter(vec2 uv,vec3 direction,float distanceToSurface) {
-    ivec2 size=textureSize(colortex11,0);
+    ivec2 size=lwRasterSize(colortex11);
 #ifdef LW_SCENE_TAAU
     size=lwSceneRenderSize(size);
 #endif

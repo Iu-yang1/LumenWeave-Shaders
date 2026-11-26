@@ -1,5 +1,6 @@
 #version 330 compatibility
 #include "/lib/quality.glsl"
+#include "/lib/coordinates/raster_grid.glsl"
 
 uniform sampler2D colortex0;
 in vec2 texCoord;
@@ -37,7 +38,7 @@ uniform sampler2D colortex9;
 // The prepass owns the transient GI attachment only after deferred1 consumed it.
 bool reconstructRoughReflection(vec2 uv,vec3 viewPosition,vec3 normal,vec4 metadata,out vec4 result) {
     if(metadata.a<0.28) return false;
-    ivec2 size=textureSize(colortex9,0),fullSize=textureSize(depthtex0,0);
+    ivec2 size=lwRasterSize(colortex9),fullSize=lwRasterSize(depthtex0);
     vec2 coord=uv*vec2(size)-0.5;
     ivec2 base=ivec2(floor(coord));vec2 f=fract(coord);
     vec4 total=vec4(0.0);float weightSum=0.0;
@@ -97,12 +98,12 @@ void main() {
 #ifdef LW_TAA_ACTIVE
     correction=temporalReflectionCorrection(correction,sampleResult.a,viewPosition,normal,texCoord);
     reflectionHistory=vec4(correction,-viewPosition.z);
-    reflectionGeometry=vec4(geometry.xy,vec2(textureSize(depthtex0,0)));
+    reflectionGeometry=vec4(geometry.xy,vec2(lwRasterSize(depthtex0)));
 #endif
     opaqueOutput.rgb=max(opaqueOutput.rgb+correction*contribution,vec3(0.0));
     sceneOutput.rgb=applySceneFog(opaqueOutput.rgb,viewPosition);
 }
 #else
 /* RENDERTARGETS: 0 */
-void main(){ sceneOutput=texture(colortex0,texCoord); }
+void main(){ sceneOutput=lwRasterTexture(colortex0,texCoord); }
 #endif

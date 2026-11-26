@@ -1,10 +1,31 @@
 #version 430 core
 #include "/lib/quality.glsl"
+#include "/lib/coordinates/raster_grid.glsl"
 layout(local_size_x=8,local_size_y=8) in;
 #if HIZ_MODE == 1
+#if defined(LW_GEOMETRY_TAAU) && GEOMETRY_TAAU_SCALE == 50
+const vec2 workGroupsRender=vec2(0.0625,0.0625);
+#elif defined(LW_GEOMETRY_TAAU) && GEOMETRY_TAAU_SCALE == 67
+const vec2 workGroupsRender=vec2(0.08375,0.08375);
+#elif defined(LW_GEOMETRY_TAAU) && GEOMETRY_TAAU_SCALE == 75
+const vec2 workGroupsRender=vec2(0.09375,0.09375);
+#elif defined(LW_GEOMETRY_TAAU) && GEOMETRY_TAAU_SCALE == 85
+const vec2 workGroupsRender=vec2(0.10625,0.10625);
+#else
 const vec2 workGroupsRender=vec2(0.125,0.125);
+#endif
+#else
+#if defined(LW_GEOMETRY_TAAU) && GEOMETRY_TAAU_SCALE == 50
+const vec2 workGroupsRender=vec2(0.25,0.25);
+#elif defined(LW_GEOMETRY_TAAU) && GEOMETRY_TAAU_SCALE == 67
+const vec2 workGroupsRender=vec2(0.335,0.335);
+#elif defined(LW_GEOMETRY_TAAU) && GEOMETRY_TAAU_SCALE == 75
+const vec2 workGroupsRender=vec2(0.375,0.375);
+#elif defined(LW_GEOMETRY_TAAU) && GEOMETRY_TAAU_SCALE == 85
+const vec2 workGroupsRender=vec2(0.425,0.425);
 #else
 const vec2 workGroupsRender=vec2(0.5,0.5);
+#endif
 #endif
 #ifdef LW_HIZ_ACTIVE
 #include "/lib/lighting/hiz_layout.glsl"
@@ -20,7 +41,7 @@ void writeRange(ivec2 p,int scale,ivec2 resolution,vec2 value) {
 }
 #if HIZ_MODE == 1
 void main() {
-    ivec2 resolution=textureSize(depthtex0,0);
+    ivec2 resolution=lwRasterSize(depthtex0);
     ivec2 tile=ivec2(gl_WorkGroupID.xy);
     if(!hizAtlasFits(resolution,imageSize(lwHiZImage)) ||
        any(greaterThanEqual(tile,hizLevelSize(resolution,64)))) return;
@@ -52,7 +73,7 @@ void main() {
 }
 #else
 void main() {
-    ivec2 resolution=textureSize(depthtex0,0);
+    ivec2 resolution=lwRasterSize(depthtex0);
     if(!hizAtlasFits(resolution,imageSize(lwHiZImage))) return;
     ivec2 group=ivec2(gl_WorkGroupID.xy);
     ivec2 lane=ivec2(gl_LocalInvocationID.xy);

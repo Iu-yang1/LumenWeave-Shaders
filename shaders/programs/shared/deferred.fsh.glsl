@@ -1,6 +1,7 @@
 #version 330 compatibility
 
 #include "/lib/quality.glsl"
+#include "/lib/coordinates/raster_grid.glsl"
 
 layout(location = 0) out vec4 skyTrace;
 in vec2 texCoord;
@@ -76,7 +77,7 @@ layout(location = 1) out vec2 aoTrace;
 #endif
 
 void main() {
-    ivec2 fullSize = textureSize(depthtex0, 0);
+    ivec2 fullSize = lwRasterSize(depthtex0);
     // The fullscreen UV reflects the actual half-size viewport, including odd
     // framebuffer dimensions; do not assume integer division matches Iris.
     ivec2 pixel = clamp(ivec2(texCoord * vec2(fullSize)), ivec2(0), fullSize - 1);
@@ -120,9 +121,13 @@ void main() {
         +cameraPositionFract-previousCameraPositionFract;
     if(((tile.x+tile.y+frameCounter)&1)==0 && -viewPosition.z>3.0 &&
         dot(cameraDelta,cameraDelta)<0.0004 &&
+#ifdef LW_GEOMETRY_TAAU
+        reprojectTerrain(viewPosition,previousUv,expectedDepth) &&
+#else
         reprojectStableTerrain(viewPosition,previousUv,expectedDepth,gbufferPreviousProjection) &&
+#endif
         length((previousUv-sampleUv)*vec2(fullSize))<0.35 &&
-        all(lessThan(tile,textureSize(colortex9,0)))) {
+        all(lessThan(tile,lwRasterSize(colortex9)))) {
         vec4 previous=texelFetch(colortex9,tile,0);
         vec4 metadata=texelFetch(colortex7,pixel,0);
         if(matchesHistoryDepth(previous.a,expectedDepth) &&

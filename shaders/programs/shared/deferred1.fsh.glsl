@@ -1,5 +1,6 @@
 
 #include "/lib/quality.glsl"
+#include "/lib/coordinates/raster_grid.glsl"
 
 uniform sampler2D colortex0;
 in vec2 texCoord;
@@ -84,10 +85,10 @@ uniform sampler2D dhDepthTex0;
 #endif
 #if defined(LW_DIMENSION_END) || defined(LW_DIMENSION_NETHER)
 vec4 dimensionBackground(vec2 uv) {
-    vec3 direction=normalize(worldDirection((gbufferProjectionInverse*vec4(uv*2.0-1.0,1.0,1.0)).xyz));
+    vec3 direction=normalize(worldDirection((gbufferProjectionInverse*vec4(unjitteredUv(uv,true)*2.0-1.0,1.0,1.0)).xyz));
     vec3 color=skyRadiance(direction,vec3(0,1,0));
 #ifdef LW_DIMENSION_END
-    color+=endSkyDetail(direction,96.0/max(float(textureSize(depthtex0,0).y),1.0));
+    color+=endSkyDetail(direction,96.0/max(float(lwRasterSize(depthtex0).y),1.0));
 #endif
     if(isEyeInWater!=0 && isEyeInWater!=1) color=decodeSrgb(fogColor);
     return vec4(color,1.0);
@@ -287,7 +288,7 @@ void main() {
     if (-viewPosition.z < 30.0) {
         bounce = temporalScreenBounce(bounce, viewPosition, normal, texCoord);
         skyBounceHistory = vec4(bounce, -viewPosition.z);
-        bounceNormalHistory = vec4(geometry.xy, vec2(textureSize(depthtex0, 0)));
+        bounceNormalHistory = vec4(geometry.xy, vec2(lwRasterSize(depthtex0)));
     }
 #endif
 #ifdef LW_VOXEL_DIFFUSE_ACTIVE
@@ -309,7 +310,7 @@ void main() {
 #else
 
 void main() {
-    outputColor = texture(colortex0, texCoord);
+    outputColor = lwRasterTexture(colortex0, texCoord);
 #if defined(LW_DIMENSION_END) || defined(LW_DIMENSION_NETHER)
     if(dimensionBackgroundPixel(texCoord,depthAtUv(depthtex0,texCoord)))
         outputColor=dimensionBackground(texCoord);

@@ -30,7 +30,7 @@ void volumeRay(vec2 uv,out vec3 direction,out float distanceToSurface) {
 #endif
         distanceToSurface=length(view);
     } else {
-        view=(gbufferProjectionInverse*vec4(uv*2.0-1.0,1.0,1.0)).xyz;
+        view=(gbufferProjectionInverse*vec4(unjitteredUv(uv,true)*2.0-1.0,1.0,1.0)).xyz;
         distanceToSurface=680.0;
 #ifdef DISTANT_HORIZONS
         ivec2 dhPixel=depthPixelAtUv(dhDepthTex0,uv);

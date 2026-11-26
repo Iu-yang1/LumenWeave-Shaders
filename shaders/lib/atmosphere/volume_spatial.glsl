@@ -15,7 +15,7 @@ uniform sampler2D colortex9;
 uniform sampler2D colortex3;
 #endif
 vec4 upsampleCelestialVolume(vec2 uv,vec3 direction,float distanceToSurface) {
-    ivec2 size=textureSize(colortex9,0);
+    ivec2 size=lwRasterSize(colortex9);
 #ifdef LW_SCENE_TAAU
     size=lwSceneRenderSize(size);
 #endif
