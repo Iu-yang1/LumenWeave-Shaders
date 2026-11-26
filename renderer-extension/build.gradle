@@ -32,6 +32,7 @@ tasks.withType(JavaCompile).configureEach {
 processResources {
     inputs.property 'version', project.version
     filesMatching('fabric.mod.json') { expand(version: project.version) }
+    from('gpu') { include 'materialize_external_seeds.comp'; into 'lumenweave' }
 }
 tasks.register('coreRegression', JavaExec) {
     dependsOn testClasses

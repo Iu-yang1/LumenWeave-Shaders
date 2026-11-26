@@ -32,6 +32,10 @@ public final class RendererExtension implements ClientModInitializer {
     private static Method materialMethod;
     private static long ticks;
     private static final boolean GPU_PROBE=Boolean.getBoolean("lumenweave.renderer.seedProbe");
+    private static final boolean INDEPENDENT=Boolean.getBoolean("lumenweave.renderer.independentSeeds");
+    private static boolean externalActive;
+    private static SectionStore.Window sectionWindow;
+    private static boolean reportedNormalCull;
     private static OpenGlSeedAtlas atlas;
     private static long probeFrames;
     private static Method cameraMethod;
@@ -49,7 +53,7 @@ public final class RendererExtension implements ClientModInitializer {
     }
     public static void attach(Object manager,ClientLevel level){
         if(owner==manager)return;
-        STORE.reset();REFERENCE.close();owner=manager;world=level;materialIds=null;latest=null;
+        STORE.reset();REFERENCE.close();owner=manager;world=level;materialIds=null;latest=null;sectionWindow=null;externalActive=false;
     }
     // Packet replacement may replace data without creating a new Sodium section.
     public static void chunkLoaded(LevelChunk chunk){
@@ -76,12 +80,12 @@ public final class RendererExtension implements ClientModInitializer {
         if(owner==manager)STORE.changed(new SectionStore.Key(x,y,z));
     }
     public static void destroy(Object manager){
-        if(owner==manager){STORE.reset();REFERENCE.close();owner=null;world=null;materialIds=null;latest=null;}
+        if(owner==manager){STORE.reset();REFERENCE.close();owner=null;world=null;materialIds=null;latest=null;sectionWindow=null;externalActive=false;}
     }
     public static SectionStore.Delta latest(){return latest;}
     public static void tick(){
         Minecraft mc=Minecraft.getInstance();
-        if(world==null||mc.level!=world||mc.player==null||materialMethod==null||GPU_PROBE)return;
+        if(world==null||mc.level!=world||mc.player==null||materialMethod==null||GPU_PROBE||INDEPENDENT)return;
         Map<?,?> ids;
         try{ids=(Map<?,?>)materialMethod.invoke(settingsField.get(null));}
         catch(ReflectiveOperationException e){LOG.warn("Iris material map read failed; producer disabled",e);materialMethod=null;return;}
@@ -95,40 +99,86 @@ public final class RendererExtension implements ClientModInitializer {
         if(++ticks%200==0)LOG.info("Seed observation: resident={}, missing={}, upserts={}, epoch={}",
             latest.resident(),latest.missing().size(),latest.upserts().size(),latest.epoch());
     }
-    // Called after Iris shadow production and before prepare. The optional
-    // probe uses Iris camera coordinates and the real occupancy texture size.
-    public static void afterShadow(Set<?> images){
-        if(!GPU_PROBE||world==null||Minecraft.getInstance().level!=world||cameraMethod==null||materialMethod==null)return;
-        if(!GL.getCapabilities().OpenGL45)return;
-        try{
-            int occupancy=0;
-            for(Object image:images){
-                if("lwVoxelOccupancy".equals(image.getClass().getMethod("getName").invoke(image))){
-                    occupancy=(int)image.getClass().getMethod("getId").invoke(image);break;
-                }
+    public static boolean externalActive(){return externalActive;}
+    public static boolean useNormalCulling(boolean safeZone){
+        if(safeZone&&externalActive&&!reportedNormalCull){
+            reportedNormalCull=true;LOG.info("Independent voxel handoff active; ordinary shadow frustum enabled");
+        }
+        return safeZone&&!externalActive;
+    }
+    private static int occupancy(Set<?> images)throws ReflectiveOperationException{
+        for(Object image:images)if("lwVoxelOccupancy".equals(image.getClass().getMethod("getName").invoke(image)))
+            return (int)image.getClass().getMethod("getId").invoke(image);
+        return 0;
+    }
+    private static boolean ready(){
+        return world!=null&&Minecraft.getInstance().level==world&&cameraMethod!=null&&materialMethod!=null&&GL.getCapabilities().OpenGL45;
+    }
+    private static SectionStore.Window prepareAtlas(int n)throws ReflectiveOperationException{
+        Map<?,?> ids=(Map<?,?>)materialMethod.invoke(settingsField.get(null));
+        if(ids==null)return null;
+        if(ids!=materialIds){materialIds=ids;STORE.invalidateMaterials();}
+        Vector3d pos=(Vector3d)cameraMethod.invoke(null);
+        var w=new SectionStore.Window((int)Math.floor(pos.x)-n/2,(int)Math.floor(pos.y)-n/2,(int)Math.floor(pos.z)-n/2,n);
+        // Bootstrap every loaded column in the active section range, including
+        // air sections which Sodium may never schedule for mesh generation.
+        var aligned=new SectionStore.Window(Math.floorDiv(w.x(),16)*16,Math.floorDiv(w.y(),16)*16,Math.floorDiv(w.z(),16)*16,n);
+        if(!aligned.equals(sectionWindow)){
+            int x0=Math.floorDiv(w.x(),16),x1=Math.floorDiv(w.x()+n-1,16);
+            int y0=Math.floorDiv(w.y(),16),y1=Math.floorDiv(w.y()+n-1,16);
+            int z0=Math.floorDiv(w.z(),16),z1=Math.floorDiv(w.z()+n-1,16);
+            // Include the next section at each boundary even for an aligned window.
+            for(int z=z0;z<=Math.max(z1,z0+n/16);z++)for(int x=x0;x<=Math.max(x1,x0+n/16);x++){
+                boolean loaded=world.getChunkSource().getChunkNow(x,z)!=null;
+                for(int y=y0;y<=Math.max(y1,y0+n/16);y++)
+                    if(loaded||y<world.getMinSectionY()||y>world.getMaxSectionY())STORE.ensureLoaded(new SectionStore.Key(x,y,z));
             }
-            if(occupancy==0)return;
-            int n=OpenGlSeedAtlas.width(occupancy);
+            sectionWindow=aligned;
+        }
+        boolean newAtlas=atlas==null;
+        if(newAtlas)atlas=new OpenGlSeedAtlas();
+        latest=STORE.update(w,RendererExtension::snapshot);
+        REFERENCE.uploadSeeds(latest);
+        atlas.uploadSeeds(newAtlas?STORE.fullSnapshot():latest);
+        return w;
+    }
+    // begin already cleared the previous observation and external flag.
+    public static void beforeShadow(Set<?> images){
+        externalActive=false;
+        if(!INDEPENDENT||!ready())return;
+        try{
+            int texture=occupancy(images);
+            if(texture==0)return;
+            int n=OpenGlSeedAtlas.width(texture);
             if(n!=32&&n!=64&&n!=96&&n!=128)return;
-            Map<?,?> ids=(Map<?,?>)materialMethod.invoke(settingsField.get(null));
-            if(ids==null)return;
-            if(ids!=materialIds){materialIds=ids;STORE.invalidateMaterials();}
-            Vector3d pos=(Vector3d)cameraMethod.invoke(null);
-            var window=new SectionStore.Window((int)Math.floor(pos.x)-n/2,(int)Math.floor(pos.y)-n/2,(int)Math.floor(pos.z)-n/2,n);
-            boolean newAtlas=atlas==null;
-            if(newAtlas)atlas=new OpenGlSeedAtlas();
-            latest=STORE.update(window,RendererExtension::snapshot);
-            REFERENCE.uploadSeeds(latest);
-            atlas.uploadSeeds(newAtlas?STORE.fullSnapshot():latest);
-            if(++probeFrames%120==0){
-                var diff=atlas.compare(occupancy,window);
+            if(OpenGlSeedAtlas.depth(texture)!=n+(n+63)/64+1)return;
+            var window=prepareAtlas(n);
+            if(window==null||!latest.complete())return;
+            var receipt=atlas.materialize(texture,latest);
+            externalActive=RendererBackend.mayUseNormalCulling(latest,receipt,atlas.capabilities());
+        }catch(ReflectiveOperationException|RuntimeException e){
+            LOG.warn("External voxel handoff failed; original shadow producer retained",e);
+        }
+    }
+    // The diagnostic compares independent seeds against original vertex output.
+    public static void afterShadow(Set<?> images){
+        if(!GPU_PROBE||externalActive||!ready())return;
+        try{
+            int texture=occupancy(images);
+            if(texture==0)return;
+            int n=OpenGlSeedAtlas.width(texture);
+            if(n!=32&&n!=64&&n!=96&&n!=128)return;
+            var window=prepareAtlas(n);
+            if(window!=null&&++probeFrames%120==0){
+                var diff=atlas.compare(texture,window);
                 LOG.info("GPU seed probe: grid={}, complete={}, missing={}, differing={}, referenceNonzero={}, candidateNonzero={}",
                     n,latest.complete(),latest.missing().size(),diff.differing(),diff.referenceNonzero(),diff.candidateNonzero());
             }
-        }catch(ReflectiveOperationException e){LOG.warn("Iris seed probe contract changed",e);cameraMethod=null;}
+        }catch(ReflectiveOperationException|RuntimeException e){LOG.warn("Iris seed probe failed",e);}
     }
-    public static void closeProbe(){if(atlas!=null){atlas.close();atlas=null;}}
+    public static void closeProbe(){if(atlas!=null){atlas.close();atlas=null;}externalActive=false;sectionWindow=null;}
     private static int[] snapshot(SectionStore.Key key){
+        if(key.y()<world.getMinSectionY()||key.y()>world.getMaxSectionY())return new int[0];
         var chunk=world.getChunkSource().getChunkNow(key.x(),key.z());
         if(chunk==null)return null;
         int index=world.getSectionIndexFromSectionY(key.y());

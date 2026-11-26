@@ -27,7 +27,7 @@ public final class NativeGpuSmoke {
             check(window!=0,"GL context");
             glfwMakeContextCurrent(window);GL.createCapabilities();
             System.out.println("GL renderer: "+glGetString(GL_RENDERER)+"; version: "+glGetString(GL_VERSION));
-            seedAtlas();depthPages();pagePipeline();indirect();
+            seedAtlas();materializeSeeds();depthPages();pagePipeline();indirect();
             check(glGetError()==GL_NO_ERROR,"GL error");
             System.out.println("Native GPU: seed atlas, depth pages, virtual page lifecycle and indirect draws passed");
         }finally{
@@ -57,6 +57,29 @@ public final class NativeGpuSmoke {
                 check(rebuilt.compare(ref,w).differing()==0,"resource rehydration");
             }
         }finally{MemoryUtil.memFree(expected);glDeleteTextures(ref);}
+    }
+    static void materializeSeeds(){
+        var store=new SectionStore();var w=new SectionStore.Window(-1,0,0,32);
+        for(int z=0;z<2;z++)for(int y=0;y<2;y++)for(int x=-1;x<2;x++)store.added(new SectionStore.Key(x,y,z));
+        var d=store.update(w,k->k.equals(new SectionStore.Key(-1,0,0))?new int[]{SectionStore.entry(15,0,0,255)}
+            :k.equals(new SectionStore.Key(1,0,0))?new int[]{SectionStore.entry(0,0,0,259)}:new int[0]);
+        int target=glCreateTextures(GL_TEXTURE_3D);glTextureStorage3D(target,1,GL_R32UI,32,32,34);
+        glClearTexImage(target,0,GL_RED_INTEGER,GL_UNSIGNED_INT,new int[]{0});
+        try(var atlas=new OpenGlSeedAtlas()){
+            atlas.uploadSeeds(d);
+            var receipt=atlas.materialize(target,d);
+            check(RendererBackend.mayUseNormalCulling(d,receipt,atlas.capabilities()),"actual texture handoff");
+            check(atlas.compare(target,w).differing()==0,"materialized GPU seeds");
+            IntBuffer value=MemoryUtil.memAllocInt(1);
+            try{
+                glGetTextureSubImage(target,0,0,0,33,1,1,1,GL_RED_INTEGER,GL_UNSIGNED_INT,value);
+                check(value.get(0)==1,"frame handoff flag");
+                glGetTextureSubImage(target,0,0,0,32,1,1,1,GL_RED_INTEGER,GL_UNSIGNED_INT,value);
+                check(value.get(0)==1,"first tile occupied");
+                glGetTextureSubImage(target,0,4,0,32,1,1,1,GL_RED_INTEGER,GL_UNSIGNED_INT,value);
+                check(value.get(0)==1,"second tile occupied");
+            }finally{MemoryUtil.memFree(value);}
+        }finally{glDeleteTextures(target);}
     }
     static void depthPages(){
         try(var pool=new OpenGlShadowPages(16,3)){

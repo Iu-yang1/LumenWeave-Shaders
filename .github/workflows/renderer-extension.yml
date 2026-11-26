@@ -48,6 +48,17 @@ jobs:
           name: LumenWeave-Renderer-Extension-alpha
           path: renderer-extension/build/libs/*.jar
           if-no-files-found: error
+  shader-bridge:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: sudo apt-get update -qq && sudo apt-get install -y glslang-tools
+      - run: python -m unittest discover -s tests -v
+      - run: python -u tools/check_shaders.py --v4-focused
   native-gl:
     runs-on: ubuntu-24.04
     timeout-minutes: 20

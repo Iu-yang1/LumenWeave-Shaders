@@ -1,0 +1,37 @@
+#version 430 core
+layout(local_size_x=4,local_size_y=4,local_size_z=4) in;
+layout(r16ui,binding=0) readonly uniform uimage3D externalSeeds;
+layout(r32ui,binding=1) coherent uniform uimage3D occupancy;
+layout(std430,binding=0) readonly buffer Bricks {ivec4 bricks[];};
+uniform ivec3 gridOrigin;
+uniform int gridSize;
+shared uint touched;
+ivec3 tileAddress(ivec3 tile){
+    int side=gridSize/4;
+    int index=tile.x+side*(tile.y+side*tile.z);
+    return ivec3(index%gridSize,(index/gridSize)%gridSize,gridSize+index/(gridSize*gridSize));
+}
+void main(){
+    uint lane=gl_LocalInvocationIndex;
+    if(lane==0u)touched=0u;
+    barrier();
+    ivec3 base=bricks[gl_WorkGroupID.x].xyz-gridOrigin;
+    ivec3 cell=base+ivec3(gl_LocalInvocationID);
+    ivec3 firstTile=base>>2;
+    if(all(greaterThanEqual(cell,ivec3(0)))&&all(lessThan(cell,ivec3(gridSize)))){
+        ivec3 world=cell+gridOrigin;
+        ivec3 wrapped=(world%144+144)%144;
+        uint seed=imageLoad(externalSeeds,wrapped).r;
+        if(seed!=0u){
+            imageStore(occupancy,cell,uvec4(seed));
+            ivec3 relative=cell/4-firstTile;
+            uint bit=uint(relative.x+2*(relative.y+2*relative.z));
+            atomicOr(touched,1u<<bit);
+        }
+    }
+    barrier();
+    if(lane==0u)for(uint i=0u;i<8u;i++)if((touched&(1u<<i))!=0u){
+        ivec3 offset=ivec3(int(i&1u),int((i>>1u)&1u),int(i>>2u));
+        imageAtomicOr(occupancy,tileAddress(firstTile+offset),1u);
+    }
+}

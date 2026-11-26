@@ -563,7 +563,7 @@ def main():
         profiles = preview_profiles(PREVIEW)
         if args.v4_focused:
             check_modern_properties(args.compiler, PREVIEW / "shaders.properties")
-            names = {"begin","shadowcomp","prepare","prepare2","prepare4","prepare_d","prepare_e","prepare5","prepare6","prepare6_a","prepare7","prepare8","deferred","deferred_a","deferred1","deferred2","deferred2_a","composite","composite_a","composite_b","composite1","composite2","composite3","composite4","composite5","composite6","composite7","final","gbuffers_terrain","gbuffers_water","gbuffers_weather","dh_terrain","dh_water"}
+            names = {"begin","shadow","shadowcomp","prepare","prepare2","prepare4","prepare_d","prepare_e","prepare5","prepare6","prepare6_a","prepare7","prepare8","deferred","deferred_a","deferred1","deferred2","deferred2_a","composite","composite_a","composite_b","composite1","composite2","composite3","composite4","composite5","composite6","composite7","final","gbuffers_terrain","gbuffers_water","gbuffers_weather","dh_terrain","dh_water"}
             sources = [p for p in PREVIEW.rglob("*") if p.suffix in STAGES and p.stem in names]
             variants = {
                 "v5-geometry-dynamic": {**profiles["profile.Extreme"],"GEOMETRY_TAAU_SCALE":"75","PROJECTION_JITTER":"2"},
@@ -574,6 +574,7 @@ def main():
                 "camera-mipmap": {**profiles["profile.Ultra"],"DOF_MODE":"1","DOF_FILTER":"1"},
                 "camera-separable": {**profiles["profile.Ultra"],"DOF_MODE":"1","DOF_FILTER":"2"},
                 "camera-separable-motion": {**profiles["profile.Extreme"],"DOF_MODE":"2","DOF_FILTER":"2","MOTION_BLUR":"true"},
+                "extension-voxel-bridge": {**profiles["profile.Extreme"],"EXTENSION_VOXELS":"1"},
                 "reference-reuse": {**profiles["profile.Extreme"],"EDGE_TAAU":"0","APPROX_REUSE":"0","PERCEPTUAL_GI":"0","MULTIRATE_VOLUME":"0","SSR_FOOTPRINT":"0","LOW_FREQ_CACHE":"0","DIFFUSE_SH":"0"},
                 "perceptual-fast": {**profiles["profile.Extreme"],"PERCEPTUAL_GI":"2","MULTIRATE_VOLUME":"2","SSR_FOOTPRINT":"2"},
                 "camera-focus-only": {**profiles["profile.Ultra"],"AUTO_EXPOSURE":"false","DOF_MODE":"1","DOF_QUALITY":"0"},

@@ -35,6 +35,7 @@ public final class SectionStore {
     private Set<Key> lastMissing=Set.of();
     private long generation=1, epoch;
     public void added(Key key) { loaded.add(key); dirty.add(key); }
+    public void ensureLoaded(Key key) { if(loaded.add(key))dirty.add(key); }
     public void changed(Key key) { if(loaded.contains(key)) dirty.add(key); }
     public void removed(Key key) {
         loaded.remove(key); dirty.remove(key);
