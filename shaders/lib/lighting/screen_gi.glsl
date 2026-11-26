@@ -128,6 +128,7 @@ ScreenBounce screenBounceRay(vec3 origin, vec3 direction, mat3 toView, vec3 sun,
     return ScreenBounce(vec3(0.0), vec3(0.0), 0.0);
 }
 
+#include "/lib/lighting/scene_budget.glsl"
 ScreenBounce screenDiffuseBounce(vec3 viewPosition, vec3 normal, vec3 sun) {
     float distanceFade = 1.0 - smoothstep(12.0, 30.0, -viewPosition.z);
     ScreenBounce bounce = ScreenBounce(vec3(0.0), vec3(0.0), 0.0);
@@ -147,6 +148,12 @@ ScreenBounce screenDiffuseBounce(vec3 viewPosition, vec3 normal, vec3 sun) {
     int rayCount=-viewPosition.z>16.0 ? 2 : 4;
 #else
     int rayCount=-viewPosition.z>22.0 ? 2 : 4;
+#endif
+#if SCENE_BUDGET == 1 && LW_DIMENSION_BUDGET != 0
+    float depth=-viewPosition.z;
+    float footprint=0.5*abs(gbufferProjection[1][1])*float(textureSize(depthtex0,0).y)/max(depth,0.1);
+    float threshold=LW_DIMENSION_BUDGET==2 ? 16.0 : 22.0;
+    rayCount=lwReduceDistantWork(depth,threshold,distanceFade,footprint) ? 2 : 4;
 #endif
     int stride=rayCount==4 ? 1 : 2;
     vec3 direct=celestialIrradiance(sun);

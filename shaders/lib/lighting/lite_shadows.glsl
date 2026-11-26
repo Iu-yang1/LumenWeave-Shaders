@@ -161,9 +161,7 @@ float sceneShadow(vec3 position, vec3 normal, vec3 light) {
     return sceneShadow(position,normal,light,true);
 }
 
-float volumeShadow(vec3 position) {
-    vec4 clip = shadowProjection * shadowModelView * vec4(position, 1.0);
-    vec3 receiver = clip.xyz / clip.w * 0.5 + 0.5;
+float volumeShadowProjected(vec3 receiver) {
     vec2 edge = abs(receiver.xy - 0.5);
     float range = max(edge.x, edge.y);
     if (range >= 0.49 || receiver.z <= 0.0 || receiver.z >= 1.0) {
@@ -176,4 +174,9 @@ float volumeShadow(vec3 position) {
     float visibility = texture(LW_SHADOW_COMPARE, receiver);
 #endif
     return mix(visibility, 1.0, smoothstep(0.39, 0.49, range));
+}
+
+float volumeShadow(vec3 position) {
+    vec4 clip=shadowProjection*shadowModelView*vec4(position,1.0);
+    return volumeShadowProjected(clip.xyz/clip.w*0.5+0.5);
 }

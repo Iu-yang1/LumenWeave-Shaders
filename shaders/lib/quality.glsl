@@ -15,6 +15,12 @@
 //#define MATERIAL_SSR
 #define HIZ_MODE 1 // [0 1 2]
 #define ADAPTIVE_SHADING
+#define SCENE_BUDGET 1 // [0 1]
+#define CLOUD_NOISE_MODE 1 // [0 1]
+#define CLOUD_ADAPTIVE 1 // [0 1]
+#define CLOUD_EMPTY_SKIP 1 // [0 1]
+#define SHAFT_ADAPTIVE 1 // [0 1]
+#define CLOUD_LIGHT_REUSE 1 // [0 1]
 #define OVERWORLD_BUDGET 1 // [0 1 2]
 #define NETHER_BUDGET 1 // [0 1 2]
 #define END_BUDGET 1 // [0 1 2]
@@ -64,7 +70,7 @@
 #define WATER_REFRACTION 1.0 // [0.0 0.5 0.75 1.0 1.5]
 #define WATER_REFLECTION_STEPS 16 // [0 8 16 24 32]
 #define MATERIAL_REFLECTION_STEPS 16 // [0 8 16 24 32]
-#define CLOUD_STEPS 12 // [8 10 12 16]
+#define CLOUD_STEPS 12 // [8 10 12 16 20 24]
 #define SHAFT_STEPS 6 // [4 6 8]
 #define DH_SHADOW_STEPS 14 // [8 10 14]
 #define WAVING_LEAVES
