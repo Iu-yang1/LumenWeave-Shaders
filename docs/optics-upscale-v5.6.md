@@ -8,3 +8,7 @@ User reported approximately 150 FPS on Extreme after V5.5 (hardware, render dist
 - Only Ultra/Extreme enable EDGE_TAAU by preset; others explicitly reset it on switching. Natural/Potato/Low/Standard set PERCEPTUAL_GI/MULTIRATE_VOLUME/SSR_FOOTPRINT=2 and APPROX_REUSE=1; binary cache and SH already max. No other existing profile values changed. Lens effects remain personal independent settings.
 
 Run `python tools/optics_upscale_sim.py` for deterministic CPU proxy: idle timing at 30/60/144/240 Hz, bounded scalar 2x2 vertical-edge and affine ramp reconstruction, and depth blur radius. Synthetic edge result is not game image quality, speed or actual FSR equivalence. Actual GPU runtime and motion stability require user visual testing.
+
+## Executed local CPU proxy results
+
+20,000 seeded scalar edge cases: bilinear MAE 0.4003559865, edge-adaptive MAE 0.2381364262 (-40.52%); constant maximum error 0, affine ramp maximum error 8.88e-16. This is a synthetic centered vertical step, not a general reconstruction quality metric. Idle state at 10 seconds 0.615831–0.621739; at 12 seconds 0.954472–0.955172; after one second of camera motion 0.002959–0.002961 across 30/60/144/240 Hz. The 8 px cap is inclusive. For focus 2 m and 1080p, example old/new radii: 0.65 m 14/8 px, 1 m 11.928/3.936, 2 m 0/0, 4 m 5.928/1.936, 10 m 9.528/3.136, 512 m 11.881125/3.920375. These compare old/new default strength settings, not fixed-strength comparison.

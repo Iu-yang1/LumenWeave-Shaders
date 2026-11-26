@@ -18,8 +18,8 @@ class OpticsUpscaleTests(unittest.TestCase):
             self.assertGreater(row['at_12s'],row['at_10s'])
             self.assertLess(row['at_13s'],.005)
         self.assertEqual(coc(2,2),0)
-        self.assertLess(coc(.65,2),8)
-        self.assertEqual(upscale([.1,2,.1,2],.4,.4,(True,False,True,False))[0],.1)
+        self.assertLessEqual(coc(.65,2),8)
+        self.assertAlmostEqual(upscale([.1,2,.1,2],.4,.4,(True,False,True,False))[0],.1,places=14)
 
     def test_preset_scope(self):
         profiles=preview_profiles(ROOT/'shaders')
