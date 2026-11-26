@@ -443,6 +443,11 @@ def main():
         )
         properties(PROBE / "shaders.properties")
         compile_pack(args.compiler, PROBE, {"voxel-probe": {}})
+        for source in sorted((PREVIEW.parent / "experiments" / "voxel_compaction").glob("*.comp")):
+            result = subprocess.run([args.compiler, "-S", "comp", str(source)], capture_output=True, text=True)
+            if result.returncode:
+                raise ValueError(f"{source}: {result.stdout}{result.stderr}")
+            print(f"compaction-probe/{source.name}: OK")
     except (OSError, ValueError) as error:
         parser.exit(1, f"{error}\n")
 
