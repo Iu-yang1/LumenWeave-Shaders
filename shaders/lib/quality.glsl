@@ -101,4 +101,10 @@
 #define LW_FXAA_ACTIVE
 #endif
 
+// Stable native depth only; dynamic reanchoring can shift hit depth.
+#if defined(DEFERRED_LIGHTING) && !defined(LW_DYNAMIC_JITTER) && defined(IRIS_FEATURE_CUSTOM_IMAGES) && defined(IRIS_FEATURE_COMPUTE_SHADERS)
+#if defined(SCREEN_GI) || defined(LW_MATERIAL_SSR_ACTIVE)
+#define LW_HIZ_ACTIVE
+#endif
+#endif
 #endif
