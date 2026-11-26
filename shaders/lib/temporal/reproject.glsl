@@ -1,10 +1,19 @@
 uniform mat4 gbufferPreviousModelView;
 uniform mat4 gbufferPreviousProjection;
-uniform vec3 cameraPosition;
-uniform vec3 previousCameraPosition;
+#ifndef LW_CAMERA_INT_UNIFORM
+#define LW_CAMERA_INT_UNIFORM
+uniform ivec3 cameraPositionInt;
+#endif
+#ifndef LW_CAMERA_FRACT_UNIFORM
+#define LW_CAMERA_FRACT_UNIFORM
+uniform vec3 cameraPositionFract;
+#endif
+uniform ivec3 previousCameraPositionInt;
+uniform vec3 previousCameraPositionFract;
 
 bool reprojectPosition(vec3 viewPosition, out vec2 previousUv, out float expectedDepth, mat4 previousProjection, bool sampleJitteredHistory) {
-    vec3 cameraDelta = cameraPosition - previousCameraPosition;
+    vec3 cameraDelta = vec3(cameraPositionInt - previousCameraPositionInt) +
+        (cameraPositionFract - previousCameraPositionFract);
     if (dot(cameraDelta, cameraDelta) > 16.0) {
         return false;
     }

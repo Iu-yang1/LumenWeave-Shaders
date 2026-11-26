@@ -35,9 +35,17 @@ flat in int blockId;
 #endif
 
 #if defined(DEFERRED_LIGHTING) && defined(LW_OPAQUE_TERRAIN)
+#ifdef LW_STABLE_DYNAMIC
+/* RENDERTARGETS: 0,1,2,3 */
+#else
 /* RENDERTARGETS: 0,1,2 */
+#endif
 #elif defined(DEFERRED_LIGHTING) && defined(LW_WATER)
+#ifdef LW_STABLE_DYNAMIC
+/* RENDERTARGETS: 0,1,3 */
+#else
 /* RENDERTARGETS: 0,1 */
+#endif
 #else
 /* RENDERTARGETS: 0 */
 #endif
@@ -66,6 +74,9 @@ void main() {
     normal = faceforward(normal, -view, normal);
 #if defined(DEFERRED_LIGHTING) && defined(LW_WATER)
     gl_FragData[1] = vec4(encodeNormal(normal), blockId == 10004 ? -1.0 : -2.0, 0.0);
+#ifdef LW_STABLE_DYNAMIC
+    gl_FragData[2] = vec4(gl_FragCoord.z, blockId == 10004 ? 2.0 : 5.0, 0.0, 0.0);
+#endif
 #endif
 #if defined(DEFERRED_LIGHTING) && defined(LW_OPAQUE_TERRAIN)
     vec2 mappedMaterial = vec2(0.0, 1.0);
@@ -78,6 +89,9 @@ void main() {
     gl_FragData[0] = vec4(radiance, base.a);
     gl_FragData[1] = vec4(encodeNormal(normal), lightLevels);
     gl_FragData[2] = vec4(gl_FragCoord.z, float(blockId), mappedMaterial);
+#ifdef LW_STABLE_DYNAMIC
+    gl_FragData[3] = vec4(gl_FragCoord.z, 1.0, 0.0, 0.0);
+#endif
 #else
     vec3 sun = sunDirection();
 #ifdef LW_WATER

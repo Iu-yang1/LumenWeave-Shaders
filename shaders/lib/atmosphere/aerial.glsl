@@ -1,6 +1,9 @@
 #ifndef LW_AERIAL_PERSPECTIVE
 #define LW_AERIAL_PERSPECTIVE
+#ifndef LW_CAMERA_INT_UNIFORM
+#define LW_CAMERA_INT_UNIFORM
 uniform ivec3 cameraPositionInt;
+#endif
 #ifndef LW_CAMERA_FRACT_UNIFORM
 #define LW_CAMERA_FRACT_UNIFORM
 uniform vec3 cameraPositionFract;

@@ -18,7 +18,12 @@ layout(location = 0) out vec4 outputColor;
 #ifdef LW_TAA_ACTIVE
 #include "/lib/materials/geometry_buffer.glsl"
 layout(location = 1) out vec4 distantNormal;
+#ifdef LW_STABLE_DYNAMIC
+layout(location = 2) out vec2 distantOwner;
+/* RENDERTARGETS: 0,1,3 */
+#else
 /* RENDERTARGETS: 0,1 */
+#endif
 #else
 /* RENDERTARGETS: 0 */
 #endif
@@ -27,8 +32,14 @@ void main() {
     vec3 normal = normalize(worldDirection(viewNormal));
 #ifdef LW_TAA_ACTIVE
     distantNormal = vec4(encodeNormal(normal), 0.0, 0.0);
+#ifdef LW_STABLE_DYNAMIC
+    distantOwner = vec2(gl_FragCoord.z, 3.0);
+#endif
 #ifdef LW_DH_WATER
     distantNormal.z = -1.0;
+#ifdef LW_STABLE_DYNAMIC
+    distantOwner.y = 4.0;
+#endif
 #endif
 #endif
     vec3 sun = sunDirection();

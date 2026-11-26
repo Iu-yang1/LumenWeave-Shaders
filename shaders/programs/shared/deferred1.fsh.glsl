@@ -59,6 +59,13 @@ const int colortex12Format = RGBA16F;
 */
 #endif
 
+#ifdef LW_STABLE_DYNAMIC
+/*
+const int colortex3Format = RG32F;
+const vec4 colortex3ClearColor = vec4(0.0, 0.0, 0.0, 0.0);
+*/
+#endif
+
 #ifdef DEFERRED_LIGHTING
 
 #include "/lib/color/scene.glsl"
