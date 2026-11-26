@@ -17,12 +17,12 @@ Planner allocates mean GPU budget proportionally to measured complete pass costs
 - PERCEPTUAL_GI=1: full update scheduled every other frame; 2 schedules every fourth. Otherwise geometry-validated prior GI is compared with a fresh opposed pair; discrepancy triggers complementary pair. Colored block contribution triggers refresh. This reduces second-pair frequency, never blindly freezes GI; the pair-average may differ from full-ray clipping, and unseen lighting changes may wait until the scheduled refresh. Existing mode-2 raw history reuse remains separate.
 - LOW_FREQ_CACHE=1: ordered two-donor reconstruction when their combined bilinear coverage >=0.72 and depth, normal and sampled radiance agree. No new spatial texture or pass. The omitted donors are not inspected: rare high-contrast edge errors are possible.
 - MULTIRATE_VOLUME=1/2: distant clouds use up to 25/50% fewer quadrature taps; weak shafts and far local scattering get a lower rate. Near clouds retain the original budget, and shafts still update current shadows. Changed quadrature positions can cause detail changes.
-- SSR_FOOTPRINT=1/2: roughness, approximate projected block footprint and contribution set budget; near-mirror ceiling retained. This replaces the old roughness threshold (some rough surfaces can receive MORE steps than V5.4; compare actual GPU captures). Reduced rough fallback from V5.4 remains.
+- SSR_FOOTPRINT=1/2: roughness, approximate projected block footprint and contribution set budget; near-mirror ceiling retained. The existing roughness/distance ceiling is retained, and the new footprint policy cannot increase steps versus V5.4. Sharp mirrors retain their previous budget. Reduced rough fallback from V5.4 remains.
 - DIFFUSE_SH=1: real first-order axisymmetric SH is evaluated as folded constant and vertical coefficients. Exactly represents the existing affine sky/Nether/End diffuse environment; not a new dynamic directional SH probe volume, and no GPU speedup is claimed for this algebraic rewrite.
 
 ## Executed CPU proxy
 
-`python tools/perceptual_sim.py` (Python standard library). 20,000 synthetic samples per mode, seeded 5501. These are not shader executions or actual GPU timings. Prior GI model includes random anisotropy, 80% geometry-compatible samples and 12% prior light changes. Spatial proxy assumes exact 2:1 footprint, 70% smooth samples. Cloud uses smooth analytic density, fixed 12-tap reference; SSR uses the configured 16-step ceiling, not the prior adaptive implementation.
+`python tools/perceptual_sim.py` (Python standard library). 20,000 synthetic samples per mode, seeded 5501. These are not shader executions or actual GPU timings. Prior GI model includes random anisotropy, 80% geometry-compatible samples and 12% prior light changes. Spatial proxy assumes exact 2:1 footprint, 70% smooth samples. Cloud uses smooth analytic density, fixed 12-tap reference; SSR compares to the previous rough/distant adaptive ceiling, assuming projected footprints below 14 correspond to depth >36.
 
 | metric | balanced | fast |
 |---|---:|---:|
@@ -32,6 +32,6 @@ Planner allocates mean GPU budget proportionally to measured complete pass costs
 | cloud taps vs 12-tap reference | 198,227 / 240,000 (-17.41%) | 154,132 / 240,000 (-35.78%) |
 | cloud mean transmission error | .00009506 | .00039028 |
 | cloud max transmission error | .00086675 | .00341751 |
-| SSR configured ceiling steps | 295,233 / 320,000 (-7.74%) | 286,560 / 320,000 (-10.45%) |
+| SSR adaptive ceiling | see reproducible simulator | see reproducible simulator |
 
 Spatial donor count 57,034 / 80,000 (-28.71%), mean absolute scalar error .00057267, max .05997907; not an arbitrary-scene error bound. SH affine equivalence 40,000 cases, max 2.22e-16 in CPU double precision. Synthetic planner tests verify overlap rejection, protected cost exceeding budget, and CPU-limited candidate rejection. Real GPU speedup, visual quality, and all-tier 240 FPS remain unverified.

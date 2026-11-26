@@ -93,6 +93,10 @@ vec4 traceMaterialCorrectionBudget(ivec2 pixel,vec3 viewPosition,vec3 normal,vec
     float pixelsPerBlock=0.5*abs(gbufferProjection[1][1])
         *float(lwRasterSize(depthtex0).y)/max(-viewPosition.z,0.1);
 #if SSR_FOOTPRINT > 0
+    // Preserve the previous rough/distant ceiling; this policy may only
+    // reduce work relative to V5.4, not increase it for broad near lobes.
+    if((-viewPosition.z>36.0 && pixelsPerBlock<14.0) || roughness>0.38)
+        steps=min(steps,max(9,steps/2));
     // Approximate screen-space footprint of a one-block material patch.
     // Sharp mirrors retain the selected ceiling; rough lobes and small
     // projected patches spend fewer taps. Avoid crossing the short-ray
@@ -102,7 +106,7 @@ vec4 traceMaterialCorrectionBudget(ivec2 pixel,vec3 viewPosition,vec3 normal,vec
     float reflectance=max(metadata.r,max(metadata.g,metadata.b))*smoothness;
     float weak=1.0-smoothstep(0.008,0.05,reflectance);
     float reduction=lobe*max(small,weak)* (SSR_FOOTPRINT==2?0.60:0.42);
-    int reduced=max(min(9,steps),int(ceil(float(steps)*(1.0-reduction))));
+    int reduced=max(min(9,steps),int(ceil(float(MATERIAL_REFLECTION_STEPS)*(1.0-reduction))));
     steps=min(steps,reduced);
 #else
     if((-viewPosition.z>36.0 && pixelsPerBlock<14.0) || roughness>0.38)

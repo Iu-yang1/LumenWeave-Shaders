@@ -43,7 +43,7 @@ def simulate(n=20000):
         errors.append(abs((.75*values[0]+.25*values[1] if reuse else ref)-ref))
     out['spatial']={'reference_donors':4*n,'candidate_donors':donors,'accepted':accepted,'reduction_pct':100*(1-donors/(4*n)),'mae':statistics.mean(errors),'max_abs':max(errors)}
     for mode in (1,2):
-        base_taps=0; taps=0; errors=[]; ssr=0
+        base_taps=0; taps=0; errors=[]; ssr=0; old_ssr=0
         for _ in range(n):
             start=rng.uniform(16,450); span=rng.uniform(18,90); phase=rng.uniform(0,2*math.pi)
             old=12; new=min(old,max(4,math.ceil(old*(1-(.50 if mode==2 else .25)*smooth(64,192,start)))))
@@ -53,11 +53,13 @@ def simulate(n=20000):
             errors.append(abs(trans(new)-trans(old)));base_taps+=old;taps+=new
             rough=rng.uniform(0,.65);foot=rng.uniform(2,90);reflectance=rng.uniform(0,.08)
             reduction=smooth(.20,.55,rough)*max(1-smooth(8,40,foot),1-smooth(.008,.05,reflectance))*(.60 if mode==2 else .42)
-            steps=min(16,max(9,math.ceil(16*(1-reduction))))
-            if rough<=.20: assert steps==16
-            ssr+=steps
+            prior=9 if rough>.38 or foot<14 else 16
+            steps=min(prior,max(9,math.ceil(16*(1-reduction))))
+            if rough<=.20: assert steps==prior
+            assert steps<=prior
+            ssr+=steps; old_ssr+=prior
         out[f'volume_{mode}']={'reference_taps':base_taps,'candidate_taps':taps,'reduction_pct':100*(1-taps/base_taps),'transmission_mae':statistics.mean(errors),'max_abs':max(errors)}
-        out[f'ssr_{mode}']={'reference_ceiling_steps':16*n,'candidate_ceiling_steps':ssr,'reduction_pct':100*(1-ssr/(16*n))}
+        out[f'ssr_{mode}']={'reference_adaptive_steps':old_ssr,'candidate_steps':ssr,'reduction_pct':100*(1-ssr/old_ssr)}
     sh=[]
     for _ in range(n):
         u=rng.uniform(-1,1);amp=rng.uniform(0,2)

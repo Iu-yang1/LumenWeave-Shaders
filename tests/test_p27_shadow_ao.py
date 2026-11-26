@@ -57,7 +57,7 @@ class ShadowAoTests(unittest.TestCase):
         p=(ROOT/"programs/shared/deferred.fsh.glsl").read_text()
         self.assertIn("RENDERTARGETS: 9,10,3",p)
         self.assertIn("RENDERTARGETS: 9,3",p)
-        self.assertLess(p.index("aoTrace=vec2(groundTruthOcclusion"),p.index("ScreenBounce bounce ="))
+        self.assertLess(p.index("aoTrace=vec2(groundTruthOcclusion"),p.index("ScreenBounce bounce;"))
         spatial=(ROOT/"lib/lighting/gtao_spatial.glsl").read_text()
         self.assertIn("if(depth<4.0) return groundTruthOcclusion",spatial)
         self.assertIn("if(coverage<=0.003) return groundTruthOcclusion",spatial)
