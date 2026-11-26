@@ -60,7 +60,9 @@ vec3 physicalWater(vec3 tint, vec3 originalNormal, vec3 viewPosition, vec3 view,
         }
     }
 #ifdef SCENE_SHADOWS
-    skyAccess *= sceneShadow(position - cameraPosition, originalNormal, sun.y >= 0.0 ? sun : -sun);
+    if (hasSkylight && skyAccess > 0.0) {
+        skyAccess *= sceneShadow(position - cameraPosition, originalNormal, sun.y >= 0.0 ? sun : -sun);
+    }
 #endif
     return mix(through, reflection, fresnel) + (submerged ? vec3(0.0) : waterSunGlint(normal, view, sun, skyAccess));
 }
