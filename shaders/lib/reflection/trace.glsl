@@ -1,5 +1,8 @@
 #ifndef LW_REFLECTION_TRACE
 #define LW_REFLECTION_TRACE
+#ifndef LW_REFLECTION_DEPTH
+#define LW_REFLECTION_DEPTH depthtex1
+#endif
 uniform sampler2D colortex8;
 uniform mat4 gbufferProjection;
 
@@ -16,9 +19,9 @@ bool reflectionRayDepth(vec3 ray, out vec2 uv, out float delta) {
     if (!insideScreen(uv)) {
         return false;
     }
-    ivec2 size = textureSize(depthtex1, 0);
+    ivec2 size = textureSize(LW_REFLECTION_DEPTH, 0);
     ivec2 pixel = clamp(ivec2(uv * vec2(size)), ivec2(0), size - 1);
-    float depth = texelFetch(depthtex1, pixel, 0).r;
+    float depth = texelFetch(LW_REFLECTION_DEPTH, pixel, 0).r;
     vec2 pixelUv = (vec2(pixel) + 0.5) / vec2(size);
     delta = depth < 1.0 ? reconstructViewPosition(pixelUv, depth).z - ray.z : -1.0;
     return true;

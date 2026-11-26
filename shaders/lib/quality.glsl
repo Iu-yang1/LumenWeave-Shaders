@@ -54,6 +54,10 @@
 #define AO_SLICES 3 // [2 3 4]
 #define AO_STRENGTH 1.0 // [0.0 0.5 0.75 1.0 1.25]
 
+#ifdef DH_SHADOWS
+#define LW_DH_SHADOWS_REQUESTED
+#endif
+
 #ifdef MATERIAL_SSR
 #if defined(DEFERRED_LIGHTING) && defined(ADVANCED_WATER) && !defined(LITE_LIGHTING)
 #define LW_MATERIAL_SSR_ACTIVE

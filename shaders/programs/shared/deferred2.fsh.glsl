@@ -18,10 +18,10 @@ layout(location = 1) out vec4 opaqueOutput;
 #include "/lib/materials/lab_surface.glsl"
 #endif
 uniform sampler2D depthtex0;
-uniform sampler2D depthtex1;
 uniform sampler2D colortex1;
 uniform sampler2D colortex2;
 uniform sampler2D colortex12;
+#define LW_REFLECTION_DEPTH depthtex0
 #include "/lib/reflection/trace.glsl"
 
 void main() {
