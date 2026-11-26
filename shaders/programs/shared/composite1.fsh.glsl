@@ -216,8 +216,11 @@ vec3 temporalSky(vec3 current,vec2 uv,ivec2 pixel) {
 #endif
 
 vec3 resolveCurrent(ivec2 pixel, vec2 stableUv, vec3 position, vec2 normal, bool water, bool distant) {
-#ifndef LW_DYNAMIC_JITTER
-    // Fixed sampling already lives at the output pixel centre.
+#if !defined(LW_DYNAMIC_JITTER) || defined(LW_STABLE_DYNAMIC)
+    // The advanced path shades on the stable pixel grid already. Applying
+    // another spatial jitter shift to the combined HDR radiance moves the
+    // lighting/fog field twice. Accumulate the raster coverage temporally
+    // at this pixel instead. The simple raw-raster path still resamples.
     return texelFetch(colortex0, pixel, 0).rgb;
 #else
     ivec2 size = textureSize(colortex0, 0);

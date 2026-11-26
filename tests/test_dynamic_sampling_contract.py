@@ -47,3 +47,21 @@ class DynamicSamplingContract(unittest.TestCase):
         gi=(ROOT/"lib/temporal/screen_gi_history.glsl").read_text()
         self.assertIn("reprojectStableTerrain",gi)
         self.assertIn("metadata.zw - vec2(size)",gi)
+
+    def test_stable_lighting_is_not_shifted_twice(self):
+        # Stable shading L(x)=1+0.1*x is evaluated at the output pixel
+        # even when coverage comes from a jittered raster sample.
+        for jitter in (-0.4,-0.2,0.,0.2,0.4):
+            x=12
+            stable=1+0.1*x
+            location=x+jitter
+            lo=math.floor(location)
+            f=location-lo
+            old=(1-f)*(1+0.1*lo)+f*(1+0.1*(lo+1))
+            self.assertAlmostEqual(old-stable,0.1*jitter)
+            # Current stable-grid sample has no artificial luminance shift.
+            self.assertAlmostEqual(1+0.1*x,stable)
+        taa=(ROOT/"programs/shared/composite1.fsh.glsl").read_text()
+        self.assertIn("#if !defined(LW_DYNAMIC_JITTER) || defined(LW_STABLE_DYNAMIC)",taa)
+        deferred=(ROOT/"programs/shared/deferred1.fsh.glsl").read_text()
+        self.assertIn("stableViewSurfacePosition(viewPosition, texCoord",deferred)

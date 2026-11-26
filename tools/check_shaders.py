@@ -312,9 +312,13 @@ def check_projection_sampling(compiler, profiles):
             zero = bool(re.search(r"return\s+vec2\s*\(\s*0\.0\s*\)\s*;", body))
             if zero == dynamic or ("sequence" in body) != dynamic:
                 raise ValueError(f"Projection sampling mismatch: {label}/{dimension}/{stage}")
-            if stage == "composite1.fsh" and ("colorHistory" not in result.stdout
-                                               or "temporalColor" not in result.stdout):
-                raise ValueError(f"Temporal resolve was unexpectedly removed: {label}/{dimension}")
+            if stage == "composite1.fsh":
+                if "colorHistory" not in result.stdout or "temporalColor" not in result.stdout:
+                    raise ValueError(f"Temporal resolve was unexpectedly removed: {label}/{dimension}")
+                stable_path = not dynamic or profile in ("Ultra", "Extreme")
+                spatial_shift = bool(re.search(r"stableUv\s*\+\s*jitterOffset\s*\(",result.stdout))
+                if spatial_shift == stable_path:
+                    raise ValueError(f"Current radiance grid mismatch: {label}/{dimension}")
     print(f"Projection sampling: {len(cases) * len(DIMENSIONS) * len(stages)} preprocessed entry points OK")
 
 
