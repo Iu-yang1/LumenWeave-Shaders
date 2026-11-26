@@ -1,7 +1,7 @@
 #include "/lib/quality.glsl"
+#ifdef LW_MOTION_DOF_FUSED
 layout(local_size_x=16,local_size_y=16) in;
 const vec2 workGroupsRender=vec2(1.0,1.0);
-#ifdef LW_MOTION_DOF_FUSED
 uniform sampler2D colortex4;
 layout(rgba16f) writeonly uniform image2D colorimg0;
 layout(rgba16f) writeonly uniform image2D colorimg10;
@@ -63,5 +63,7 @@ void main(){
     imageStore(colorimg10,h,vec4(color,depth));
 }
 #else
+layout(local_size_x=1) in;
+const ivec3 workGroups=ivec3(1,1,1);
 void main(){}
 #endif
