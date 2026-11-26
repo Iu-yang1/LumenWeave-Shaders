@@ -37,17 +37,21 @@ uniform sampler2D colortex10;
 
 /*
 const int colortex9Format = RGBA16F;
-const bool colortex9Clear = false;
 const vec4 colortex9ClearColor = vec4(0.0, 0.0, 0.0, 0.0);
 */
+#ifdef LW_GI_REUSE
+const bool colortex9Clear = false;
+#endif
 #ifdef LW_VOXEL_DIFFUSE_ACTIVE
 layout(location = 1) out vec4 blockTrace;
 /* RENDERTARGETS: 9,10 */
 /*
 const int colortex10Format = RGBA16F;
-const bool colortex10Clear = false;
 const vec4 colortex10ClearColor = vec4(0.0, 0.0, 0.0, 0.0);
 */
+#ifdef LW_GI_REUSE
+const bool colortex10Clear = false;
+#endif
 #else
 /* RENDERTARGETS: 9 */
 #endif

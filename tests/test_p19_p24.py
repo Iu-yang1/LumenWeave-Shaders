@@ -16,7 +16,16 @@ class AdaptivePerformanceTests(unittest.TestCase):
         source=(ROOT/"shaders/programs/shared/deferred.fsh.glsl").read_text()
         self.assertIn("matchesHistoryDepth(previous.a,expectedDepth)",source)
         self.assertIn("dot(normal,decodeNormal(metadata.xy))>0.92",source)
-        self.assertIn("colortex9Clear = false",source)
+        self.assertIn("#ifdef LW_GI_REUSE\nconst bool colortex9Clear = false;",source)
+
+    def test_projected_footprint_respects_resolution(self):
+        def footprint(height,projection_scale,depth):
+            return .5*projection_scale*height/depth
+        self.assertGreater(footprint(2160,1.4,80),footprint(1080,1.4,80))
+        self.assertLess(footprint(1080,1.4,80),14)
+        self.assertGreater(footprint(2160,1.4,80),14)
+        source=(ROOT/"shaders/programs/shared/deferred2.fsh.glsl").read_text()
+        self.assertIn("pixelsPerBlock<14.0",source)
 
     def test_metadata_exact_range(self):
         for seed in range(260):

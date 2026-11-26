@@ -39,3 +39,5 @@ References:
 
 No real Minecraft GPU capture has been obtained in the chat/CI environment.
 The exporter is an integration tool, not evidence of measured performance.
+
+For TEMPORAL_REUSE, include Iris final copy-back events in the A/B mapping (e.g. `history_copy`). The persistent half-resolution GI target adds a copy in Ultra and two in Extreme. This is a loader cost, not a zero-cost history reuse. For the disabled option the buffers revert to normal clear behavior.

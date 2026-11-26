@@ -269,3 +269,5 @@ Additional visible-work budget: near GI retains four rays; beyond 22 blocks two 
 
 ### P24 measured GPU profiling
 RenderDoc actual EventGPUDuration counter exporter with explicit per-capture event ranges, unclassified event reporting, and baseline/candidate median/p95 comparison. See docs/gpu-profiling.md. No real replay or game captures available in this environment.
+
+P19 follow-up: use a projected one-block pixel footprint (viewport height and projection scale) for distant SSR budget; high resolution/narrow FOV retains more samples. P20: Iris 1.21.1 FinalPassRenderer copies non-cleared flipped buffers back to main, so the half-resolution histories incur one copy per persistent target (Ultra sky only; Extreme sky+block). Only declare clear=false when reuse is active. The A/B protocol includes this copy cost; no net GPU speedup claim.

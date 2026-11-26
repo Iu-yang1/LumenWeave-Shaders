@@ -113,7 +113,11 @@ void main() {
     contribution=(1.0-smoothstep(80.0,144.0,-viewPosition.z))
         *smoothstep(0.002,0.012,reflectance*smoothness);
     if(contribution<=0.001) return;
-    if(-viewPosition.z>36.0 || roughness>0.38)
+    // Projected footprint of a one-block feature: retain more taps at high
+    // display resolution / narrow FOV where the same distance is more visible.
+    float pixelsPerBlock=0.5*abs(gbufferProjection[1][1])
+        *float(textureSize(depthtex0,0).y)/max(-viewPosition.z,0.1);
+    if((-viewPosition.z>36.0 && pixelsPerBlock<14.0) || roughness>0.38)
         steps=min(steps,max(9,steps/2));
 #endif
     vec2 hitUv;float travel;int hitKind;
