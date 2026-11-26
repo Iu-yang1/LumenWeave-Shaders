@@ -41,10 +41,14 @@ vec3 surfaceRadiance(vec3 albedo, Material material, vec3 normal, vec3 view, vec
     skyAmbient *= occludedSky;
     vec3 blockAmbient = blockLightIrradiance(lightLevels.x);
 #ifdef LW_VOXEL_ACTIVE
+#ifdef LW_VOXEL_SMOOTH_ACTIVE
+    vec3 coloredLight,rawLight;
+    voxelDirectPair(position,normal,coloredLight,rawLight);
+    coloredLight*=BLOCKLIGHT_STRENGTH;
+    vec3 influenceLight=max(coloredLight,rawLight*BLOCKLIGHT_STRENGTH);
+#else
     vec3 coloredLight = voxelIrradiance(position, normal) * BLOCKLIGHT_STRENGTH;
     vec3 influenceLight=coloredLight;
-#ifdef LW_VOXEL_SMOOTH_ACTIVE
-    influenceLight=max(influenceLight,voxelTargetIrradiance(position,normal)*BLOCKLIGHT_STRENGTH);
 #endif
     float influence = smoothstep(0.05, 0.90, max(influenceLight.r, max(influenceLight.g, influenceLight.b)));
     blockAmbient = mix(blockAmbient, coloredLight * 1.18, influence);

@@ -68,6 +68,12 @@ float materialReflectionContribution(vec3 viewPosition,vec4 metadata) {
 #endif
 }
 vec4 traceMaterialCorrection(ivec2 pixel,vec3 viewPosition,vec3 normal,vec4 geometry,vec4 materialDepth,vec4 metadata) {
+    float roughness=metadata.a;
+    float smoothness=1.0-smoothstep(0.18,0.65,roughness);
+    if(smoothness<=0.001 || MATERIAL_REFLECTION_STEPS == 0) return vec4(0.0);
+#ifdef ADAPTIVE_SHADING
+    if(materialReflectionContribution(viewPosition,metadata)<=0.001) return vec4(0.0);
+#endif
     mat3 toView=transpose(mat3(gbufferModelViewInverse));
     vec3 eye=normalize(worldDirection(-viewPosition));
     vec3 traceNormal=normal;
@@ -80,12 +86,8 @@ vec4 traceMaterialCorrection(ivec2 pixel,vec3 viewPosition,vec3 normal,vec4 geom
     traceNormal=wetRippleNormal(normal,geometry.zw,viewPosition,material);
 #endif
     vec3 reflected=reflect(-eye,traceNormal);
-    float roughness=metadata.a;
-    float smoothness=1.0-smoothstep(0.18,0.65,roughness);
-    if(smoothness<=0.001 || MATERIAL_REFLECTION_STEPS == 0) return vec4(0.0);
     int steps=MATERIAL_REFLECTION_STEPS;
 #ifdef ADAPTIVE_SHADING
-    if(materialReflectionContribution(viewPosition,metadata)<=0.001) return vec4(0.0);
     // Projected footprint of a one-block feature: retain more taps at high
     // display resolution / narrow FOV where the same distance is more visible.
     float pixelsPerBlock=0.5*abs(gbufferProjection[1][1])
