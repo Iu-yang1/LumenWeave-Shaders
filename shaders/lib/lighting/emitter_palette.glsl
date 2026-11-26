@@ -12,7 +12,7 @@ uint emitterKind(int blockId) {
 vec3 emitterColor(uint kind) {
     const vec3 colors[16] = vec3[16](
         vec3(1.0,0.72,0.42),    // unknown vanilla / mod emission
-        vec3(1.0,0.72,0.42),    // torch
+        vec3(1.0,0.70,0.40),    // torch
         vec3(0.14,0.70,1.0),    // soul
         vec3(0.58,0.88,1.0),    // sea lantern
         vec3(1.0,0.075,0.025),  // redstone torch

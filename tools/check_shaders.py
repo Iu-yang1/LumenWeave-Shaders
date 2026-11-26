@@ -165,7 +165,7 @@ def preview_profiles(root, config_root=None):
 
 def preprocess_properties(compiler, path, defines):
     rows = {}
-    values = defines if isinstance(defines, dict) else dict.fromkeys(defines, "1")
+    values = {"MC_VERSION": "12101", **(defines if isinstance(defines, dict) else dict.fromkeys(defines, "1"))}
     source = ["#version 330", *(f"#define {name} {value}" for name, value in values.items())]
     for index, line in enumerate(read_source(path).splitlines()):
         directive = line.strip()
@@ -232,6 +232,32 @@ def check_voxel_properties(compiler, path):
             for image in images:
                 if tuple(config[image].split()[-3:]) != (str(size),) * 3:
                     raise ValueError(f"Inconsistent voxel image dimensions: {image}, {size}")
+
+
+def check_modern_properties(compiler, path):
+    base = dict.fromkeys((*VOXEL_FEATURES, "VOXEL_LIGHTING", "INCREMENTAL_VOXELS",
+                         "PHYSICAL_ATMOSPHERE", "VOLUME_EFFECTS", "DEFERRED_LIGHTING",
+                         "ADVANCED_WATER", "SCREEN_GI", "MATERIAL_SSR", "IRIS_FEATURE_SSBO"), "1")
+    for minecraft, iris, ssbo, indirect in (
+        ("12001", "10700", True, False),
+        ("12101", "10808", True, False),
+        ("260300", "11106", True, False),
+        ("260300", "11107", False, False),
+        ("260300", "11107", True, True),
+    ):
+        flags = {**base, "MC_VERSION": minecraft, "IRIS_VERSION": iris, "VOXEL_GRID_SIZE": "96"}
+        if not ssbo:
+            flags.pop("IRIS_FEATURE_SSBO")
+        config = preprocess_properties(compiler, path, flags)
+        if ("indirect.prepare1" in config) != indirect or ("bufferObject.0" in config) != indirect:
+            raise ValueError(f"Incorrect indirect dispatch capability gate: {minecraft}/{iris}/{ssbo}")
+        if config.get("allowConcurrentCompute") != "false":
+            raise ValueError("Dependent compute dispatch must be serial")
+        if config.get("program.world1/begin1.enabled") != "false":
+            raise ValueError("End must not update Overworld sky LUT")
+        if len([key for key in config if key.startswith("image.")]) != 16:
+            raise ValueError("Custom image allocation must remain within 16")
+    print("Modern/legacy compute capability matrix: 5 cases OK")
 
 
 def check_voxel_dispatch(compiler):
@@ -380,6 +406,7 @@ def main():
     try:
         profiles = preview_profiles(PREVIEW)
         check_voxel_properties(args.compiler, PREVIEW / "shaders.properties")
+        check_modern_properties(args.compiler, PREVIEW / "shaders.properties")
         check_voxel_dispatch(args.compiler)
         check_projection_sampling(args.compiler, profiles)
         print("Shadow and voxel capability matrix: 384 configurations OK")
