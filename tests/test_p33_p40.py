@@ -135,3 +135,16 @@ class VolumePipelineTests(unittest.TestCase):
         self.assertIn("image.lwVolumeHistory",props)
         self.assertIn("program.world-1/setup3.enabled = false",props)
         self.assertIn("program.world1/setup3.enabled = false",props)
+
+    def test_setup_strided_clear_covers_any_extent(self):
+        source=(S/"programs/shared/setup3.csh.glsl").read_text()
+        self.assertIn("const ivec3 workGroups = ivec3(32,32,1)",source)
+        self.assertIn("gl_NumWorkGroups.xy*gl_WorkGroupSize.xy",source)
+        self.assertNotIn("workGroupsRender",source)
+        for width,height in ((1,1),(255,257),(2880,1080),(5759,2159)):
+            for extent in (width,height):
+                covered=[0]*extent
+                for lane in range(256):
+                    for i in range(lane,extent,256):
+                        covered[i]+=1
+                self.assertTrue(all(count==1 for count in covered))
