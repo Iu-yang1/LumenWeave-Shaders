@@ -1,7 +1,5 @@
 # LumenWeave Shaders
 
-[English](README.en.md) 
-
 LumenWeave 是面向 Minecraft Java Edition 的 Iris / OpenGL 光影包,追求自然柔和的日光,清澈水体,具有层次感的天空,以及保留黑暗氛围的彩色人工光照.从轻量前向渲染到高级混合延迟渲染,提供独立可调的性能与画质设置.
 
 <!-- Add actual in-game screenshots from screenshots/ -->
