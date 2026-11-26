@@ -54,7 +54,7 @@ def simulate(n=20000):
             rough=rng.uniform(0,.65);foot=rng.uniform(2,90);reflectance=rng.uniform(0,.08)
             reduction=smooth(.20,.55,rough)*max(1-smooth(8,40,foot),1-smooth(.008,.05,reflectance))*(.60 if mode==2 else .42)
             prior=9 if rough>.38 or foot<14 else 16
-            steps=min(prior,max(9,math.ceil(16*(1-reduction))))
+            steps=min(prior,max(5,math.ceil(prior*(1-reduction))))
             if rough<=.20: assert steps==prior
             assert steps<=prior
             ssr+=steps; old_ssr+=prior

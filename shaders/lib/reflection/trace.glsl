@@ -70,9 +70,8 @@ bool reflectionRayDepth(vec3 ray,out vec2 uv,out float delta,out int kind) {
     return true;
 }
 
-vec4 traceScreenReflection(vec3 origin,vec3 direction,int steps,out vec2 hitUv,out float hitTravel,out int hitKind) {
+vec4 traceScreenReflectionBudget(vec3 origin,vec3 direction,int steps,float maxTravel,int refineBudget,out vec2 hitUv,out float hitTravel,out int hitKind) {
     float travel=0.30;
-    float maxTravel=steps<=8 ? 12.0 : 48.0;
 #if defined(LW_HIZ_ACTIVE) && HIZ_MODE == 2
     ivec2 candidate;float candidateTravel,candidateDelta;
 #ifdef DISTANT_HORIZONS
@@ -132,7 +131,7 @@ vec4 traceScreenReflection(vec3 origin,vec3 direction,int steps,out vec2 hitUv,o
         if(!reflectionRayDepth(ray,uv,delta,kind)) break;
         if(previousFront && delta>=0.0 && kind!=0) {
             float lo=previousTravel,hi=travel;
-            for(int refine=0;refine<5;++refine) {
+            for(int refine=0;refine<refineBudget;++refine) {
                 float mid=(lo+hi)*0.5;
                 vec2 midUv;float midDelta;int midKind;
                 if(!reflectionRayDepth(origin+direction*mid,midUv,midDelta,midKind) || midDelta<0.0 || midKind==0) {
@@ -155,6 +154,10 @@ vec4 traceScreenReflection(vec3 origin,vec3 direction,int steps,out vec2 hitUv,o
         travel=(travel+1.0)*stepRatio-1.0;
     }
     return vec4(0.0);
+}
+
+vec4 traceScreenReflection(vec3 origin,vec3 direction,int steps,out vec2 hitUv,out float hitTravel,out int hitKind){
+    return traceScreenReflectionBudget(origin,direction,steps,steps<=8?12.0:48.0,5,hitUv,hitTravel,hitKind);
 }
 
 vec4 traceScreenReflection(vec3 origin,vec3 direction,int steps) {

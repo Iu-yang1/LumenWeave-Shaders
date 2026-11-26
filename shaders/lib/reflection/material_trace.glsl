@@ -87,6 +87,8 @@ vec4 traceMaterialCorrectionBudget(ivec2 pixel,vec3 viewPosition,vec3 normal,vec
 #endif
     vec3 reflected=reflect(-eye,traceNormal);
     int steps=min(MATERIAL_REFLECTION_STEPS,stepBudget);
+    int refineBudget=5;
+    float traceRange=steps<=8?12.0:48.0;
 #ifdef ADAPTIVE_SHADING
     // Projected footprint of a one-block feature: retain more taps at high
     // display resolution / narrow FOV where the same distance is more visible.
@@ -99,22 +101,29 @@ vec4 traceMaterialCorrectionBudget(ivec2 pixel,vec3 viewPosition,vec3 normal,vec
         steps=min(steps,max(9,steps/2));
     // Approximate screen-space footprint of a one-block material patch.
     // Sharp mirrors retain the selected ceiling; rough lobes and small
-    // projected patches spend fewer taps. Avoid crossing the short-ray
-    // range switch (<=8) unless the caller explicitly asked for that budget.
+    // projected patches spend fewer taps. Ray range and hit refinement
+    // are independent of the new sample count.
     float lobe=smoothstep(0.20,0.55,roughness);
     float small=1.0-smoothstep(8.0,40.0,pixelsPerBlock);
     float reflectance=max(metadata.r,max(metadata.g,metadata.b))*smoothness;
     float weak=1.0-smoothstep(0.008,0.05,reflectance);
     float reduction=lobe*max(small,weak)* (SSR_FOOTPRINT==2?0.60:0.42);
-    int reduced=max(min(9,steps),int(ceil(float(MATERIAL_REFLECTION_STEPS)*(1.0-reduction))));
+    // Retain the old range even if the new budget falls below nine.
+    traceRange=steps<=8?12.0:48.0;
+    int reduced=max(min(5,steps),int(ceil(float(steps)*(1.0-reduction))));
     steps=min(steps,reduced);
+    refineBudget=reduction>0.28?3:(reduction>0.14?4:5);
 #else
     if((-viewPosition.z>36.0 && pixelsPerBlock<14.0) || roughness>0.38)
         steps=min(steps,max(9,steps/2));
 #endif
 #endif
     vec2 hitUv;float travel;int hitKind;
+#if SSR_FOOTPRINT > 0 && defined(ADAPTIVE_SHADING)
+    vec4 hit=traceScreenReflectionBudget(viewPosition+toView*traceNormal*0.07,toView*reflected,steps,traceRange,refineBudget,hitUv,travel,hitKind);
+#else
     vec4 hit=traceScreenReflection(viewPosition+toView*traceNormal*0.07,toView*reflected,steps,hitUv,travel,hitKind);
+#endif
     vec3 correction=vec3(0.0);
     if(hit.a>0.0) {
         vec3 filtered=filterReflection(hit.rgb,hitUv,travel,hitKind,roughness);
