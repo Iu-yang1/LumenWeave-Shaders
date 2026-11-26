@@ -7,12 +7,16 @@ uniform ivec3 cameraPositionInt;
 uniform vec3 cameraPositionFract;
 uniform vec3 sunPosition;
 uniform mat4 gbufferModelViewInverse;
+#include "/lib/atmosphere/update_cache.glsl"
 layout(rgba16f) writeonly uniform image3D lwAtmoScatterImage;
 layout(rgba16f) writeonly uniform image3D lwAtmoThroughImage;
 void main(){
     ivec2 pixel=ivec2(gl_GlobalInvocationID.xy);
     vec2 uv=vec2(pixel)/vec2(31,31);
     float mu=normalize(mat3(gbufferModelViewInverse)*sunPosition).y;
+#ifdef LW_ATMO_CACHE_ACTIVE
+    if(!atmoUpdateNeeded(float(cameraPositionInt.y)+cameraPositionFract.y,mu)) return;
+#endif
     vec3 sun=atmoDirection(mu,0.0);
     vec3 direction=atmoDirection(atmoElevationMu(uv.y),uv.x*ATMO_PI);
     float radius=atmoRadius(float(cameraPositionInt.y)+cameraPositionFract.y);

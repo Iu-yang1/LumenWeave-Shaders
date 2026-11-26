@@ -249,3 +249,13 @@ option.LOCAL_SCATTER_ADAPTIVE=局部散射自适应积分
 option.LOCAL_SCATTER_ADAPTIVE.comment=较长射线分为近区高精度和远区较粗积分，保留体素空区跳跃及连续透射。
 value.LOCAL_SCATTER_ADAPTIVE.0=原路径
 value.LOCAL_SCATTER_ADAPTIVE.1=自适应
+
+screen.PHYSICAL_SKY=物理大气
+option.ATMO_PREBAKED=大气静态查找表
+option.ATMO_PREBAKED.comment=读取离线生成的透射率和多重散射表，关闭则使用原GPU初始化算法。
+value.ATMO_PREBAKED.0=实时初始化
+value.ATMO_PREBAKED.1=预计算
+option.ATMO_UPDATE_MODE=大气查找表更新
+option.ATMO_UPDATE_MODE.comment=相机高度、太阳高度或最大时间间隔变化时刷新天空及空中透视表；夜间无贡献时跳过。
+value.ATMO_UPDATE_MODE.0=每帧
+value.ATMO_UPDATE_MODE.1=按变化更新

@@ -7,11 +7,15 @@ uniform ivec3 cameraPositionInt;
 uniform vec3 cameraPositionFract;
 uniform vec3 sunPosition;
 uniform mat4 gbufferModelViewInverse;
+#include "/lib/atmosphere/update_cache.glsl"
 layout(rgba16f) writeonly uniform image2D lwAtmoSkyImage;
 void main(){
     ivec2 p=ivec2(gl_GlobalInvocationID.xy);
     vec2 uv=vec2(p)/vec2(127,63);
     float mu=normalize(mat3(gbufferModelViewInverse)*sunPosition).y;
+#ifdef LW_ATMO_CACHE_ACTIVE
+    if(!atmoUpdateNeeded(float(cameraPositionInt.y)+cameraPositionFract.y,mu)) return;
+#endif
     vec3 l,t,f;
     atmoIntegrate(atmoRadius(float(cameraPositionInt.y)+cameraPositionFract.y),atmoDirection(atmoElevationMu(uv.y),uv.x*ATMO_PI),
         atmoDirection(mu,0.0),1e6,true,32,l,t,f);

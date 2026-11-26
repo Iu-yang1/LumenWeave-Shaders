@@ -16,6 +16,8 @@
 #define HIZ_MODE 1 // [0 1 2]
 #define ADAPTIVE_SHADING
 #define SCENE_BUDGET 1 // [0 1]
+#define ATMO_PREBAKED 1 // [0 1]
+#define ATMO_UPDATE_MODE 1 // [0 1]
 #define CLOUD_NOISE_MODE 1 // [0 1]
 #define CLOUD_ADAPTIVE 1 // [0 1]
 #define CLOUD_EMPTY_SKIP 1 // [0 1]
@@ -106,6 +108,9 @@
 #ifdef PHYSICAL_ATMOSPHERE
 #if defined(IRIS_FEATURE_CUSTOM_IMAGES) && defined(IRIS_FEATURE_COMPUTE_SHADERS)
 #define LW_ATMOSPHERE_LUT_ACTIVE
+#if ATMO_UPDATE_MODE == 1 && !defined(LW_DIMENSION_NETHER) && !defined(LW_DIMENSION_END)
+#define LW_ATMO_CACHE_ACTIVE
+#endif
 #endif
 #endif
 
@@ -137,9 +142,9 @@
 #define LW_FXAA_ACTIVE
 #endif
 
-// Only the explicit fixed-grid path can safely share the unused ownership
-// attachment with half-resolution AO; dynamic projection keeps it full size.
-#if AO_RECONSTRUCTION == 1 && PROJECTION_JITTER == 1 && defined(DEFERRED_LIGHTING) && defined(SCREEN_AO) && defined(SCREEN_GI) && defined(SCREEN_GI_SPATIAL) && !defined(LW_DIMENSION_END) && !defined(LW_DIMENSION_NETHER)
+// Fixed-grid and no-TAA paths share the unused ownership attachment.
+// AO-only presets can now use the existing deferred prepass without SSGI.
+#if AO_RECONSTRUCTION == 1 && (PROJECTION_JITTER == 1 || AA_MODE < 2) && defined(DEFERRED_LIGHTING) && defined(SCREEN_AO) && !defined(LW_DIMENSION_END) && !defined(LW_DIMENSION_NETHER)
 #define LW_AO_SPATIAL
 #endif
 

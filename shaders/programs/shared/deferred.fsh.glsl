@@ -142,6 +142,31 @@ void main() {
     blockTrace = vec4(bounce.block, bounce.blockConfidence);
 #endif
 }
+#elif defined(LW_AO_SPATIAL)
+#include "/lib/lighting/overworld.glsl"
+#include "/lib/materials/geometry_buffer.glsl"
+#include "/lib/coordinates/reconstruct.glsl"
+uniform sampler2D colortex1;
+uniform sampler2D colortex2;
+uniform sampler2D depthtex0;
+uniform mat4 gbufferProjection;
+#include "/lib/lighting/gtao.glsl"
+/* RENDERTARGETS: 3 */
+/*
+const int colortex3Format = RG16F;
+const vec4 colortex3ClearColor = vec4(1.0,0.0,0.0,0.0);
+*/
+void main() {
+    skyTrace=vec4(1.0,0.0,0.0,0.0);
+    ivec2 pixel=depthPixelAtUv(depthtex0,texCoord);
+    float depth=texelFetch(depthtex0,pixel,0).r;
+    if(depth>=1.0 || abs(depth-texelFetch(colortex2,pixel,0).r)>0.00000012) return;
+    vec2 uv=depthPixelUv(depthtex0,pixel);
+    vec3 position=reconstructViewPosition(uv,depth);
+    if(-position.z<4.0 || -position.z>=52.0) return;
+    vec3 normal=transpose(mat3(gbufferModelViewInverse))*decodeNormal(texelFetch(colortex1,pixel,0).xy);
+    skyTrace=vec4(groundTruthOcclusion(uv,position,normal),-position.z,0.0,0.0);
+}
 #else
 /* RENDERTARGETS: 0 */
 void main() {

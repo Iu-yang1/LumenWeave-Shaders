@@ -249,3 +249,13 @@ option.LOCAL_SCATTER_ADAPTIVE=Adaptive local scattering
 option.LOCAL_SCATTER_ADAPTIVE.comment=Long rays use fine near and coarser far integration, retaining empty-tile skips and continuous transmission.
 value.LOCAL_SCATTER_ADAPTIVE.0=Original
 value.LOCAL_SCATTER_ADAPTIVE.1=Adaptive
+
+screen.PHYSICAL_SKY=Physical atmosphere
+option.ATMO_PREBAKED=Static atmosphere tables
+option.ATMO_PREBAKED.comment=Loads offline transmittance and multiple scattering; original GPU setup remains selectable.
+value.ATMO_PREBAKED.0=GPU setup
+value.ATMO_PREBAKED.1=Precomputed
+option.ATMO_UPDATE_MODE=Atmosphere table updates
+option.ATMO_UPDATE_MODE.comment=Refresh sky and aerial tables after altitude, sun elevation or maximum age changes; skip zero-contribution night work.
+value.ATMO_UPDATE_MODE.0=Every frame
+value.ATMO_UPDATE_MODE.1=Change-driven
