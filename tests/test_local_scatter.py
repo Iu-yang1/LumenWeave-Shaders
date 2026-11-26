@@ -72,7 +72,7 @@ class LocalScatterTests(unittest.TestCase):
         comp = (ROOT / "programs/shared/composite.fsh.glsl").read_text()
         self.assertIn("scene.rgb += integrateLocalScatter", comp)
         self.assertIn("isEyeInWater == 0", comp)
-        self.assertIn("dhDepthTex0", comp)
+        self.assertIn("dhDepthTex0", (ROOT / "lib/atmosphere/volume_depth.glsl").read_text())
         fog = (ROOT / "lib/lighting/fog.glsl").read_text()
         self.assertIn("#ifndef LW_LOCAL_SCATTER_ACTIVE", fog)
         self.assertIn("opticalDepth = distanceToEye * density", fog)
