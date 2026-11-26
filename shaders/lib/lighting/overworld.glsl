@@ -59,6 +59,12 @@ vec3 celestialIrradiance(vec3 sun) {
     return (sun.y >= 0.0 ? sunTint(sun) * 5.4 : vec3(0.095, 0.13, 0.20)) * SUNLIGHT_STRENGTH;
 }
 
+float dimensionFogDensity(vec3 direction) {
+    float horizon = 1.0 - smoothstep(0.05, 0.70, abs(direction.y));
+    return hasCeiling ? mix(0.012, 0.027, horizon)
+                      : mix(0.0035, 0.010, horizon);
+}
+
 vec3 skyRadiance(vec3 direction, vec3 sun) {
     if (!hasSkylight) {
         vec3 fog = decodeSrgb(fogColor);
