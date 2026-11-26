@@ -15,7 +15,7 @@ in vec2 lightLevels;
 in vec4 vertexColor;
 layout(location = 0) out vec4 outputColor;
 
-#ifdef LW_TAA_ACTIVE
+#if defined(LW_TAA_ACTIVE) || defined(LW_DH_DEFERRED_SHADOWS)
 #include "/lib/materials/geometry_buffer.glsl"
 layout(location = 1) out vec4 distantNormal;
 #ifdef LW_STABLE_DYNAMIC
@@ -30,8 +30,12 @@ layout(location = 2) out vec2 distantOwner;
 
 void main() {
     vec3 normal = normalize(worldDirection(viewNormal));
-#ifdef LW_TAA_ACTIVE
-    distantNormal = vec4(encodeNormal(normal), 0.0, 0.0);
+#if defined(LW_TAA_ACTIVE) || defined(LW_DH_DEFERRED_SHADOWS)
+#if defined(LW_DH_DEFERRED_SHADOWS) && !defined(LW_DH_WATER)
+    distantNormal = vec4(encodeNormal(normal),lightLevels);
+#else
+    distantNormal = vec4(encodeNormal(normal),0.0,0.0);
+#endif
 #ifdef LW_STABLE_DYNAMIC
     distantOwner = vec2(gl_FragCoord.z, 3.0);
 #endif
@@ -44,6 +48,11 @@ void main() {
 #endif
     vec3 sun = sunDirection();
     vec3 albedo = decodeSrgb(vertexColor.rgb);
+#if defined(LW_DH_DEFERRED_SHADOWS) && !defined(LW_DH_WATER)
+    // Opaque DH is shaded after its depth texture is available, like native terrain.
+    outputColor = vec4(albedo,vertexColor.a);
+    return;
+#endif
 #ifdef LW_DH_WATER
     albedo = waterScatteringColor(albedo);
 #endif
@@ -55,7 +64,7 @@ void main() {
 #if defined(DH_SHADOWS) && defined(SCENE_SHADOWS)
     if (hasSkylight && lighting > 0.0) {
         vec3 shadowPosition = (gbufferModelViewInverse * vec4(viewPosition, 1.0)).xyz;
-        shadow = volumeShadow(shadowPosition + normal * 0.06);
+        shadow = sceneShadow(shadowPosition,normal,light);
     }
 #endif
     vec3 lit = albedo * (ambientIrradiance(lightLevels, normal.y, sun) + direct * lighting * shadow / LW_PI);

@@ -101,6 +101,9 @@ const int colortex2Format = RG32F;
 uniform sampler2D colortex1;
 uniform sampler2D colortex2;
 uniform sampler2D depthtex0;
+#ifdef LW_DH_DEFERRED_SHADOWS
+#include "/lib/lighting/dh_terrain_shadows.glsl"
+#endif
 
 #if defined(SCREEN_AO) || defined(SCREEN_GI)
 uniform mat4 gbufferProjection;
@@ -137,6 +140,26 @@ void main() {
 #ifdef LW_MATERIAL_SSR_ACTIVE
     specularMetadata = vec4(0.0);
     specularEnvironment = vec4(0.0);
+#endif
+#ifdef LW_DH_DEFERRED_SHADOWS
+    if (depth>=1.0) {
+        ivec2 dhPixel=depthPixelAtUv(dhDepthTex0,texCoord);
+        float distantDepth=texelFetch(dhDepthTex0,dhPixel,0).r;
+        if(distantDepth<1.0) {
+            vec4 distantGeometry=texelFetch(colortex1,pixel,0);
+            vec3 distantPosition=reconstructProjection(depthPixelUv(dhDepthTex0,dhPixel),distantDepth,dhProjectionInverse,true);
+#ifdef LW_STABLE_DYNAMIC
+            vec3 distantNormal=transpose(mat3(gbufferModelViewInverse))*decodeNormal(distantGeometry.xy);
+            distantPosition=stableViewSurfacePosition(distantPosition,texCoord,distantNormal,dhProjectionInverse);
+#endif
+            vec3 distantLit=shadeDistantTerrain(scene.rgb,distantGeometry,distantPosition);
+            writeScene(vec4(applySceneFog(distantLit,distantPosition),scene.a));
+#ifdef ADVANCED_WATER
+            opaqueScene=vec4(distantLit,scene.a);
+#endif
+            return;
+        }
+    }
 #endif
     if (depth >= 1.0 || abs(depth - materialDepth.x) > 0.00000012) {
         writeScene(scene);

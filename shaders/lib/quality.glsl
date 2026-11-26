@@ -71,6 +71,9 @@
 
 #ifdef DH_SHADOWS
 #define LW_DH_SHADOWS_REQUESTED
+#if defined(SCENE_SHADOWS) && defined(DEFERRED_LIGHTING) && defined(DISTANT_HORIZONS)
+#define LW_DH_DEFERRED_SHADOWS
+#endif
 #endif
 
 #ifdef MATERIAL_SSR

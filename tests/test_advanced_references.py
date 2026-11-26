@@ -97,3 +97,12 @@ class AdvancedShaderContracts(unittest.TestCase):
             if line.startswith("profile."):
                 self.assertNotIn(" DH_SHADOWS",line)
                 self.assertNotIn(" MATERIAL_SSR",line)
+
+    def test_dh_deferred_direct_only_shadow(self):
+        lighting=(ROOT/"shaders/lib/lighting/dh_terrain_shadows.glsl").read_text()
+        self.assertIn("celestialIrradiance(sun)*direct*shadow/LW_PI",lighting)
+        self.assertIn("shadow*=mix(farShadow,1.0,coverage)",lighting)
+        self.assertIn("dhProjection*vec4(ray,1.0)",lighting)
+        self.assertIn("depthPixelAtUv(dhDepthTex0,uv)",lighting)
+        deferred=(ROOT/"shaders/programs/shared/deferred1.fsh.glsl").read_text()
+        self.assertIn("opaqueScene=vec4(distantLit,scene.a)",deferred)
