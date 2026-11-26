@@ -1,0 +1,43 @@
+import itertools
+import sys
+import unittest
+from pathlib import Path
+ROOT=Path(__file__).resolve().parents[1]
+sys.path.insert(0,str(ROOT/'tools'))
+from gpu_budget_plan import capture,allocate,choose
+from perceptual_sim import simulate
+from check_shaders import preview_profiles
+
+
+def synthetic(gpu,present,a,b):
+    return capture([{'frame':str(f),'pass':k,'gpu_ms':v} for f in range(100)
+        for k,v in [('__frame__',gpu),('__present__',present),('deferred',a),('composite',b)]])
+
+
+class PerceptualTests(unittest.TestCase):
+    def test_capture_budget_is_not_a_fps_prediction(self):
+        base=synthetic(6,6.5,2,2)
+        good=synthetic(3.6,3.9,1,1)
+        cpu=synthetic(3.5,5,1,1)
+        self.assertEqual(allocate(base,protected=('composite',))['budget_status'],'fixed_work_exceeds_target')
+        self.assertEqual(choose(base,[('cpu_limited',cpu),('ok',good)])['selected_verified'],'ok')
+        self.assertEqual(allocate(synthetic(3,4,2,2))['budget_status'],'overlapping_or_inconsistent_passes')
+        with self.assertRaises(ValueError):capture([{'frame':'0','pass':'deferred','gpu_ms':2}])
+    def test_proxy_work_reduction(self):
+        r=simulate(2000)
+        self.assertGreater(r['gi_1']['reduction_pct'],0)
+        self.assertGreater(r['spatial']['reduction_pct'],0)
+        self.assertGreater(r['volume_2']['reduction_pct'],r['volume_1']['reduction_pct'])
+        self.assertLess(r['sh']['max_abs'],1e-12)
+    def test_profiles_and_ordering(self):
+        profiles=preview_profiles(ROOT/'shaders')
+        for options in profiles.values():
+            for key in ('PERCEPTUAL_GI','MULTIRATE_VOLUME','SSR_FOOTPRINT','LOW_FREQ_CACHE','DIFFUSE_SH'):
+                self.assertEqual(options[key],'1')
+        for n in itertools.product((0,1),repeat=2):
+            for axis in ((1,0),(0,1)):
+                candidates=[n,tuple(a^b for a,b in zip(n,axis)),tuple(a^(1-b) for a,b in zip(n,axis)),tuple(1-a for a in n)]
+                self.assertEqual(len(set(candidates)),4)
+        s=(ROOT/'shaders/lib/lighting/screen_gi_spatial.glsl').read_text()
+        self.assertIn('coverage>=0.72',s)
+        self.assertIn('cacheCoherent',s)

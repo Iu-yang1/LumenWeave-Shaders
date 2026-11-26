@@ -26,7 +26,7 @@ ScreenBounce spatialScreenBounce(vec3 viewPosition, vec3 normal, vec3 sun, vec2 
 #ifdef LW_VOXEL_DIFFUSE_ACTIVE
     vec4 firstBlock=vec4(0.0);
 #endif
-    bool coherent=true;
+    bool cacheCoherent=true;
     int accepted=0;
     for(int donorIndex=0;donorIndex<4;++donorIndex){
         ivec2 offset=nearestOffset;
@@ -65,20 +65,20 @@ ScreenBounce spatialScreenBounce(vec3 viewPosition, vec3 normal, vec3 sun, vec2 
             bounce.blockConfidence += block.a * weight;
 #endif
 #if LOW_FREQ_CACHE == 1
-            coherent=coherent && depthDifference<tolerance*0.35 && alignment>0.96;
+            cacheCoherent=cacheCoherent && depthDifference<tolerance*0.35 && alignment>0.96;
             if(accepted==0){
                 firstSky=sky.rgb;
 #ifdef LW_VOXEL_DIFFUSE_ACTIVE
                 firstBlock=block;
 #endif
             }else{
-                coherent=coherent && all(lessThanEqual(abs(sky.rgb-firstSky),vec3(0.002)+max(abs(sky.rgb),abs(firstSky))*0.04));
+                cacheCoherent=cacheCoherent && all(lessThanEqual(abs(sky.rgb-firstSky),vec3(0.002)+max(abs(sky.rgb),abs(firstSky))*0.04));
 #ifdef LW_VOXEL_DIFFUSE_ACTIVE
-                coherent=coherent && all(lessThanEqual(abs(block-firstBlock),vec4(0.002)+max(abs(block),abs(firstBlock))*0.04));
+                cacheCoherent=cacheCoherent && all(lessThanEqual(abs(block-firstBlock),vec4(0.002)+max(abs(block),abs(firstBlock))*0.04));
 #endif
             }
             ++accepted;
-            if(accepted>=2 && donorIndex==1 && coherent && coverage>=0.72)
+            if(accepted>=2 && donorIndex==1 && cacheCoherent && coverage>=0.72)
                 return ScreenBounce(bounce.sky/coverage,bounce.block/coverage,bounce.blockConfidence/coverage);
 #endif
         }
