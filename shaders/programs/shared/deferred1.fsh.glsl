@@ -14,10 +14,10 @@ layout(location = 0) out vec4 outputColor;
 
 #ifdef LW_SCREEN_GI_HISTORY_ACTIVE
 layout(location = 1) out vec4 skyBounceHistory;
-layout(location = 2) out vec2 bounceNormalHistory;
+layout(location = 2) out vec4 bounceNormalHistory;
 /*
 const int colortex6Format = RGBA16F;
-const int colortex7Format = RG16F;
+const int colortex7Format = RGBA16F;
 const bool colortex6Clear = false;
 const bool colortex7Clear = false;
 const vec4 colortex6ClearColor = vec4(0.0, 0.0, 0.0, 0.0);
@@ -74,6 +74,9 @@ const vec4 colortex3ClearColor = vec4(0.0, 0.0, 0.0, 0.0);
 #include "/lib/lighting/surface.glsl"
 #include "/lib/materials/geometry_buffer.glsl"
 #include "/lib/coordinates/reconstruct.glsl"
+#ifdef LW_STABLE_DYNAMIC
+#include "/lib/coordinates/sample_owner.glsl"
+#endif
 #ifdef MC_TEXTURE_FORMAT_LAB_PBR_1_3
 #include "/lib/materials/lab_surface.glsl"
 #endif
@@ -126,7 +129,7 @@ void main() {
     float depth = texelFetch(depthtex0, pixel, 0).r;
 #ifdef LW_SCREEN_GI_HISTORY_ACTIVE
     skyBounceHistory = vec4(0.0);
-    bounceNormalHistory = vec2(0.0);
+    bounceNormalHistory = vec4(0.0);
 #endif
 #ifdef LW_MATERIAL_SSR_ACTIVE
     specularMetadata = vec4(0.0);
@@ -138,6 +141,10 @@ void main() {
     vec4 geometry = texelFetch(colortex1, pixel, 0);
     vec3 normal = decodeNormal(geometry.xy);
     vec3 viewPosition = reconstructViewPosition(texCoord, depth);
+#ifdef LW_STABLE_DYNAMIC
+    viewPosition = stableViewSurfacePosition(viewPosition, texCoord,
+        transpose(mat3(gbufferModelViewInverse)) * normal, gbufferProjectionInverse);
+#endif
     vec3 eyeDirection = normalize(worldDirection(-viewPosition));
     Material material = vanillaMaterial(int(materialDepth.y), scene.rgb);
 #ifdef MC_TEXTURE_FORMAT_LAB_PBR_1_3
@@ -171,7 +178,7 @@ void main() {
     if (-viewPosition.z < 30.0) {
         bounce = temporalScreenBounce(bounce, viewPosition, normal, texCoord);
         skyBounceHistory = vec4(bounce, -viewPosition.z);
-        bounceNormalHistory = geometry.xy;
+        bounceNormalHistory = vec4(geometry.xy, vec2(textureSize(depthtex0, 0)));
     }
 #endif
 #ifdef LW_VOXEL_DIFFUSE_ACTIVE

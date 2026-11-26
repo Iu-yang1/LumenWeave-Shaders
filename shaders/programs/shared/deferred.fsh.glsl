@@ -3,6 +3,7 @@
 #include "/lib/quality.glsl"
 
 layout(location = 0) out vec4 skyTrace;
+in vec2 texCoord;
 
 #if defined(SCREEN_GI_SPATIAL) && defined(SCREEN_GI) && defined(DEFERRED_LIGHTING)
 #include "/lib/color/scene.glsl"
@@ -10,6 +11,9 @@ layout(location = 0) out vec4 skyTrace;
 #include "/lib/lighting/surface.glsl"
 #include "/lib/materials/geometry_buffer.glsl"
 #include "/lib/coordinates/reconstruct.glsl"
+#ifdef LW_STABLE_DYNAMIC
+#include "/lib/coordinates/sample_owner.glsl"
+#endif
 #ifdef MC_TEXTURE_FORMAT_LAB_PBR_1_3
 #include "/lib/materials/lab_surface.glsl"
 #endif
@@ -37,8 +41,9 @@ const int colortex10Format = RGBA16F;
 
 void main() {
     ivec2 fullSize = textureSize(depthtex0, 0);
-    ivec2 traceSize = max(fullSize / 2, ivec2(1));
-    ivec2 pixel = clamp(ivec2(gl_FragCoord.xy * vec2(fullSize) / vec2(traceSize)), ivec2(0), fullSize - 1);
+    // The fullscreen UV reflects the actual half-size viewport, including odd
+    // framebuffer dimensions; do not assume integer division matches Iris.
+    ivec2 pixel = clamp(ivec2(texCoord * vec2(fullSize)), ivec2(0), fullSize - 1);
     vec2 sampleUv = (vec2(pixel) + 0.5) / vec2(fullSize);
     float depth = texelFetch(depthtex0, pixel, 0).r;
     float terrainDepth = texelFetch(colortex2, pixel, 0).r;
@@ -54,6 +59,10 @@ void main() {
         return;
     }
     vec3 normal = decodeNormal(texelFetch(colortex1, pixel, 0).xy);
+#ifdef LW_STABLE_DYNAMIC
+    viewPosition = stableViewSurfacePosition(viewPosition, sampleUv,
+        transpose(mat3(gbufferModelViewInverse)) * normal, gbufferProjectionInverse);
+#endif
     ScreenBounce bounce = screenDiffuseBounce(viewPosition, normal, sunDirection());
     skyTrace = vec4(bounce.sky, -viewPosition.z);
 #ifdef LW_VOXEL_DIFFUSE_ACTIVE

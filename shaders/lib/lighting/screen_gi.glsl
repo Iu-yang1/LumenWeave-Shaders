@@ -26,6 +26,15 @@ ScreenBounce screenBounceRay(vec3 origin, vec3 direction, mat3 toView, vec3 sun)
         if (depth < 1.0) {
             vec2 pixelUv = (vec2(pixel) + 0.5) / vec2(resolution);
             vec3 hitPosition = reconstructViewPosition(pixelUv, depth);
+#ifdef LW_STABLE_DYNAMIC
+            int kind = sampleOwner(pixelUv, depth, false);
+            if (kind == 1) {
+                vec3 sampleNormal = toView * decodeNormal(texelFetch(colortex1,pixel,0).xy);
+                hitPosition = stableViewSurfacePosition(hitPosition, unjitteredUv(uv,true), sampleNormal, gbufferProjectionInverse);
+            } else {
+                hitPosition = reconstructProjection(pixelUv,depth,gbufferProjectionInverse,kind!=0);
+            }
+#endif
             float delta = hitPosition.z - position.z;
             if (delta >= 0.0) {
                 float thickness = 0.12 + travel * 0.07;
