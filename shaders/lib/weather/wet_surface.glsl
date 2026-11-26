@@ -14,6 +14,7 @@ uniform ivec3 cameraPositionInt;
 #define LW_CAMERA_FRACT_UNIFORM
 uniform vec3 cameraPositionFract;
 #endif
+#include "/lib/weather/column_height.glsl"
 float wetHash(vec2 p) {
     vec3 q=fract(vec3(p.xyx)*0.1031);
     q+=dot(q,q.yzx+33.33);
@@ -27,10 +28,19 @@ float wetNoise(vec2 p) {
 vec2 wetWorldXZ(vec3 viewPosition) {
     return (worldDirection(viewPosition)+vec3(cameraPositionInt)+cameraPositionFract).xz;
 }
+vec2 wetFilmAndPuddle(vec3 normal,vec2 lightLevels,vec3 viewPosition) {
+    if(!hasSkylight || wetness<=0.001) return vec2(0.0);
+    vec2 geometry=rainGeometry(viewPosition,normal);
+    float exposed=smoothstep(0.80,0.99,lightLevels.y)*geometry.x;
+    float film=wetness*exposed*(0.25+0.75*smoothstep(-0.1,0.85,normal.y));
+    if(film<=0.001 || normal.y<0.91) return vec2(film,0.0);
+    float noise=smoothstep(0.46,0.72,wetNoise(wetWorldXZ(viewPosition)*0.23));
+    float basin=geometry.y<0.0?noise:mix(noise*0.25,1.0,geometry.y)*geometry.y;
+    float puddle=film*film*smoothstep(0.91,0.995,normal.y)*basin*PUDDLE_STRENGTH;
+    return vec2(film,puddle);
+}
 float wetPuddle(vec3 normal,vec2 lightLevels,vec3 viewPosition) {
-    if(!hasSkylight || wetness<=0.001 || normal.y<0.91) return 0.0;
-    float film=wetness*smoothstep(0.80,0.99,lightLevels.y)*(0.25+0.75*smoothstep(-0.1,0.85,normal.y));
-    return film*film*smoothstep(0.91,0.995,normal.y)*smoothstep(0.46,0.72,wetNoise(wetWorldXZ(viewPosition)*0.23))*PUDDLE_STRENGTH;
+    return wetFilmAndPuddle(normal,lightLevels,viewPosition).y;
 }
 vec3 wetRippleNormal(vec3 normal,vec2 lightLevels,vec3 viewPosition,Material material) {
 #if RAIN_RIPPLES > 0
@@ -47,12 +57,10 @@ vec3 wetRippleNormal(vec3 normal,vec2 lightLevels,vec3 viewPosition,Material mat
 }
 void wetSurface(inout vec3 albedo,inout Material material,vec3 normal,vec2 lightLevels,vec3 viewPosition) {
     if(!hasSkylight || wetness<=0.001 || material.metallic>0.5 || max(material.emission.r,max(material.emission.g,material.emission.b))>0.001) return;
-    float exposed=smoothstep(0.80,0.99,lightLevels.y);
-    float film=wetness*exposed*(0.25+0.75*smoothstep(-0.1,0.85,normal.y));
+    vec2 response=wetFilmAndPuddle(normal,lightLevels,viewPosition);
+    float film=response.x;
     if(film<=0.001) return;
-    vec2 pos=(worldDirection(viewPosition)+vec3(cameraPositionInt)+cameraPositionFract).xz;
-    float basin=smoothstep(0.46,0.72,wetNoise(pos*0.23));
-    float puddle=film*film*smoothstep(0.91,0.995,normal.y)*basin*PUDDLE_STRENGTH;
+    float puddle=response.y;
     // Porous matte surfaces darken more, while glass-like smooth dielectrics
     // retain their albedo and do not become a second mirror everywhere.
     float porous=smoothstep(0.45,0.95,material.roughness);

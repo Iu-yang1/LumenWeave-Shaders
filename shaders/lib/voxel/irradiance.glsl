@@ -1,6 +1,9 @@
 #include "/lib/voxel/grid.glsl"
 
+#ifndef LW_VOXEL_LIGHT_UNIFORM
+#define LW_VOXEL_LIGHT_UNIFORM
 uniform sampler3D lwVoxelLight;
+#endif
 #ifdef LW_VOXEL_INCREMENTAL_ACTIVE
 uniform usampler3D lwVoxelDirtySampler;
 #endif

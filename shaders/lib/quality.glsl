@@ -128,6 +128,9 @@
 
 #if defined(SMOOTH_LIGHTING) && defined(LW_VOXEL_INCREMENTAL_ACTIVE)
 #define LW_VOXEL_SMOOTH_ACTIVE
+#if defined(WET_SURFACES) && !defined(LW_DIMENSION_END) && !defined(LW_DIMENSION_NETHER)
+#define LW_VOXEL_WEATHER_ACTIVE
+#endif
 #if defined(VOXEL_GI) && defined(DEFERRED_LIGHTING)
 #define LW_VOXEL_DIFFUSE_SMOOTH
 #endif

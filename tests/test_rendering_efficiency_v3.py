@@ -107,3 +107,23 @@ class RenderingEfficiencyTests(unittest.TestCase):
             for _ in range(hz):
                 value*=2**(-1/hz/.28)
             self.assertAlmostEqual(value,2**(-1/.28),places=10)
+
+    def test_rain_columns_and_local_relief(self):
+        stage=(S/"programs/shared/prepare7.csh.glsl").read_text()
+        self.assertIn("2*LW_GRID_SIZE+2",stage)
+        self.assertIn("LW_VOXEL_WALL",stage)
+        src=(S/"lib/weather/column_height.glsl").read_text()
+        self.assertIn("c.x-cell.y",src)
+        self.assertIn("known<4.0",src)
+        for n in (32,64,96,128):
+            self.assertLess(2*n+2,2*n+3)
+            self.assertGreaterEqual(2*n+2,2*n+2)
+        def retention(center,neighbors):
+            if len(neighbors)!=4: return None
+            lower=sum(n<center for n in neighbors)
+            higher=sum(n>center for n in neighbors)
+            return (1-min(1,lower))*(.35+.65*higher/4)
+        self.assertEqual(retention(10,[11]*4),1)
+        self.assertEqual(retention(10,[9,10,11,11]),0)
+        self.assertAlmostEqual(retention(10,[10]*4),.35)
+        self.assertIsNone(retention(10,[10,11,10]))

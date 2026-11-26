@@ -315,8 +315,11 @@ def check_modern_properties(compiler, path):
             raise ValueError(f"DOF overwrites Nether GI history: {overrides}")
     for size in (32,64,96,128):
         config=preprocess_properties(compiler,path,{**flags,"SMOOTH_LIGHTING":"1","VOXEL_GRID_SIZE":str(size)})
-        if config["image.lwVoxelFirst"].split()[-3:]!=[str(size),str(size),str(2*size+2)]:
+        if config["image.lwVoxelFirst"].split()[-3:]!=[str(size),str(size),str(2*size+3)]:
             raise ValueError("Smoothed voxel slab dimensions incorrect")
+        weather=preprocess_properties(compiler,path,{**flags,"SMOOTH_LIGHTING":"1","WET_SURFACES":"1","VOXEL_GRID_SIZE":str(size)})
+        if weather.get("program.world0/prepare7.enabled")=="false" or weather.get("program.world-1/prepare7.enabled")!="false":
+            raise ValueError("Rain column stage dimension gate incorrect")
         diffuse=preprocess_properties(compiler,path,{**flags,"SMOOTH_LIGHTING":"1","VOXEL_GRID_SIZE":str(size),"VOXEL_GI":"1"})
         if diffuse["image.lwVoxelSecond"].split()[-3:]!=[str(size),str(size),str(2*size)]:
             raise ValueError("Diffuse temporal slab dimensions incorrect")
