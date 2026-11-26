@@ -1,0 +1,12 @@
+{
+  "required": true,
+  "package": "io.lumenweave.renderer.client.mixin",
+  "compatibilityLevel": "JAVA_21",
+  "client": [
+    "SodiumSectionMixin",
+    "ClientTickMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}

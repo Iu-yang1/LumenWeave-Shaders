@@ -1,0 +1,60 @@
+name: Renderer Extension
+on:
+  push:
+    branches: [feature/renderer-extension]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: renderer-extension-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  core:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Compile and run dependency-free core
+        working-directory: renderer-extension
+        run: |
+          mkdir -p build/core
+          javac -Xlint:all -Werror -d build/core $(find src/main/java src/test/java -name '*.java')
+          java -cp build/core io.lumenweave.renderer.core.CoreRegression
+      - name: Validate GPU request compaction
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y glslang-tools
+          glslangValidator -S comp renderer-extension/gpu/compact_shadow_requests.comp
+  fabric:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '25'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '9.4.0'
+      - name: Compile client mod and regression
+        working-directory: renderer-extension
+        run: gradle --no-daemon clean build coreRegression
+      - uses: actions/upload-artifact@v4
+        with:
+          name: LumenWeave-Renderer-Extension-alpha
+          path: renderer-extension/build/libs/*.jar
+          if-no-files-found: error
+  quality:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: scanaislop/aislop@34f42cbbaa346da8bd361add68e1d06d7e007182
+        with:
+          version: "0.19.1"
+          format: human
