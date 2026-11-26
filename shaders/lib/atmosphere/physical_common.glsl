@@ -73,10 +73,29 @@ vec2 atmoTexelUV(vec2 p, ivec2 size) {
 vec3 atmoTexelUVW(vec3 p, ivec3 size) {
     return (clamp(p,0.0,1.0)*vec3(size-1)+0.5)/vec3(size);
 }
+float atmoAzimuthCos(float u) {
+#if SKY_ENV_REUSE == 1
+    float x=2.0*u-1.0;
+    float a=abs(x);
+    return -sign(x)*(2.0*a-a*a);
+#else
+    return cos(u*ATMO_PI);
+#endif
+}
+vec3 atmoViewDirection(float mu,float u) {
+    float c=atmoAzimuthCos(u);
+    float h=sqrt(max(0.0,1.0-mu*mu));
+    return vec3(h*c,mu,h*sqrt(max(0.0,1.0-c*c)));
+}
 vec2 atmoViewUV(vec3 direction, vec3 sun) {
     float denom=length(direction.xz)*length(sun.xz);
-    float phi=denom>0.0001 ? acos(clamp(dot(direction.xz,sun.xz)/denom,-1.0,1.0)) : 0.0;
-    return vec2(phi/ATMO_PI,atmoElevationUv(direction.y));
+    float c=denom>0.0001 ? clamp(dot(direction.xz,sun.xz)/denom,-1.0,1.0) : 1.0;
+#if SKY_ENV_REUSE == 1
+    float u=0.5-0.5*sign(c)*(1.0-sqrt(max(0.0,1.0-abs(c))));
+#else
+    float u=acos(c)/ATMO_PI;
+#endif
+    return vec2(u,atmoElevationUv(direction.y));
 }
 float atmoDistanceUV(float km) {
     return log(1.0+clamp(km,0.0,ATMO_MAX_DISTANCE))/log(1.0+ATMO_MAX_DISTANCE);

@@ -16,6 +16,9 @@
 #define HIZ_MODE 1 // [0 1 2]
 #define ADAPTIVE_SHADING
 #define SCENE_BUDGET 1 // [0 1]
+#define SKY_ENV_REUSE 1 // [0 1]
+#define WATER_PHASE_LUT 0 // [0 1]
+#define BRDF_REUSE 1 // [0 1]
 #define ATMO_PREBAKED 1 // [0 1]
 #define END_NEBULA_ASSET 1 // [0 1]
 #define ATMO_UPDATE_MODE 1 // [0 1]

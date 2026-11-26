@@ -17,7 +17,7 @@ void main(){
     if(!atmoUpdateNeeded(float(cameraPositionInt.y)+cameraPositionFract.y,mu)) return;
 #endif
     vec3 l,t,f;
-    atmoIntegrate(atmoRadius(float(cameraPositionInt.y)+cameraPositionFract.y),atmoDirection(atmoElevationMu(uv.y),uv.x*ATMO_PI),
+    atmoIntegrate(atmoRadius(float(cameraPositionInt.y)+cameraPositionFract.y),atmoViewDirection(atmoElevationMu(uv.y),uv.x),
         atmoDirection(mu,0.0),1e6,true,32,l,t,f);
     imageStore(lwAtmoSkyImage,p,vec4(l,1.0));
 }

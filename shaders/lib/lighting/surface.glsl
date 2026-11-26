@@ -42,14 +42,28 @@ vec3 surfaceRadiance(vec3 albedo, Material material, vec3 normal, vec3 view, vec
 #ifdef LITE_LIGHTING
     indirect += f0 * mix(0.27, 0.50, material.roughness) * ambient;
 #else
+    // Compute view Fresnel once for the environment and SSR metadata.
+#if BRDF_REUSE == 1
+    vec3 viewFresnel=material.roughness<0.65 ? fresnelSchlick(clamp(dot(normal,view),0.0,1.0),f0) : f0;
+#endif
     // Analytic environment specular for smooth materials; no additional screen-space pass.
     if (hasSkylight && material.roughness < 0.65 && lightLevels.y > 0.0) {
         vec3 reflected = reflect(-view, normal);
+#if BRDF_REUSE == 1
+        vec3 fresnel=viewFresnel;
+#else
         vec3 fresnel = fresnelSchlick(clamp(dot(normal, view), 0.0, 1.0), f0);
+#endif
+        float horizonWeight=smoothstep(-0.12, 0.08, reflected.y);
+#if BRDF_REUSE == 1
+        // Zero-weight environment is exactly zero; don't evaluate sky LUT.
+        vec3 environment=horizonWeight>0.0 ? mix(skyRadiance(reflected,sun),skyAmbient,material.roughness*material.roughness) : vec3(0.0);
+#else
         vec3 environment = mix(skyRadiance(reflected, sun), skyAmbient,
             material.roughness * material.roughness);
+#endif
         vec3 specularWeight = fresnel * (lightLevels.y * lightLevels.y)
-            * material.occlusion * smoothstep(-0.12, 0.08, reflected.y)
+            * material.occlusion * horizonWeight
             * mix(0.55, 1.0, shadow);
         environmentContribution = environment * specularWeight;
         indirect += environmentContribution;
@@ -62,7 +76,11 @@ vec3 surfaceRadiance(vec3 albedo, Material material, vec3 normal, vec3 view, vec
     // The screen ray has its own visibility; do not attenuate it by sky access.
     // Store the exact existing fallback separately, including indoor materials.
     if (material.roughness < 0.65) {
+#if BRDF_REUSE == 1
+        vec3 reflectance=viewFresnel*material.occlusion;
+#else
         vec3 reflectance = fresnelSchlick(clamp(dot(normal,view),0.0,1.0),f0) * material.occlusion;
+#endif
         specularMetadata = vec4(reflectance,material.roughness);
     }
 #endif

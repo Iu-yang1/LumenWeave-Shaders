@@ -273,3 +273,16 @@ option.CLOUD_OPTICAL_CACHE=Solar optical density reuse
 option.CLOUD_OPTICAL_CACHE.comment=Reuse the same combined cloud map for shifted solar optical thickness; off restores direct density.
 value.CLOUD_OPTICAL_CACHE.0=Direct
 value.CLOUD_OPTICAL_CACHE.1=Cached
+
+option.SKY_ENV_REUSE=Sky environment lookup optimization
+option.SKY_ENV_REUSE.comment=Shared endpoint-dense angular LUT for sky, reflection and aerial lookup; avoids per-pixel acos. Off restores old mapping.
+value.SKY_ENV_REUSE.0=Original grid
+value.SKY_ENV_REUSE.1=Optimized grid
+option.WATER_PHASE_LUT=Periodic wave lookup experiment
+option.WATER_PHASE_LUT.comment=Half-float cosine texture, off by default because native GPU trig may be faster.
+value.WATER_PHASE_LUT.0=Analytic
+value.WATER_PHASE_LUT.1=Texture experiment
+option.BRDF_REUSE=PBR material reuse
+option.BRDF_REUSE.comment=Share view Fresnel and SSR weights; skip zero-weight sky evaluation.
+value.BRDF_REUSE.0=Original
+value.BRDF_REUSE.1=Reuse

@@ -273,3 +273,16 @@ option.CLOUD_OPTICAL_CACHE=太阳光学密度复用
 option.CLOUD_OPTICAL_CACHE.comment=复用同一组合云图计算太阳方向光学厚度，关闭恢复原直接密度查询。
 value.CLOUD_OPTICAL_CACHE.0=直接查询
 value.CLOUD_OPTICAL_CACHE.1=缓存复用
+
+option.SKY_ENV_REUSE=天空环境查找优化
+option.SKY_ENV_REUSE.comment=天空与反射共用端点密集角度表，避免逐像素反余弦；关闭恢复原角度布局。
+value.SKY_ENV_REUSE.0=原布局
+value.SKY_ENV_REUSE.1=优化布局
+option.WATER_PHASE_LUT=周期水波查找实验
+option.WATER_PHASE_LUT.comment=半精度周期余弦纹理，默认关闭，GPU三角函数可能更快。
+value.WATER_PHASE_LUT.0=解析
+value.WATER_PHASE_LUT.1=纹理实验
+option.BRDF_REUSE=PBR材质计算复用
+option.BRDF_REUSE.comment=复用视角菲涅尔和SSR权重，跳过零贡献环境采样。
+value.BRDF_REUSE.0=原路径
+value.BRDF_REUSE.1=复用

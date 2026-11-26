@@ -14,8 +14,9 @@ ivec2 cloudCellForPixel(ivec2 p,ivec2 origin) {
 // Origin is stored as signed high/unsigned low base-1024 digits, exactly
 // representable in binary16 over Minecraft's supported world border.
 vec2 cloudEncode(int value) {
+    value/=32; // snapped origins are exactly divisible by 32
     int hi=int(floor(float(value)/1024.0));
     return vec2(float(hi),float(value-hi*1024));
 }
-int cloudDecode(vec2 value) { return int(value.x)*1024+int(value.y); }
+int cloudDecode(vec2 value) { return (int(value.x)*1024+int(value.y))*32; }
 #endif

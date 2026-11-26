@@ -18,7 +18,7 @@ void main(){
     if(!atmoUpdateNeeded(float(cameraPositionInt.y)+cameraPositionFract.y,mu)) return;
 #endif
     vec3 sun=atmoDirection(mu,0.0);
-    vec3 direction=atmoDirection(atmoElevationMu(uv.y),uv.x*ATMO_PI);
+    vec3 direction=atmoViewDirection(atmoElevationMu(uv.y),uv.x);
     float radius=atmoRadius(float(cameraPositionInt.y)+cameraPositionFract.y);
     float boundary=atmoBoundary(radius,direction.y).x;
     vec3 l=vec3(0.0),t=vec3(1.0),f=vec3(0.0);

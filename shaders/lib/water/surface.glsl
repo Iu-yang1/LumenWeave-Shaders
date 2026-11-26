@@ -40,7 +40,9 @@ vec3 waterSunGlint(vec3 normal, vec3 view, vec3 sun, float skyAccess) {
     float alphaSquared = clamp(roughnessSquared * roughnessSquared + variance * 0.6, 0.0004, 0.12);
     float denominator = normalHalf * normalHalf * (alphaSquared - 1.0) + 1.0;
     float distribution = alphaSquared / (LW_PI * denominator * denominator);
-    float fresnel = 0.0204 + 0.9796 * pow(1.0 - max(dot(view, halfVector), 0.0), 5.0);
+    float grazing=1.0-max(dot(view,halfVector),0.0);
+    float grazing2=grazing*grazing;
+    float fresnel=0.0204+0.9796*grazing2*grazing2*grazing;
     float masking = 0.25 / (mix(normalView, 1.0, 0.16) * mix(normalLight, 1.0, 0.16));
     float visibility = smoothstep(0.0, 0.18, abs(sun.y)) * mix(1.0, 0.19, rainStrength);
     return celestialIrradiance(sun) * (distribution * masking * fresnel * normalLight * visibility * skyAccess);

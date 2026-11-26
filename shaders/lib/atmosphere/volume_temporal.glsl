@@ -31,6 +31,7 @@ vec4 temporalCelestialVolume(ivec2 p,ivec2 size,vec3 direction,float depth,bool 
     vec3 delta=vec3(cameraPositionInt-previousCameraPositionInt)+cameraPositionFract-previousCameraPositionFract;
     bool stable=volumeVisible && frameTime>0.0 && frameTime<0.04 && dot(delta,delta)<0.0001;
     bool priorFresh=false;
+    bool reuseTile=(((p.x/8+p.y/8+frameCounter)&1)==0);
     if(stable && frameCounter>0) {
         // Rotation-only ray reprojection avoids mixing near shafts and far
         // clouds with incompatible parallax. Translation is refreshed.
@@ -51,7 +52,7 @@ vec4 temporalCelestialVolume(ivec2 p,ivec2 size,vec3 direction,float depth,bool 
                         valid=abs(priorShaft.a-windTime)<0.09;
                         if(valid) {
                             priorFresh=meta.a>0.0;
-                            if(priorFresh) priorCloud=imageLoad(lwVolumeHistory,volumeHistoryPixel(donor,size,0,previousParity));
+                            if(priorFresh && reuseTile) priorCloud=imageLoad(lwVolumeHistory,volumeHistoryPixel(donor,size,0,previousParity));
                         }
                     }
                 }
@@ -62,7 +63,7 @@ vec4 temporalCelestialVolume(ivec2 p,ivec2 size,vec3 direction,float depth,bool 
     if(volumeVisible) {
         // Alternate coherent tiles. Only reuse cloud radiance for one frame:
         // the opposite parity always refreshes, regardless of history.
-        reuseCloud=valid && priorFresh && (((p.x/8+p.y/8+frameCounter)&1)==0);
+        reuseCloud=valid && priorFresh && reuseTile;
         cloud=reuseCloud ? priorCloud : cloudVolumeTransfer(origin,direction,sun,depth);
         // Always sample current shadows. Temporal smoothing only when the
         // fresh shaft is already close to history, so edits do not ghost.
