@@ -41,3 +41,14 @@ class NaturalEnvironmentTests(unittest.TestCase):
             for name in ("setup5.csh","composite4.csh","composite5.fsh","composite5.vsh"):
                 self.assertTrue((S/d/name).exists())
         self.assertIn("LW_DOF_HALF",(S/"lib/quality.glsl").read_text())
+
+    def test_continuous_weather_solar_term(self):
+        prior=1.0
+        for i in range(1,101):
+            rain=i/100.0
+            direct=(1-rain)**2
+            self.assertLessEqual(direct,prior)
+            self.assertLessEqual(prior-direct,.02001)
+            prior=direct
+        self.assertEqual(prior,0.0)
+        self.assertIn("if(directWeight>0.0)",(S/"lib/atmosphere/volume.glsl").read_text())

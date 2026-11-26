@@ -20,7 +20,8 @@ class VoxelGpuIncrementalTests(unittest.TestCase):
         start = (ROOT/"programs/shared/prepare.csh.glsl").read_text()
         self.assertIn("imageLoad(lwVoxelPrevSeed,cacheCell).r != seed",start)
         self.assertIn("imageStore(lwVoxelPrevSeed,cacheCell,uvec4(seed))",start)
-        self.assertIn("previous.w != frameCounter - 1",start)
+        self.assertIn("lwPreviousMeta.w != frameCounter - 1",start)
+        self.assertIn("lwStationary=all(equal(lwMovement,ivec3(0)))",start)
         for i in range(1,5):
             stage = (ROOT/f"programs/shared/prepare{i}.csh.glsl").read_text()
             self.assertIn(f"#define LW_VOXEL_READ lwVoxelStage{i-1}",stage)
@@ -31,7 +32,8 @@ class VoxelGpuIncrementalTests(unittest.TestCase):
     def test_image_budget(self):
         props = (ROOT/"shaders.properties").read_text()
         self.assertEqual(len({line.split("=",1)[0].strip() for line in props.splitlines()
-                              if line.startswith("image.")}),19)
+                              if line.startswith("image.")}),20)
+        self.assertIn("image.lwExposureState = lwExposureSampler rg rg32f float false false 1 1",props)
 
     def test_ring_cache_exact_scroll(self):
         import random

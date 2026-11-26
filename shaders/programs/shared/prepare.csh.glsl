@@ -14,6 +14,9 @@ layout(rgba32i) readonly uniform iimage2D lwVoxelMeta;
 uniform int frameCounter;
 shared ivec4 lwPreviousMeta;
 shared ivec3 lwCacheOrigin;
+shared ivec3 lwMovement;
+shared bool lwFullRebuild;
+shared bool lwStationary;
 shared uint lwGroupFlags[64];
 #else
 layout(rgba16f) writeonly uniform image3D lwVoxelFirst;
@@ -26,14 +29,16 @@ void main() {
     if(gl_LocalInvocationIndex==0u) {
         lwPreviousMeta=imageLoad(lwVoxelMeta,ivec2(0));
         lwCacheOrigin=voxelCacheOrigin();
+        lwMovement=cameraPositionInt-lwPreviousMeta.xyz;
+        lwFullRebuild=lwPreviousMeta.w != frameCounter - 1;
+        lwStationary=all(equal(lwMovement,ivec3(0)));
     }
     barrier();
-    ivec4 previous=lwPreviousMeta;
-    ivec3 movement=cameraPositionInt-previous.xyz;
+    ivec3 movement=lwMovement;
     ivec3 previousLocal = cell + movement;
     ivec3 cacheCell = voxelWrapNear(cell+lwCacheOrigin);
-    bool fullRebuild = previous.w != frameCounter - 1;
-    bool stationary=all(equal(movement,ivec3(0)));
+    bool fullRebuild=lwFullRebuild;
+    bool stationary=lwStationary;
     bool entered = !stationary && !withinVoxelGrid(previousLocal);
     // A new boundary can lose a neighbour that existed in the old domain,
     // even if the retained voxel seed itself did not change.

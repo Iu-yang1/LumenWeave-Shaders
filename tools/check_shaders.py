@@ -296,7 +296,24 @@ def check_modern_properties(compiler, path):
             ("image.lwVolumeHistory" in config)!=history or
             ("image.lwAtmoState" in config)!=cache):
             raise ValueError(f"Volume/atmosphere image budget violated: {overrides}")
-    print("Modern/legacy compute and volume history capability matrix: OK")
+    # Exposure must not displace an existing GI/voxel image when the loader has
+    # reached its 16-image ceiling. Check real preprocessed declarations.
+    for overrides, expected, half in (
+        ({}, True, True),
+        ({"VOXEL_FUSION":"0"}, False, True),
+        ({"ATMO_PREBAKED":"0"}, False, True),
+        ({"VOXEL_FUSION":"0","ATMO_PREBAKED":"0"}, False, True),
+        ({"GI_REUSE_MODE":"2","VOXEL_GI":"1"}, True, False),
+        ({"GI_REUSE_MODE":"1","VOXEL_GI":"1"}, True, True),
+    ):
+        config=preprocess_properties(compiler,path,{**flags,"AUTO_EXPOSURE":"1","DOF_MODE":"1",**overrides})
+        if len([k for k in config if k.startswith("image.")])>16 or ("image.lwExposureState" in config)!=expected:
+            raise ValueError(f"Exposure image budget violated: {overrides}")
+        if (config.get("program.world0/composite5.enabled")!="false")!=half:
+            raise ValueError(f"DOF and persistent GI overlap: {overrides}")
+        if overrides.get("VOXEL_GI")=="1" and config.get("program.world-1/composite5.enabled")!="false":
+            raise ValueError(f"DOF overwrites Nether GI history: {overrides}")
+    print("Modern/legacy compute, exposure and volume history capability matrix: OK")
 
 
 def check_voxel_dispatch(compiler):

@@ -113,6 +113,10 @@ vec4 cloudVolumeTransfer(vec3 origin, vec3 direction, vec3 sun, float maxDistanc
     float stepSize = span / float(steps);
     float day = daylight(sun);
     vec3 tint = sunTint(sun);
+    float directWeight=(1.0-rainStrength)*(1.0-rainStrength);
+    vec3 cloudAmbient=mix(vec3(0.41,0.48,0.58),vec3(0.34,0.38,0.43),rainStrength);
+    vec3 solarTint=tint*(0.58*directWeight);
+    float weatherAttenuation=1.0-rainStrength*0.28;
     float transmission = 1.0;
     vec3 scattering = vec3(0.0);
     float detail=1.0;
@@ -124,6 +128,7 @@ vec4 cloudVolumeTransfer(vec3 origin, vec3 direction, vec3 sun, float maxDistanc
     detail=1.0-smoothstep(128.0,400.0,start)*smoothstep(0.25,0.65,max(rayFootprint,pixelFootprint)*0.085);
 #endif
     vec3 rayStep=direction*stepSize;
+    float rayStepLength=stepSize; // direction is normalized by volumeRay
     vec3 point=origin+direction*(start+0.5*stepSize);
     float previousDensity=-1.0;
     float previousLight=1.0;
@@ -157,12 +162,14 @@ vec4 cloudVolumeTransfer(vec3 origin, vec3 direction, vec3 sun, float maxDistanc
         float opacity = 1.0 - exp(-density * stepSize * 0.15);
         vec3 radiance=vec3(0.044,0.052,0.074);
         if(day>0.0) {
-            float light;
+            float light=0.0;
+            // No solar shadow-density lookup when the direct term is exactly zero.
+            if(directWeight>0.0) {
 #if CLOUD_LIGHT_REUSE == 1 && LW_DIMENSION_BUDGET != 0
             // Reuse at most one adjacent light query where both the density
             // and spatial displacement are small. Never cross an empty gap.
             if(tap==lastLightTap+1 && abs(density-previousDensity)<0.025 &&
-               length(rayStep)<1.8 && start>80.0) {
+               rayStepLength<1.8 && start>80.0) {
                 light=previousLight;
             } else {
                 light=exp(-cloudSolarOpticalDepth(point+sun*6.0,detail));
@@ -173,10 +180,11 @@ vec4 cloudVolumeTransfer(vec3 origin, vec3 direction, vec3 sun, float maxDistanc
 #else
             light=exp(-cloudSolarOpticalDepth(point+sun*6.0,detail));
 #endif
-            vec3 dayCloud=vec3(0.41,0.48,0.58)+tint*light*0.58;
+            }
+            vec3 dayCloud=cloudAmbient+solarTint*light;
             radiance=mix(radiance,dayCloud,day);
         }
-        radiance *= 1.0 - rainStrength * 0.28;
+        radiance *= weatherAttenuation;
         scattering += radiance * transmission * opacity;
         transmission *= 1.0 - opacity;
         if (transmission < 0.015) {
@@ -198,7 +206,8 @@ vec3 applyLightShafts(vec3 scene, vec3 origin, vec3 direction, vec3 sun, float m
     }
     float day = smoothstep(0.0, 0.2, sun.y) * (1.0 - rainStrength);
     float cosine = max(dot(direction, sun), 0.0);
-    float phase = 0.025 + 0.975 * pow(cosine, 6.0);
+    float cosine2=cosine*cosine;
+    float phase = 0.025 + 0.975 * cosine2*cosine2*cosine2;
     if (day <= 0.0 || maxDistance <= 0.001 || phase * day < 0.008) {
         return scene;
     }
