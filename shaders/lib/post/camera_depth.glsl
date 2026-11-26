@@ -17,8 +17,11 @@ uniform sampler2D dhDepthTex0;
 uniform mat4 dhProjectionInverse;
 #endif
 float lwLinearDepth(mat4 inverseProjection,float depth) {
-    vec4 p=inverseProjection*vec4(0.0,0.0,depth*2.0-1.0,1.0);
-    return clamp(-p.z/max(abs(p.w),0.00001),0.05,512.0);
+    // Only homogeneous z/w contribute to axial focus depth.
+    float ndc=depth*2.0-1.0;
+    float z=inverseProjection[2].z*ndc+inverseProjection[3].z;
+    float w=inverseProjection[2].w*ndc+inverseProjection[3].w;
+    return clamp(-z/max(abs(w),0.00001),0.05,512.0);
 }
 float lwWorldFocusDepth(vec2 uv) {
     // Focus on actual world geometry, not hand or translucent weather.

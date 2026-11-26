@@ -74,13 +74,24 @@ vec3 lwDofGather(sampler2D source,vec2 uv,vec3 center,float depth,float coc,floa
     float radius=abs(coc), blur=smoothstep(0.15,1.5,radius);
     float pixelScale=max(viewHeight,1.0)/1080.0;
     float nearRadius=max(radius,3.0*pixelScale);
+    float diagonalWeight=1.0;
+#if DOF_QUALITY == 1 && APPROX_REUSE == 1
+    // Small blur disks are low frequency. Gradually introduce diagonal
+    // taps as their projected footprint grows, instead of a hard switch.
+    diagonalWeight=smoothstep(0.6,2.0,radius/pixelScale);
+#endif
     for(int i=0;i<count;++i){
+#if DOF_QUALITY == 1 && APPROX_REUSE == 1
+        if(i>=4 && diagonalWeight<=0.0) break;
+#endif
+        float sampleWeight=i<4?1.0:diagonalWeight;
         // One depth/color pair per direction, plus optional close foreground dilation.
         vec2 p=clamp(uv+taps[i]*texel*max(radius,1.0),texel*0.5,1.0-texel*0.5);
         float d=lwDofDepth(p);
         if(d>0.0){
-            float w=blur*(1.0-smoothstep(0.04,0.23,abs(d-depth)/max(depth,0.5)));
-            float cover=smoothstep(radius-1.0,radius+1.0,-lwCoC(d,focus))*float(d<depth*0.97);
+            float w=sampleWeight*blur*(1.0-smoothstep(0.04,0.23,abs(d-depth)/max(depth,0.5)));
+            float cover=0.0;
+            if(d<depth*0.97) cover=sampleWeight*smoothstep(radius-1.0,radius+1.0,-lwCoC(d,focus));
             if(w+cover>0.001){
                 vec3 sampleColor=texture(source,p).rgb;
                 farSum+=sampleColor*w;farTotal+=w;
@@ -102,7 +113,8 @@ vec3 lwDofGather(sampler2D source,vec2 uv,vec3 center,float depth,float coc,floa
         }
 #endif
     }
-    return mix(farSum/farTotal,nearSum/max(nearTotal,0.0001),clamp(nearTotal/float(count),0.0,1.0));
+    float effectiveCount=4.0+float(count-4)*diagonalWeight;
+    return mix(farSum/farTotal,nearSum/max(nearTotal,0.0001),clamp(nearTotal/effectiveCount,0.0,1.0));
 }
 // Four depth-compatible half-resolution donors. Never trigger an entire
 // full-resolution disk gather at a depth discontinuity.

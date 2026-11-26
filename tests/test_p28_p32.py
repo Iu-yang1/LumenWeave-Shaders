@@ -68,7 +68,7 @@ class PipelineTests(unittest.TestCase):
         self.assertIn("uniform sampler2DShadow shadowtex0HW",source)
         self.assertIn("slope.x+slope.y<=0.00002",source)
         self.assertIn("texelFetch(shadowtex0,p,0)",source)
-        self.assertIn("compareShadowTexel(receiver,gradient",source)
+        self.assertIn("compareShadowPlaneTexel(receiverPixel,receiver.z,gradientPixel",source)
         for a,b in itertools.product((0.,1e-6,1e-5),repeat=2):
             for x,y in itertools.product((-1.,1.),repeat=2):
                 self.assertLessEqual(abs(a*x+b*y),2e-5)
@@ -112,7 +112,7 @@ class PipelineTests(unittest.TestCase):
             self.assertAlmostEqual(old,new,places=12)
         q=(SHADERS/"lib/quality.glsl").read_text()
         self.assertIn("GI_REUSE_MODE == 2",q)
-        self.assertIn("!defined(MOTION_BLUR)",q)
+        self.assertIn("#ifndef MOTION_BLUR",q)
         comp=(SHADERS/"programs/shared/composite_b.csh.glsl").read_text()
         self.assertIn("imageStore(colorimg9,p,result)",comp)
         self.assertIn("imageStore(colorimg3,p",comp)
