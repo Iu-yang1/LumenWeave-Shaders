@@ -186,7 +186,7 @@ def preview_profiles(root, config_root=None):
 
 def preprocess_properties(compiler, path, defines):
     rows = {}
-    values = {"MC_VERSION": "12101", "HIZ_MODE": "1", "AO_RECONSTRUCTION": "1", "PROJECTION_JITTER": "0", "VOXEL_FUSION": "1", "ATMO_PREBAKED": "1", "ATMO_UPDATE_MODE": "1", "CLOUD_DENSITY_CACHE": "1", "CLOUD_NOISE_MODE": "1", "VOLUME_RECONSTRUCTION": "1", "GI_REUSE_MODE": "1", "AA_MODE": "2", "SCENE_TAAU_SCALE": "100", "GEOMETRY_TAAU_SCALE": "100", "DOF_FILTER":"0", "RAIN_GEOMETRY":"1", "VOXEL_DIFFUSE_SMOOTHING":"1", "RAIN_RISE_TIME":"20.0", "RAIN_FALL_TIME":"40.0", **(defines if isinstance(defines, dict) else dict.fromkeys(defines, "1"))}
+    values = {"MC_VERSION": "12101", "HIZ_MODE": "1", "AO_RECONSTRUCTION": "1", "PROJECTION_JITTER": "0", "VOXEL_FUSION": "1", "ATMO_PREBAKED": "1", "ATMO_UPDATE_MODE": "1", "CLOUD_DENSITY_CACHE": "1", "CLOUD_NOISE_MODE": "1", "VOLUME_RECONSTRUCTION": "1", "GI_REUSE_MODE": "1", "AA_MODE": "2", "SCENE_TAAU_SCALE": "100", "GEOMETRY_TAAU_SCALE": "100", "DOF_FILTER":"0", "DOF_IDLE":"1", "RAIN_GEOMETRY":"1", "VOXEL_DIFFUSE_SMOOTHING":"1", "RAIN_RISE_TIME":"20.0", "RAIN_FALL_TIME":"40.0", **(defines if isinstance(defines, dict) else dict.fromkeys(defines, "1"))}
     source = ["#version 330", *(f"#define {name} {value}" for name, value in values.items())]
     for index, line in enumerate(read_source(path).splitlines()):
         directive = line.strip()
@@ -316,9 +316,12 @@ def check_modern_properties(compiler, path):
         config=preprocess_properties(compiler,path,{**flags,"AUTO_EXPOSURE":"1","DOF_MODE":"1",**overrides})
         if len([k for k in config if k.startswith("image.")])>16 or ("image.lwExposureState" in config)!=expected:
             raise ValueError(f"Exposure image budget violated: {overrides}")
-        if expected and config["image.lwExposureState"].split()[-2:]!=["2","1"]:
+        if expected and config["image.lwExposureState"].split()[-2:]!=["3","1"]:
             raise ValueError("Camera state atlas size incorrect")
         focus_only=preprocess_properties(compiler,path,{**flags,"DOF_MODE":"1",**overrides})
+        manual_idle=preprocess_properties(compiler,path,{**flags,"DOF_MODE":"2","DOF_IDLE":"1",**overrides})
+        if ("image.lwExposureState" in manual_idle)!=expected:
+            raise ValueError("Manual focus must also support idle state")
         separated=preprocess_properties(compiler,path,{**flags,"DOF_MODE":"1","DOF_FILTER":"2",**overrides})
         if (separated.get("program.world0/composite6.enabled")!="false")!=half:
             raise ValueError(f"Separable DOF overlaps persistent GI: {overrides}")
@@ -557,6 +560,7 @@ def main():
             sources = [p for p in PREVIEW.rglob("*") if p.suffix in STAGES and p.stem in names]
             variants = {
                 "v5-geometry-dynamic": {**profiles["profile.Extreme"],"GEOMETRY_TAAU_SCALE":"75","PROJECTION_JITTER":"2"},
+                "camera-idle-manual": {**profiles["profile.Ultra"],"AUTO_EXPOSURE":"false","DOF_MODE":"2","DOF_IDLE":"1","PERIPHERAL_OPTICS":"1"},
                 "camera-mipmap": {**profiles["profile.Ultra"],"DOF_MODE":"1","DOF_FILTER":"1"},
                 "camera-separable": {**profiles["profile.Ultra"],"DOF_MODE":"1","DOF_FILTER":"2"},
                 "reference-reuse": {**profiles["profile.Extreme"],"APPROX_REUSE":"0","PERCEPTUAL_GI":"0","MULTIRATE_VOLUME":"0","SSR_FOOTPRINT":"0","LOW_FREQ_CACHE":"0","DIFFUSE_SH":"0"},

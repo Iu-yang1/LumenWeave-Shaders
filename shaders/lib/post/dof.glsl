@@ -31,14 +31,14 @@ float lwCoC(float depth,float focus) {
     if(depth<=0.0) return 0.0;
     float strength=DOF_STRENGTH;
 #if DOF_MODE == 3
-    strength*=1.8;
+    strength*=1.5;
 #endif
     // Scale optical blur with output height; continuous focus dead band.
     float power=1.0/focus-1.0/depth;
-    float magnitude=max(abs(power)-0.003,0.0);
+    float magnitude=max(abs(power)-0.008,0.0);
     float pixelScale=max(viewHeight,1.0)/1080.0;
-    float radius=magnitude*48.0*strength*pixelScale;
-    return sign(power)*min(radius,14.0*pixelScale);
+    float radius=magnitude*32.0*strength*pixelScale;
+    return sign(power)*min(radius,8.0*pixelScale);
 }
 vec3 lwDofGather(sampler2D source,vec2 uv,vec3 center,float depth,float coc,float focus) {
     if(depth<=0.0) return center;
@@ -73,7 +73,7 @@ vec3 lwDofGather(sampler2D source,vec2 uv,vec3 center,float depth,float coc,floa
     // A smooth radius and weight avoid the old hard 0.65-pixel switch.
     float radius=abs(coc), blur=smoothstep(0.15,1.5,radius);
     float pixelScale=max(viewHeight,1.0)/1080.0;
-    float nearRadius=max(radius,5.0*pixelScale);
+    float nearRadius=max(radius,3.0*pixelScale);
     for(int i=0;i<count;++i){
         // One depth/color pair per direction, plus optional close foreground dilation.
         vec2 p=clamp(uv+taps[i]*texel*max(radius,1.0),texel*0.5,1.0-texel*0.5);
@@ -90,7 +90,7 @@ vec3 lwDofGather(sampler2D source,vec2 uv,vec3 center,float depth,float coc,floa
 #if DOF_QUALITY > 0
         // Four extra cardinal donors in Balanced; all eight in Cinematic.
         // Fade the extra ring as it merges into the primary sampling disk.
-        float ring=DOF_QUALITY==2?max(radius,10.0*pixelScale):nearRadius;
+        float ring=DOF_QUALITY==2?max(radius,6.0*pixelScale):nearRadius;
         float ringWeight=smoothstep(0.25,1.5,(ring-radius)/pixelScale);
         if(ringWeight>0.0 && (DOF_QUALITY==2 || i<4)){
             vec2 q=clamp(uv+taps[i]*texel*ring,texel*0.5,1.0-texel*0.5);
@@ -142,7 +142,7 @@ vec3 lwDofAxisGather(sampler2D source,vec2 uv,vec4 center,float focus,vec2 axis,
     ivec2 size=textureSize(source,0);
     vec2 pixel=1.0/max(vec2(viewWidth,viewHeight),vec2(1.0));
     float coc=lwCoC(depth,focus);
-    float radius=max(abs(coc),4.0*viewHeight/1080.0);
+    float radius=max(abs(coc),2.5*viewHeight/1080.0);
     float blur=smoothstep(0.15,1.5,abs(coc));
 #if DOF_QUALITY == 0
     const int pairs=1;

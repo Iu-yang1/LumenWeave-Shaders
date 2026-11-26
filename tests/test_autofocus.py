@@ -44,7 +44,7 @@ class AutofocusTests(unittest.TestCase):
         self.assertIn("ringWeight>0.0 && (DOF_QUALITY==2 || i<4)",dof)
         for height in (720,1080,1440,2160):
             scale=height/1080
-            self.assertAlmostEqual(min(.5*48*scale,14*scale)/height,14/1080)
+            self.assertAlmostEqual(min(.5*32*scale,8*scale)/height,8/1080)
         self.assertAlmostEqual(2**.02,1.01395948,places=7)
 
     def test_focused_pixel_retains_native_color(self):

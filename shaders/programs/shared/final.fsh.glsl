@@ -11,6 +11,9 @@
 uniform sampler2D colortex10;
 #endif
 #endif
+#if defined(LW_IDLE_FOCUS) || PERIPHERAL_OPTICS == 1
+#include "/lib/post/peripheral_optics.glsl"
+#endif
 #ifdef SOLAR_GLARE
 #include "/lib/post/solar_glare.glsl"
 #endif
@@ -59,6 +62,9 @@ void main() {
         scene=lwDofGather(LW_POST_SOURCE,texCoord,scene,depth,lwCoC(depth,focus),focus);
 #endif
     }
+#endif
+#if defined(LW_IDLE_FOCUS) || PERIPHERAL_OPTICS == 1
+    scene=lwLensOptics(LW_POST_SOURCE,texCoord,scene);
 #endif
 #ifdef BLOOM
 #if BLOOM_FILTER == 0

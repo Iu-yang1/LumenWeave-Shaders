@@ -364,3 +364,11 @@ option.LOW_FREQ_CACHE=Low-frequency spatial reuse
 option.LOW_FREQ_CACHE.comment=Two dominant, mutually compatible half-resolution GI donors can bypass the remaining reads.
 option.DIFFUSE_SH=First-order diffuse SH
 option.DIFFUSE_SH.comment=Evaluate the existing axisymmetric diffuse environment as a first-order SH expansion. Does not replace colored local or screen-space GI.
+
+option.DOF_IDLE=Idle defocus
+option.DOF_IDLE.comment=Automatically softens focus when camera and held items remain still. Requires camera state support; not direct keyboard/mouse detection.
+option.DOF_IDLE_DELAY=Idle delay (seconds)
+option.DOF_IDLE_STRENGTH=Idle defocus strength
+option.PERIPHERAL_OPTICS=Peripheral lens blur and dispersion
+option.PERIPHERAL_OPTICS.comment=Subtle radial softness and chromatic separation, no dark vignette.
+option.PERIPHERAL_STRENGTH=Peripheral effect strength

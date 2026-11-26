@@ -23,6 +23,12 @@ uniform sampler2D depthtex0;
 #ifdef LW_AUTO_FOCUS
 #include "/lib/post/autofocus.glsl"
 #endif
+#ifdef LW_IDLE_FOCUS
+#if defined(SOLAR_GLARE) && defined(LW_EXPOSURE_METER)
+#define LW_IDLE_PROJECTION_DECLARED
+#endif
+#include "/lib/post/idle_focus.glsl"
+#endif
 void main(){
 #ifdef LW_EXPOSURE_METER
     float sum=0.0,weight=0.0,terrainSum=0.0,terrainWeight=0.0;
@@ -54,6 +60,9 @@ void main(){
 #endif
 #ifdef LW_AUTO_FOCUS
     imageStore(lwExposureState,ivec2(1,0),lwAdvanceFocus(imageLoad(lwExposureState,ivec2(1,0)),frameTime));
+#endif
+#ifdef LW_IDLE_FOCUS
+    imageStore(lwExposureState,ivec2(2,0),lwAdvanceIdle(imageLoad(lwExposureState,ivec2(2,0)),frameTime));
 #endif
 }
 #else
