@@ -165,3 +165,11 @@ Actions 生成可安装 ZIP，运行时仍由 Iris 针对实际 GPU 编译。每
 - Night sky uses the existing star geometry and a broad sky band. No SEUS PTGI source imported.
 - Medium uses 8 SSR steps; High through Extreme retain 16. Actual frame-time and runtime visual acceptance are pending.
 - Research reference: [Hillaire, EGSR 2020](https://sebh.github.io/publications/egsr2020.pdf) and [AtmosphereRenderer](https://github.com/AirGuanZ/AtmosphereRenderer) (MIT). Future LUT work is separate from this analytic implementation; no upstream code or paper PDF copied.
+
+### Natural V2.1 — runtime feedback follow-up (candidate)
+- Ultra/Extreme user reports whole-image and distant jitter. Move volume composition before TAA, use a stable angular ray, keep geometry depth reconstruction projection-specific, avoid contaminating sky history with foreground depth. This is a source-level hypothesis pending replay.
+- Volume uses a four-depth comparison (or hardware PCF) instead of per-step blocker search/PCSS. Enable existing half-resolution SSGI with depth/normal-aware full-resolution fallback on Ultra and Extreme; no voxel grid reduction.
+- Split shadowed sky diffuse from independent block/voxel irradiance. Explicit cutout shadow alpha, tilted solar path, analytic environment specular for smooth materials.
+- Use separate wavelength-dependent molecular and aerosol optical depths with a bounded directional phase function; same analytic atmospheric model for native terrain and DH, no new pass or LUT.
+- Water SSR uses wider marching reach and four crossing-refinement steps only on candidate intersections. Preserve Fresnel and screen edge confidence. Offscreen and DH reflections remain approximate.
+- Actual GPU frame-time, continuous LOD and visual acceptance remain pending. No stable release claimed.

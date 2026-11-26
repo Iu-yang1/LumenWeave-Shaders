@@ -1,6 +1,7 @@
 #include "/lib/color/scene.glsl"
 
 const float LW_PI = 3.14159265;
+const float sunPathRotation = -30.0;
 
 uniform mat4 gbufferModelViewInverse;
 uniform vec3 sunPosition;
@@ -59,8 +60,10 @@ vec3 skyRadiance(vec3 direction, vec3 sun) {
     vec3 color = mix(horizon, zenith, skyGradient);
     color += vec3(0.56, 0.19, 0.05) * twilight * pow(cosine, 5.0) * exp(-5.0 * height);
     // Low-frequency night-sky band; stars are rendered in the sky pass.
-    float band = 1.0 - smoothstep(0.0, 0.24, abs(dot(direction, normalize(vec3(0.36, 0.48, 0.80)))));
-    color += vec3(0.010, 0.012, 0.022) * band * band * height * (1.0 - day);
+    if (day < 1.0) {
+        float band = 1.0 - smoothstep(0.0, 0.24, abs(dot(direction, normalize(vec3(0.36, 0.48, 0.80)))));
+        color += vec3(0.010, 0.012, 0.022) * band * band * height * (1.0 - day);
+    }
     color = mix(color, mix(vec3(0.024), vec3(0.45, 0.51, 0.57), day), rainStrength * 0.83);
     return color;
 }

@@ -367,7 +367,7 @@ def main():
             environment=VOXEL_FEATURES,
         )
         compile_pack(
-            args.compiler, PREVIEW, {"distant-horizons": profiles["profile.Extreme"]},
+            args.compiler, PREVIEW, {name: profiles[f"profile.{name}"] for name in ("Medium", "High", "Ultra", "Extreme")},
             environment=(*VOXEL_FEATURES, "DISTANT_HORIZONS"),
         )
         compile_pack(
