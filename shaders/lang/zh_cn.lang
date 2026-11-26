@@ -240,3 +240,12 @@ value.CLOUD_LIGHT_REUSE.1=自适应
 option.CLOUD_NOISE_MODE.comment=使用无缝原生R8云图降低重复噪声计算；程序化模式保留原云形。
 option.CLOUD_LIGHT_REUSE.comment=远处密度稳定时最多复用一次邻近光照，属于画质近似。
 option.SHAFT_ADAPTIVE.comment=低贡献区域减少采样，遮挡变化处细分。
+
+option.VOLUME_TEMPORAL=体积云与光束历史复用
+option.VOLUME_TEMPORAL.comment=稳定视角交替刷新云层；光束始终计算当前遮挡，仅在结果匹配时轻度平滑。动态投影和旧四通道体素路径自动回退。
+value.VOLUME_TEMPORAL.0=关闭
+value.VOLUME_TEMPORAL.1=稳定视角
+option.LOCAL_SCATTER_ADAPTIVE=局部散射自适应积分
+option.LOCAL_SCATTER_ADAPTIVE.comment=较长射线分为近区高精度和远区较粗积分，保留体素空区跳跃及连续透射。
+value.LOCAL_SCATTER_ADAPTIVE.0=原路径
+value.LOCAL_SCATTER_ADAPTIVE.1=自适应

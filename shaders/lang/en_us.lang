@@ -240,3 +240,12 @@ value.CLOUD_LIGHT_REUSE.1=Adaptive
 option.CLOUD_NOISE_MODE.comment=Uses a seamless native R8 map to reduce repeated noise arithmetic; procedural mode preserves original shape.
 option.CLOUD_LIGHT_REUSE.comment=Reuses at most one adjacent lighting query on stable distant density; approximate.
 option.SHAFT_ADAPTIVE.comment=Reduces low-contribution steps and refines visibility transitions.
+
+option.VOLUME_TEMPORAL=Cloud and shaft history
+option.VOLUME_TEMPORAL.comment=Alternates cloud refresh in stable views; shafts always sample current occlusion and smooth only close matches. Falls back for dynamic projection and the legacy four-pass voxel path.
+value.VOLUME_TEMPORAL.0=Off
+value.VOLUME_TEMPORAL.1=Stable views
+option.LOCAL_SCATTER_ADAPTIVE=Adaptive local scattering
+option.LOCAL_SCATTER_ADAPTIVE.comment=Long rays use fine near and coarser far integration, retaining empty-tile skips and continuous transmission.
+value.LOCAL_SCATTER_ADAPTIVE.0=Original
+value.LOCAL_SCATTER_ADAPTIVE.1=Adaptive

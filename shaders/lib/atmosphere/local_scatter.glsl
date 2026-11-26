@@ -15,14 +15,30 @@ vec3 integrateLocalScatter(vec3 direction, float surfaceDistance) {
     // Midpoint quadrature, more samples only for longer visible segments.
     // A fixed grid avoids introducing a frame-varying noise pattern.
     int steps = clamp(int(ceil(end / 1.5)), 1, 24);
-    float stepSize = end / float(steps);
+    float regionStart=0.0,regionEnd=end;
+    int regionCount=1;
+#if LOCAL_SCATTER_ADAPTIVE == 1 && LW_DIMENSION_BUDGET != 0
+    if(end>24.0) regionCount=2;
+#endif
+    vec3 result=vec3(0.0);
+    for(int region=0;region<regionCount;++region) {
+    if(regionCount==2) {
+        regionStart=region==0 ? 0.0 : 12.0;
+        regionEnd=region==0 ? 12.0 : end;
+        float farStep=2.5;
+#if defined(LW_DIMENSION_NETHER)
+        farStep=2.0;
+#endif
+        steps=region==0 ? 8 : clamp(int(ceil((end-12.0)/farStep)),1,16);
+    }
+    float stepSize = (regionEnd-regionStart) / float(steps);
     float segmentTransmission = exp(-extinction * stepSize);
     // Exact constant-source segment integral: sigma_s / sigma_t = 0.75.
     float segmentWeight = (1.0 - segmentTransmission) * (0.75 * 0.90 * BLOCKLIGHT_STRENGTH * LOCAL_GLOW_STRENGTH);
-    float transmission = 1.0;
+    float transmission = exp(-extinction*regionStart);
     vec3 cell = cameraPositionFract + vec3(radius);
     vec3 delta = direction * stepSize;
-    cell += delta * 0.5;
+    cell += direction*regionStart + delta*0.5;
 #ifdef LW_VOXEL_INCREMENTAL_ACTIVE
     vec3 cacheOrigin = vec3(voxelCacheOrigin());
     ivec3 lastTile=ivec3(-1);
@@ -30,10 +46,9 @@ vec3 integrateLocalScatter(vec3 direction, float surfaceDistance) {
     bvec3 moving=greaterThan(abs(direction),vec3(0.000001));
     vec3 inverseDirection=1.0/mix(vec3(1.0),direction,moving);
 #endif
-    vec3 result = vec3(0.0);
     int i = 0;
     while (i < steps) {
-        float travel = (float(i) + 0.5) * stepSize;
+        float travel = regionStart+(float(i)+0.5)*stepSize;
 #ifdef LW_VOXEL_INCREMENTAL_ACTIVE
         ivec3 tile = clamp(ivec3(floor(cell/4.0)),ivec3(0),ivec3(LW_GRID_SIZE/4-1));
         if(any(notEqual(tile,lastTile))) {
@@ -75,6 +90,8 @@ vec3 integrateLocalScatter(vec3 direction, float surfaceDistance) {
         transmission *= segmentTransmission;
         cell += delta;
         ++i;
+    }
+
     }
     // Smoothly compress only dense accumulated local scattering. This
     // leaves weak distant halos linear, preserves hue and avoids a flat veil.

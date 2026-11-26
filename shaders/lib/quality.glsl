@@ -21,6 +21,8 @@
 #define CLOUD_EMPTY_SKIP 1 // [0 1]
 #define SHAFT_ADAPTIVE 1 // [0 1]
 #define CLOUD_LIGHT_REUSE 1 // [0 1]
+#define VOLUME_TEMPORAL 1 // [0 1]
+#define LOCAL_SCATTER_ADAPTIVE 1 // [0 1]
 #define OVERWORLD_BUDGET 1 // [0 1 2]
 #define NETHER_BUDGET 1 // [0 1 2]
 #define END_BUDGET 1 // [0 1 2]
@@ -145,6 +147,9 @@
 // no cross-frame raw GI reuse is requested. No additional color attachment.
 #if VOLUME_RECONSTRUCTION == 1 && PROJECTION_JITTER == 1 && defined(VOLUME_EFFECTS) && defined(SCREEN_GI) && defined(SCREEN_GI_SPATIAL) && defined(DEFERRED_LIGHTING) && defined(IRIS_FEATURE_COMPUTE_SHADERS) && defined(IRIS_FEATURE_CUSTOM_IMAGES) && !(defined(TEMPORAL_REUSE) && GI_REUSE_MODE == 2 && defined(SCREEN_GI_HISTORY) && defined(LW_TAA_ACTIVE)) && !defined(LW_DIMENSION_END) && !defined(LW_DIMENSION_NETHER)
 #define LW_CELESTIAL_VOLUME_SPATIAL
+#endif
+#if defined(LW_CELESTIAL_VOLUME_SPATIAL) && defined(LW_TAA_ACTIVE) && VOLUME_TEMPORAL == 1 && (!defined(LW_VOXEL_INCREMENTAL_ACTIVE) || VOXEL_FUSION == 1)
+#define LW_VOLUME_TEMPORAL_ACTIVE
 #endif
 #if HDR_REUSE == 1 && defined(LW_TAA_ACTIVE) && !defined(MOTION_BLUR)
 #define LW_TAA_DIRECT

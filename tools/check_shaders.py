@@ -257,7 +257,18 @@ def check_modern_properties(compiler, path):
             raise ValueError("End must not update Overworld sky LUT")
         if len([key for key in config if key.startswith("image.")]) != 14:
             raise ValueError("Fused custom image allocation must equal 14")
-    print("Modern/legacy compute capability matrix: 5 cases OK")
+    # Full feature path, plus the 16-image legacy propagation fallback.
+    flags={**base,"SCREEN_GI_SPATIAL":"1","SCREEN_GI_HISTORY":"1","TEMPORAL_REUSE":"1",
+           "PROJECTION_JITTER":"1","VOLUME_TEMPORAL":"1","VOLUME_RECONSTRUCTION":"1",
+           "AA_MODE":"2","GI_REUSE_MODE":"1","VOXEL_FUSION":"1","VOXEL_GRID_SIZE":"128"}
+    config=preprocess_properties(compiler,path,flags)
+    if len([k for k in config if k.startswith("image.")])!=15 or "image.lwVolumeHistory" not in config:
+        raise ValueError("Volume history allocation must fit fused image budget")
+    for overrides in ({"VOXEL_FUSION":"0"},{"GI_REUSE_MODE":"2"},{"PROJECTION_JITTER":"2"},{"VOLUME_TEMPORAL":"0"}):
+        config=preprocess_properties(compiler,path,{**flags,**overrides})
+        if "image.lwVolumeHistory" in config:
+            raise ValueError("Volume history gate violated")
+    print("Modern/legacy compute and volume history capability matrix: OK")
 
 
 def check_voxel_dispatch(compiler):
@@ -419,6 +430,7 @@ def main():
         profiles["ultra-no-spatial"] = {**profiles["profile.Ultra"], "SCREEN_GI_SPATIAL": "false"}
         profiles["ultra-dynamic-projection"] = {**profiles["profile.Ultra"], "PROJECTION_JITTER": "2"}
         profiles["ultra-legacy-voxel"] = {**profiles["profile.Ultra"], "VOXEL_FUSION": "0"}
+        profiles["volume-history-off"] = {**profiles["profile.Ultra"], "VOLUME_TEMPORAL": "0", "LOCAL_SCATTER_ADAPTIVE": "0"}
         profiles["legacy-volume-budget"] = {**profiles["profile.Ultra"], "SCENE_BUDGET": "0", "CLOUD_NOISE_MODE": "0", "CLOUD_ADAPTIVE": "0", "CLOUD_EMPTY_SKIP": "0", "SHAFT_ADAPTIVE": "0", "CLOUD_LIGHT_REUSE": "0"}
         profiles["dimension-performance"] = {**profiles["profile.Ultra"], "OVERWORLD_BUDGET": "2", "NETHER_BUDGET": "2", "END_BUDGET": "2"}
         profiles["dimension-full"] = {**profiles["profile.Ultra"], "OVERWORLD_BUDGET": "0", "NETHER_BUDGET": "0", "END_BUDGET": "0"}
