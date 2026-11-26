@@ -33,6 +33,7 @@ uniform sampler2D colortex2;
 uniform sampler2D colortex12;
 uniform sampler2D colortex13;
 #define LW_REFLECTION_DEPTH depthtex0
+#define LW_NATIVE_HIZ
 #define LW_REFLECTION_DH_DEPTH dhDepthTex0
 #ifdef LW_STABLE_DYNAMIC
 #include "/lib/coordinates/sample_owner.glsl"
