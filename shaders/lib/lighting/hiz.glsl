@@ -4,6 +4,23 @@
 #include "/lib/lighting/hiz_layout.glsl"
 uniform sampler2D lwHiZ;
 
+// Cheap bounded interval rejection. Perspective coordinates and device depth
+// are monotone over a positive-w segment. One tile contains the entire segment.
+bool hizRejectInterval(vec4 a,vec4 b,ivec2 resolution,bool dhFallback) {
+    if(a.w<=0.0 || b.w<=0.0 || !hizAtlasFits(resolution,textureSize(lwHiZ,0))) return false;
+    vec2 p=(a.xy/a.w*0.5+0.5)*vec2(resolution);
+    vec2 q=(b.xy/b.w*0.5+0.5)*vec2(resolution);
+    if(any(lessThan(min(p,q),vec2(0))) || any(greaterThanEqual(max(p,q),vec2(resolution)))) return false;
+    ivec2 first=ivec2(p)/64,last=ivec2(q)/64;
+    if(any(notEqual(first,last))) return false;
+    vec2 bounds=texelFetch(lwHiZ,first+hizAtlasOffset(resolution,64),0).rg;
+    if(dhFallback && bounds.y>=1.0) return false;
+    float rayDepth=max(a.z/a.w,b.z/b.w)*0.5+0.5;
+    return rayDepth+0.0000002<bounds.x;
+}
+
+#if HIZ_MODE == 2
+
 float hizProjectedDepth(vec4 clip) { return clip.z/clip.w*0.5+0.5; }
 
 // Solve (c.xy+t*d.xy)/(c.w+t*d.w)=boundaryNdc exactly.
@@ -29,7 +46,7 @@ float hizTileExit(vec4 c,vec4 d,ivec2 tile,int scale,ivec2 resolution,
 // traversal (budget exhaustion, invalid atlas, or DH sky ownership).
 int hizTrace(sampler2D depthBuffer,mat4 projection,mat4 inverseProjection,
              vec3 origin,vec3 direction,float start,float limit,int budget,
-             bool solid,bool dhFallback,bool requireFront,
+             bool dhFallback,bool requireFront,
              out ivec2 hitPixel,out float hitTravel,out float hitDelta) {
     ivec2 resolution=textureSize(depthBuffer,0);
     hitPixel=ivec2(0);hitTravel=0.0;hitDelta=0.0;
@@ -52,7 +69,7 @@ int hizTrace(sampler2D depthBuffer,mat4 projection,mat4 inverseProjection,
         bool skipped=false;
         for(int scale=64;scale>=4;scale/=4) {
             ivec2 tile=pixel/scale;
-            vec2 bounds=texelFetch(lwHiZ,tile+hizAtlasOffset(resolution,scale,solid),0).rg;
+            vec2 bounds=texelFetch(lwHiZ,tile+hizAtlasOffset(resolution,scale),0).rg;
             if(dhFallback && bounds.y>=1.0) continue;
             float end=hizTileExit(c,d,tile,scale,resolution,velocity,t,limit);
             float rayDepth=max(hizProjectedDepth(p),hizProjectedDepth(c+d*end));
@@ -84,5 +101,6 @@ int hizTrace(sampler2D depthBuffer,mat4 projection,mat4 inverseProjection,
     }
     return t>=limit ? 0 : -1;
 }
+#endif // full traversal
 #endif
 #endif

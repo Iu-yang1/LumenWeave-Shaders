@@ -6,10 +6,9 @@ vec3 upsampleLocalScatter(vec2 uv,vec3 direction,float distanceToSurface) {
     ivec2 base=ivec2(floor(coordinate));
     vec2 f=fract(coordinate);
     float depth=min(distanceToSurface,float(LW_GRID_SIZE)*0.5-1.0);
-    float tolerance=max(0.20,depth*0.025);
+    float tolerance=max(0.25,depth*0.035);
     vec3 total=vec3(0.0);
     float weightSum=0.0;
-    float spatialSum=0.0;
     for(int y=0;y<2;++y) for(int x=0;x<2;++x) {
         ivec2 p=clamp(base+ivec2(x,y),ivec2(0),size-1);
         vec4 sampleValue=texelFetch(colortex11,p,0);
@@ -20,10 +19,10 @@ vec3 upsampleLocalScatter(vec2 uv,vec3 direction,float distanceToSurface) {
         float weight=spatial*(1.0-smoothstep(tolerance*0.35,tolerance,difference));
         total+=sampleValue.rgb*weight;
         weightSum+=weight;
-        spatialSum+=spatial;
     }
-    // Thin objects and depth discontinuities use the exact full-resolution ray.
-    float confidence=smoothstep(0.45,0.96,spatialSum)*smoothstep(0.03,0.20,weightSum);
+    // One depth-compatible tap is sufficient. Only genuinely uncovered
+    // surfaces need an exact ray; do not reintegrate ordinary sloping faces.
+    float confidence=smoothstep(0.001,0.025,weightSum);
     if(confidence<=0.001) return integrateLocalScatter(direction,distanceToSurface);
     vec3 filtered=total/max(weightSum,0.0001);
     if(confidence>=0.999) return filtered;

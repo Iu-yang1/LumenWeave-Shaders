@@ -79,20 +79,15 @@ bool reflectionRayDepth(vec3 ray,out vec2 uv,out float delta,out int kind) {
 vec4 traceScreenReflection(vec3 origin,vec3 direction,int steps,out vec2 hitUv,out float hitTravel,out int hitKind) {
     float travel=0.30;
     float maxTravel=steps<=8 ? 12.0 : 48.0;
-#ifdef LW_HIZ_ACTIVE
+#if defined(LW_HIZ_ACTIVE) && HIZ_MODE == 2
     ivec2 candidate;float candidateTravel,candidateDelta;
-#ifdef LW_NATIVE_HIZ
-    const bool solid=false;
-#else
-    const bool solid=true;
-#endif
 #ifdef DISTANT_HORIZONS
     const bool dhFallback=true;
 #else
     const bool dhFallback=false;
 #endif
     int status=hizTrace(LW_REFLECTION_DEPTH,gbufferProjection,gbufferProjectionInverse,
-        origin,direction,travel,maxTravel,max(32,steps*8),solid,dhFallback,true,
+        origin,direction,travel,maxTravel,steps,dhFallback,true,
         candidate,candidateTravel,candidateDelta);
     if(status==1) {
         float thickness=0.20+candidateTravel*0.035;
@@ -114,7 +109,29 @@ vec4 traceScreenReflection(vec3 origin,vec3 direction,int steps,out vec2 hitUv,o
     float previousTravel=0.0;
     bool previousFront=false;
     hitUv=vec2(0.0);hitTravel=0.0;hitKind=0;
-    for(int tap=0;tap<steps;++tap) {
+    int firstTap=0;
+#if defined(LW_HIZ_ACTIVE) && HIZ_MODE == 1
+    // Preserve the original ray sampling lattice. One conservative interval
+    // test can replace three taps; an inconclusive test never triggers a second trace.
+    if(steps>=4) {
+        float last=(travel+1.0)*stepRatio*stepRatio-1.0;
+        vec3 endRay=origin+direction*last;
+        if(endRay.z< -0.12 && hizRejectInterval(
+            gbufferProjection*vec4(origin+direction*travel,1.0),
+            gbufferProjection*vec4(endRay,1.0),textureSize(LW_REFLECTION_DEPTH,0),
+#ifdef DISTANT_HORIZONS
+            true
+#else
+            false
+#endif
+            )) {
+            previousFront=true;previousTravel=last;
+            travel=(last+1.0)*stepRatio-1.0;
+            firstTap=3;
+        }
+    }
+#endif
+    for(int tap=firstTap;tap<steps;++tap) {
         vec3 ray=origin+direction*travel;
         if(ray.z> -0.12 || travel>maxTravel+0.001) break;
         vec2 uv;float delta;int kind;

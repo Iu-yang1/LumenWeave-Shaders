@@ -1,5 +1,6 @@
 #ifndef LW_ACTIVE_TILES
 #define LW_ACTIVE_TILES
+#include "/lib/voxel/settings.glsl"
 layout(std430,binding=0) buffer LwActiveTiles {
     uint count1; uint y1; uint z1; uint pad1;
     uint count2; uint y2; uint z2; uint pad2;

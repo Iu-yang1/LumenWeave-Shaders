@@ -134,3 +134,9 @@ option.MATERIAL_REFLECTION_STEPS=Material SSR steps
 option.CLOUD_STEPS=Cloud integration steps
 option.SHAFT_STEPS=Light shaft steps
 option.DH_SHADOW_STEPS=DH far shadow steps
+
+option.HIZ_MODE=Hi-Z tracing mode
+option.HIZ_MODE.comment=Adaptive preserves the original ray budget and rejects proven-empty intervals. Full traversal may cost more GPU time.
+value.HIZ_MODE.0=Off
+value.HIZ_MODE.1=Adaptive
+value.HIZ_MODE.2=Full traversal

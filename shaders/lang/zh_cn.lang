@@ -134,3 +134,9 @@ option.MATERIAL_REFLECTION_STEPS=材质反射步数
 option.CLOUD_STEPS=云层积分步数
 option.SHAFT_STEPS=光束积分步数
 option.DH_SHADOW_STEPS=DH 远景阴影步数
+
+option.HIZ_MODE=Hi-Z 追踪模式
+option.HIZ_MODE.comment=自适应模式保留原采样预算并跳过已证实无交点的区间。完整模式逐层追踪，可能降低帧率。
+value.HIZ_MODE.0=关闭
+value.HIZ_MODE.1=自适应
+value.HIZ_MODE.2=完整遍历

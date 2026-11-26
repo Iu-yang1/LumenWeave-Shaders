@@ -12,6 +12,7 @@
 //#define INCREMENTAL_VOXELS
 //#define PHYSICAL_ATMOSPHERE
 //#define MATERIAL_SSR
+#define HIZ_MODE 1 // [0 1 2]
 //#define DH_SHADOWS
 //#define VOLUME_EFFECTS
 //#define VOXEL_LIGHTING
@@ -103,7 +104,7 @@
 
 // Stable native depth only; dynamic reanchoring can shift hit depth.
 #if defined(DEFERRED_LIGHTING) && !defined(LW_DYNAMIC_JITTER) && defined(IRIS_FEATURE_CUSTOM_IMAGES) && defined(IRIS_FEATURE_COMPUTE_SHADERS)
-#if defined(SCREEN_GI) || defined(LW_MATERIAL_SSR_ACTIVE) || defined(ADVANCED_WATER)
+#if HIZ_MODE > 0 && (defined(SCREEN_GI) || defined(LW_MATERIAL_SSR_ACTIVE) || (HIZ_MODE == 2 && defined(ADVANCED_WATER)))
 #define LW_HIZ_ACTIVE
 #endif
 #endif

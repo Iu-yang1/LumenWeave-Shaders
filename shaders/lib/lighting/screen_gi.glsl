@@ -9,14 +9,26 @@ struct ScreenBounce {
 ScreenBounce screenBounceRay(vec3 origin, vec3 direction, mat3 toView, vec3 sun) {
     float travel = 0.16;
     ivec2 resolution = textureSize(depthtex0, 0);
-#ifdef LW_HIZ_ACTIVE
+#if defined(LW_HIZ_ACTIVE) && HIZ_MODE == 2
     ivec2 candidate;float candidateTravel,candidateDelta;
     int status=hizTrace(depthtex0,gbufferProjection,gbufferProjectionInverse,
-        origin,direction,travel,3.9,48,false,false,false,candidate,candidateTravel,candidateDelta);
+        origin,direction,travel,3.9,8,false,false,candidate,candidateTravel,candidateDelta);
     if(status==0) return ScreenBounce(vec3(0),vec3(0),0.0);
     if(status==1) travel=candidateTravel;
 #endif
-    for (int tap = 0; tap < 8; ++tap) {
+    int firstTap=0;
+#if defined(LW_HIZ_ACTIVE) && HIZ_MODE == 1
+    float next=travel*1.32+0.16;
+    float last=next*1.32+0.16;
+    vec3 endRay=origin+direction*last;
+    if(endRay.z< -0.12 && hizRejectInterval(
+        gbufferProjection*vec4(origin+direction*travel,1.0),
+        gbufferProjection*vec4(endRay,1.0),resolution,false)) {
+        travel=last*1.32+0.16;
+        firstTap=3;
+    }
+#endif
+    for (int tap = firstTap; tap < 8; ++tap) {
         vec3 position = origin + direction * travel;
         if (position.z >= -0.12) {
             break;
@@ -31,7 +43,7 @@ ScreenBounce screenBounceRay(vec3 origin, vec3 direction, mat3 toView, vec3 sun)
             break;
         }
         ivec2 pixel = ivec2(uv * vec2(resolution));
-#ifdef LW_HIZ_ACTIVE
+#if defined(LW_HIZ_ACTIVE) && HIZ_MODE == 2
         if(status==1) {
             pixel=candidate;
             uv=(vec2(pixel)+0.5)/vec2(resolution);
@@ -53,7 +65,7 @@ ScreenBounce screenBounceRay(vec3 origin, vec3 direction, mat3 toView, vec3 sun)
             hitPosition = reconstructViewPosition(pixelUv, depth);
 #endif
             float delta = hitPosition.z - position.z;
-#ifdef LW_HIZ_ACTIVE
+#if defined(LW_HIZ_ACTIVE) && HIZ_MODE == 2
             if(status==1) delta=candidateDelta;
 #endif
             if (delta >= 0.0) {
@@ -103,7 +115,7 @@ ScreenBounce screenBounceRay(vec3 origin, vec3 direction, mat3 toView, vec3 sun)
                 return hit;
             }
         }
-        #ifdef LW_HIZ_ACTIVE
+        #if defined(LW_HIZ_ACTIVE) && HIZ_MODE == 2
         if(status==1) break;
         #endif
         travel = travel * 1.32 + 0.16;
