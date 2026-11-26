@@ -186,8 +186,8 @@ vec3 applyLightShafts(vec3 scene, vec3 origin, vec3 direction, vec3 sun, float m
     // Weak phase contribution uses fewer samples, but keep the full
     // baseline near the sun / strong shafts. Short spans need fewer taps.
     if(phase*day<0.06 && span>12.0) steps=max(2,steps-2);
-    // Reserve two comparisons for boundary refinement on strong rays.
-    if(phase*day>0.12 && steps>=4) steps=max(2,steps-2);
+    // Strong rays retain the original base taps. Refine only when the
+    // user's cap still has spare comparisons.
     extraSamples=max(0,SHAFT_STEPS-steps);
 #endif
     float stepSize=span/float(steps);
@@ -195,9 +195,8 @@ vec3 applyLightShafts(vec3 scene, vec3 origin, vec3 direction, vec3 sun, float m
     vec3 rayStep=direction*stepSize;
     vec3 offset=0.5*rayStep;
 #ifdef SCENE_SHADOWS
-    mat4 toShadow=shadowProjection*shadowModelView;
-    vec4 clipStart=toShadow*vec4(offset,1.0);
-    vec4 clipStep=toShadow*vec4(rayStep,0.0);
+    vec4 clipStart=shadowProjection*(shadowModelView*vec4(offset,1.0));
+    vec4 clipStep=shadowProjection*(shadowModelView*vec4(rayStep,0.0));
 #endif
     float altitude=origin.y+offset.y;
     float deltaHeight=rayStep.y;

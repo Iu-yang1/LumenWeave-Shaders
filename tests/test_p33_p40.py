@@ -69,7 +69,7 @@ class VolumePipelineTests(unittest.TestCase):
                 h=next_h
         for cap in (4,6,8):
             for steps in range(2,cap+1):
-                base=max(2,steps-2) if steps>=4 else steps
+                base=steps
                 extra=cap-base
                 self.assertLessEqual(base+2*(extra//2),cap)
 
