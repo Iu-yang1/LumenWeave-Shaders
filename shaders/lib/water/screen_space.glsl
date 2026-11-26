@@ -8,7 +8,7 @@ vec3 physicalWater(vec3 tint, vec3 originalNormal, vec3 viewPosition, vec3 view,
     bool submerged = isEyeInWater == 1;
     float fresnel = waterFresnel(clamp(dot(view, normal), 0.0, 1.0), submerged);
     vec3 scatter = waterScatteringColor(tint)
-        * (ambientIrradiance(vec2(0.0, skyAccess), 1.0, sun) + celestialIrradiance(sun) * 0.16);
+        * (ambientIrradiance(vec2(0.0, skyAccess), 1.0, sun) + celestialIrradiance(sun) * (0.16 * skyAccess));
     vec3 reflection = submerged ? scatter : skyRadiance(reflected, sun);
 #if WATER_REFLECTION_STEPS > 0
     if (fresnel > 0.021) {
@@ -24,20 +24,25 @@ vec3 physicalWater(vec3 tint, vec3 originalNormal, vec3 viewPosition, vec3 view,
     }
 
     vec2 screen = gl_FragCoord.xy / vec2(textureSize(depthtex1, 0));
-    float originalDepth = texture(depthtex1, screen).r;
-    vec3 background = reconstructViewPosition(screen, originalDepth);
+#ifdef LW_STABLE_DYNAMIC
+    screen = clamp(screen + jitterOffset(frameCounter),vec2(0.0),vec2(1.0));
+#endif
+    ivec2 originalPixel = depthPixelAtUv(depthtex1,screen);
+    float originalDepth = texelFetch(depthtex1,originalPixel,0).r;
+    vec3 background = reconstructViewPosition(depthPixelUv(depthtex1,originalPixel), originalDepth);
     float depthGap = max(viewPosition.z - background.z, 0.0);
     vec2 refractedUv = screen + (toView * (normal - originalNormal)).xy
         * min(depthGap * 0.008, 0.025) * WATER_REFRACTION;
     if (!insideScreen(refractedUv)) {
         refractedUv = screen;
     }
-    float sampledDepth = texture(depthtex1, refractedUv).r;
-    vec3 refractedBackground = reconstructViewPosition(refractedUv, sampledDepth);
+    ivec2 samplePixel = depthPixelAtUv(depthtex1,refractedUv);
+    float sampledDepth = texelFetch(depthtex1,samplePixel,0).r;
+    vec3 refractedBackground = reconstructViewPosition(depthPixelUv(depthtex1,samplePixel),sampledDepth);
     if (refractedBackground.z >= viewPosition.z) {
         refractedUv = screen;
         sampledDepth = originalDepth;
-        background = reconstructViewPosition(screen, originalDepth);
+        background = reconstructViewPosition(depthPixelUv(depthtex1,originalPixel),originalDepth);
     } else {
         background = refractedBackground;
     }

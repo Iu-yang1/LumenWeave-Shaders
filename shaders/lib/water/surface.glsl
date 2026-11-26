@@ -8,11 +8,12 @@ uniform float frameTime;
 uniform sampler2D depthtex1;
 
 float waterThickness(vec3 viewPosition, vec2 screen) {
-    float depth = texture(depthtex1, screen).r;
+    ivec2 pixel = depthPixelAtUv(depthtex1,screen);
+    float depth = texelFetch(depthtex1,pixel,0).r;
     if (depth >= 1.0) {
         return 48.0;
     }
-    vec3 background = reconstructViewPosition(screen, depth);
+    vec3 background = reconstructViewPosition(depthPixelUv(depthtex1,pixel),depth);
     return clamp(dot(background - viewPosition, normalize(viewPosition)), 0.0, 48.0);
 }
 

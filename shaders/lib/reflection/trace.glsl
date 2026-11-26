@@ -70,12 +70,14 @@ bool reflectionRayDepth(vec3 ray,out vec2 uv,out float delta,out int kind) {
 
 vec4 traceScreenReflection(vec3 origin,vec3 direction,int steps,out vec2 hitUv,out float hitTravel,out int hitKind) {
     float travel=0.30;
+    float maxTravel=steps<=8 ? 12.0 : 48.0;
+    float stepRatio=pow((maxTravel+1.0)/1.30,1.0/float(max(steps-1,1)));
     float previousTravel=0.0;
     bool previousFront=false;
     hitUv=vec2(0.0);hitTravel=0.0;hitKind=0;
     for(int tap=0;tap<steps;++tap) {
         vec3 ray=origin+direction*travel;
-        if(ray.z> -0.12 || travel>48.0) break;
+        if(ray.z> -0.12 || travel>maxTravel+0.001) break;
         vec2 uv;float delta;int kind;
         if(!reflectionRayDepth(ray,uv,delta,kind)) break;
         if(previousFront && delta>=0.0 && kind!=0) {
@@ -100,7 +102,7 @@ vec4 traceScreenReflection(vec3 origin,vec3 direction,int steps,out vec2 hitUv,o
             }
         }
         previousFront=delta<0.0;previousTravel=travel;
-        travel+=0.28+travel*0.26;
+        travel=(travel+1.0)*stepRatio-1.0;
     }
     return vec4(0.0);
 }

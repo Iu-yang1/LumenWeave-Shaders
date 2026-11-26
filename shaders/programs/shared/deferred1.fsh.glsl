@@ -75,6 +75,17 @@ const vec4 colortex3ClearColor = vec4(0.0, 0.0, 0.0, 0.0);
 #include "/lib/lighting/overworld.glsl"
 #include "/lib/lighting/fog.glsl"
 #include "/lib/lighting/surface.glsl"
+#ifdef LW_VOXEL_ACTIVE
+#if VOXEL_GRID_SIZE == 128
+const float voxelDistance = 64.0;
+#elif VOXEL_GRID_SIZE == 96
+const float voxelDistance = 48.0;
+#elif VOXEL_GRID_SIZE == 64
+const float voxelDistance = 32.0;
+#else
+const float voxelDistance = 16.0;
+#endif
+#endif
 #include "/lib/materials/geometry_buffer.glsl"
 #include "/lib/coordinates/reconstruct.glsl"
 #ifdef LW_STABLE_DYNAMIC

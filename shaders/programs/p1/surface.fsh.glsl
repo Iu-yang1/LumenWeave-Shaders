@@ -97,9 +97,16 @@ void main() {
 #ifdef LW_WATER
     if (blockId == 10004) {
 #if defined(ADVANCED_WATER) && defined(DEFERRED_LIGHTING)
-        vec3 water = physicalWater(radiance, normal, viewPosition, view, sun,
+        vec3 waterPosition = viewPosition;
+#ifdef LW_STABLE_DYNAMIC
+        vec2 stableUv=gl_FragCoord.xy/vec2(textureSize(depthtex1,0));
+        waterPosition=stableViewSurfacePosition(viewPosition,stableUv,
+            transpose(mat3(gbufferModelViewInverse))*normal,gbufferProjectionInverse);
+        view=normalize(worldDirection(-waterPosition));
+#endif
+        vec3 water = physicalWater(radiance, normal, waterPosition, view, sun,
             smoothstep(0.56, 1.0, lightLevels.y));
-        gl_FragData[0] = vec4(applySceneFog(water, viewPosition), 1.0);
+        gl_FragData[0] = vec4(applySceneFog(water, waterPosition), 1.0);
         return;
 #else
         vec3 position = (gbufferModelViewInverse * vec4(viewPosition, 1.0)).xyz + cameraPosition;
@@ -110,7 +117,7 @@ void main() {
             : waterThickness(viewPosition, gl_FragCoord.xy / vec2(textureSize(depthtex1, 0)));
         float opacity = 1.0 - luminance(exp(-waterExtinction() * thickness));
         vec3 scatter = waterScatteringColor(radiance)
-            * (ambientIrradiance(lightLevels, 1.0, sun) + celestialIrradiance(sun) * 0.16);
+            * (ambientIrradiance(lightLevels, 1.0, sun) + celestialIrradiance(sun) * (0.16 * smoothstep(0.0,1.0,lightLevels.y)));
         if (isEyeInWater == 1) {
             vec2 screen = gl_FragCoord.xy / vec2(textureSize(depthtex1, 0));
             if (texture(depthtex1, screen).r >= 1.0) {

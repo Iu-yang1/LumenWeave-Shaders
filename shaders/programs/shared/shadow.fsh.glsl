@@ -3,9 +3,6 @@
 #include "/lib/quality.glsl"
 #include "/lib/voxel/features.glsl"
 
-#ifdef LW_VOXEL_ACTIVE
-const float voxelDistance = 28.0;
-#endif
 
 uniform sampler2D gtexture;
 in vec2 texCoord;

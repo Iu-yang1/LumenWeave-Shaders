@@ -52,7 +52,7 @@ class ShaderToolsTests(unittest.TestCase):
                 "WATER_REFLECTION_STEPS": "0",
                 "PHYSICAL_ATMOSPHERE": "false", "MATERIAL_SSR": "false",
                 "DH_SHADOWS": "false", "INCREMENTAL_VOXELS": "false",
-                "MATERIAL_REFLECTION_STEPS": "0", "CLOUD_STEPS": "12",
+                "MATERIAL_REFLECTION_STEPS": "8", "CLOUD_STEPS": "12",
                 "SHAFT_STEPS": "6", "DH_SHADOW_STEPS": "14", "PROJECTION_JITTER": "0",
             },
         )

@@ -33,6 +33,9 @@ vec3 sampleVoxelIrradiance(sampler3D field, vec3 relativePosition, vec3 normal, 
     vec3 cell = relativePosition + cameraPositionFract + vec3(float(LW_GRID_SIZE) * 0.5);
     vec3 edge = min(cell, float(LW_GRID_SIZE) - cell);
     float weight = smoothstep(0.8, 2.2, min(edge.x, min(edge.y, edge.z)));
+    // Outside the guaranteed reversed-culling sphere, prefer vanilla light.
+    float radius=float(LW_GRID_SIZE)*0.5;
+    weight *= 1.0-smoothstep(radius-5.0,radius-1.0,length(relativePosition));
     if (weight <= 0.0) {
         return vec3(0.0);
     }

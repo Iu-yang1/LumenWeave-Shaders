@@ -26,6 +26,7 @@ float cloudNoise(vec2 position) {
 float cloudDensity(vec3 position) {
     float height = (position.y - 156.0) / 18.0;
     float layer = smoothstep(0.0, 0.24, height) * (1.0 - smoothstep(0.55, 1.0, height));
+    if (layer <= 0.0) return 0.0;
     vec2 uv = (position.xz + frameTimeCounter * vec2(1.1, 0.40)) * 0.017;
     float shape = 0.65 * cloudNoise(uv) + 0.25 * cloudNoise(uv * 2.07) + 0.10 * cloudNoise(uv * 5.0);
     return layer * smoothstep(mix(0.48, 0.34, rainStrength), 0.78, shape);
