@@ -31,8 +31,6 @@ LumenWeave is a Minecraft Java Edition shader pack for Iris and OpenGL. It focus
 4. Select LumenWeave in Options → Video Settings → Shader Packs.
 5. Start with **High** and adjust quality for your GPU. Reselect a preset if upgrading from a development build.
 
-Build targets: Minecraft 1.20.x, 1.21.x and 26.x (OpenGL). These are compatibility targets, not runtime certification of every loader, driver and game combination. Advanced compute effects depend on loader and hardware capabilities. Vulkan and OptiFine are not certified.
-
 ## Quality presets
 
 | Preset | Focus | Shadows / AA |
@@ -44,14 +42,4 @@ Build targets: Minecraft 1.20.x, 1.21.x and 26.x (OpenGL). These are compatibili
 | Ultra | Physical atmosphere, volumes, SSGI, SSR, colored voxels | 2048 soft / TAA |
 | Extreme | Largest default coverage and voxel diffuse GI | 4096 soft / TAA |
 
-Ultra and Extreme use 96³ and 128³ voxel grids respectively. Natural, Natural (low exposure) and Natural (high exposure) are unshadowed color comparison presets. Standard is a separate no-temporal-AA configuration. Fixed projection is available for the advanced pipeline; original compute and dynamic projection paths remain selectable.
 
-## Compatibility and feedback
-
-Offline GLSL, resource, numerical and packaging checks are release gates, not a substitute for in-game GPU validation. Advanced lighting, DH and driver-specific behavior require further runtime coverage. No FPS guarantee is made. Report issues with game, Iris, Sodium, GPU/driver versions, preset, screenshot and the first relevant error from `latest.log`.
-
-## Development and license
-
-The `main` branch holds distributed shader source. The [develop branch](https://github.com/Iu-yang1/LumenWeave-Shaders/tree/develop) retains tests, tools, experiments, generators and technical documents. See the [release audit](https://github.com/Iu-yang1/LumenWeave-Shaders/blob/develop/docs/release-audit-v1.md).
-
-LGPL-3.0-only. See [LICENSE](LICENSE), [COPYING](COPYING) and [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
