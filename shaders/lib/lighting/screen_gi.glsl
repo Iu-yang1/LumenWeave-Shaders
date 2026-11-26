@@ -1,3 +1,5 @@
+#include "/lib/lighting/hiz.glsl"
+
 struct ScreenBounce {
     vec3 sky;
     vec3 block;
@@ -21,6 +23,12 @@ ScreenBounce screenBounceRay(vec3 origin, vec3 direction, mat3 toView, vec3 sun)
         if (min(edge.x, edge.y) <= 0.0) {
             break;
         }
+#ifdef LW_HIZ_ACTIVE
+        if (hizRayInFront(uv,position,resolution,gbufferProjection)) {
+            travel = travel * 1.32 + 0.16;
+            continue;
+        }
+#endif
         ivec2 pixel = ivec2(uv * vec2(resolution));
         float depth = texelFetch(depthtex0, pixel, 0).r;
         if (depth < 1.0) {
