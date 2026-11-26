@@ -2,7 +2,7 @@
 #include "/lib/quality.glsl"
 layout(local_size_x=8,local_size_y=8) in;
 const vec2 workGroupsRender=vec2(0.015625,0.015625);
-#ifdef LW_HIZ_ACTIVE
+#if defined(LW_HIZ_ACTIVE) && HIZ_MODE == 2
 #include "/lib/lighting/hiz_layout.glsl"
 uniform sampler2D depthtex0;
 layout(rg32f) uniform image2D lwHiZImage;

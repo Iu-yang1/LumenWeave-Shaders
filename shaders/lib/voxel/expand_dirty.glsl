@@ -21,11 +21,7 @@ void main(){
         value=(value&1u)*3u | (value&4u);
 #endif
         mask|=value & (abs(d)<=1 ? 7u : 6u);
-#ifdef VOLUME_EFFECTS
         if(mask==7u) break;
-#else
-        if((mask&3u)==3u) break;
-#endif
     }
 #if LW_DIRTY_AXIS == 2
     // Wall classification belongs to the original local tile, not its halo.

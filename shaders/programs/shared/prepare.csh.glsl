@@ -13,7 +13,7 @@ layout(rgba32i) readonly uniform iimage2D lwVoxelMeta;
 #include "/lib/voxel/cache_coordinates.glsl"
 uniform int frameCounter;
 shared ivec4 lwPreviousMeta;
-shared uint lwGroupDirty;
+shared uint lwGroupFlags[8];
 #else
 layout(rgba16f) writeonly uniform image3D lwVoxelFirst;
 #endif
@@ -24,8 +24,8 @@ void main() {
 #ifdef LW_VOXEL_INCREMENTAL_ACTIVE
     if(gl_LocalInvocationIndex==0u) {
         lwPreviousMeta=imageLoad(lwVoxelMeta,ivec2(0));
-        lwGroupDirty=0u;
     }
+    if(gl_LocalInvocationIndex<8u) lwGroupFlags[gl_LocalInvocationIndex]=0u;
     barrier();
     ivec4 previous=lwPreviousMeta;
     ivec3 previousLocal = cell + (cameraPositionInt - previous.xyz);
@@ -47,15 +47,15 @@ void main() {
         imageStore(lwVoxelPrevSeed,cacheCell,uvec4(seed));
     }
     uint flags=(seedChanged || lostNeighbor) ? 1u : 0u;
-#ifdef VOLUME_EFFECTS
     // Any emitting seed can reach at most four cells in the four stencil passes.
     if(seed>0u && seed<LW_VOXEL_WALL) flags|=4u;
-#endif
     if(seed>=LW_VOXEL_WALL) flags|=8u;
-    if(flags!=0u) atomicOr(lwGroupDirty,flags);
+    if(flags!=0u) atomicOr(lwGroupFlags[gl_LocalInvocationIndex/8u],flags);
     barrier();
-    if(gl_LocalInvocationIndex==0u && lwGroupDirty!=0u) {
-        imageStore(lwVoxelDirtyTiles,ivec3(gl_WorkGroupID),uvec4(lwGroupDirty));
+    if(gl_LocalInvocationIndex==0u) {
+        uint mask=0u;
+        for(int i=0;i<8;++i) mask|=lwGroupFlags[i];
+        if(mask!=0u) imageStore(lwVoxelDirtyTiles,ivec3(gl_WorkGroupID),uvec4(mask));
     }
 #else
     vec3 source=seed < LW_VOXEL_WALL ? voxelSeedEmission(seed) : vec3(0.0);

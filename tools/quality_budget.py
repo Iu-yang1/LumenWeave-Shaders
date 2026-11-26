@@ -35,7 +35,7 @@ def resource_budget(options, width, height):
     # Report a single texture payload and double-buffered equivalent separately.
     extra_color_bytes = width * height * (8 * (2 + 2 * int(taa)) * int(ssr) + 8 * int(advanced_dynamic))
     hiz_mode = int(options.get("HIZ_MODE", "1"))
-    hiz_bytes = int(width*.30)*int(height*.35)*8 if hiz_mode > 0 and enabled("DEFERRED_LIGHTING") and (enabled("SCREEN_GI") or ssr or (hiz_mode == 2 and enabled("ADVANCED_WATER"))) else 0
+    hiz_bytes = int(width*(.035 if hiz_mode == 1 else .30))*int(height*(.035 if hiz_mode == 1 else .35))*8 if hiz_mode > 0 and enabled("DEFERRED_LIGHTING") and (enabled("SCREEN_GI") or ssr or (hiz_mode == 2 and enabled("ADVANCED_WATER"))) else 0
     return {
         "hiz_mib": hiz_bytes / MIB,
         "voxel_mib": voxel_bytes / MIB,

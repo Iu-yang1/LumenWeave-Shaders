@@ -138,6 +138,7 @@ class DeepPipelineTests(unittest.TestCase):
         self.assertIn("hizRejectInterval",hi)
         props=(SHADERS/"shaders.properties").read_text()
         self.assertIn("image.lwHiZImage = lwHiZ rg rg32f",props)
+        self.assertIn("0.035 0.035",props)
         self.assertIn("indirect.prepare1 = 0 0",props)
         self.assertIn("indirect.prepare5 = 0 16",props)
         self.assertIn("IRIS_VERSION >= 11107",props)

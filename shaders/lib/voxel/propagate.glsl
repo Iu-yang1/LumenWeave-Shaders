@@ -57,6 +57,14 @@ void main() {
 #else
     ivec3 storageCell = cell;
 #endif
+    // No emitter can reach this dirty tile: clear stale light without any
+    // source-field reads, including the source halo.
+#ifdef LW_VOXEL_INCREMENTAL_ACTIVE
+    if((tileMask&4u)==0u) {
+        imageStore(LW_VOXEL_WRITE,storageCell,vec4(0.0));
+        return;
+    }
+#endif
     uint seed = imageLoad(lwVoxelOccupancy, cell).r;
 
     // Reuse classification from the seed pass rather than doing 64

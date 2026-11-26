@@ -25,8 +25,8 @@ class VoxelGpuIncrementalTests(unittest.TestCase):
             stage = (ROOT/f"programs/shared/prepare{i}.csh.glsl").read_text()
             self.assertIn(f"#define LW_VOXEL_READ lwVoxelStage{i-1}",stage)
             self.assertIn("#define LW_VOXEL_WRITE "+("lwVoxelFirst" if i==4 else f"lwVoxelStage{i}"),stage)
-        self.assertIn("voxelTileNeedsUpdate(1)",(ROOT/"lib/voxel/propagate.glsl").read_text())
-        self.assertIn("voxelTileNeedsUpdate(2)",(ROOT/"programs/shared/prepare5.csh.glsl").read_text())
+        self.assertIn("voxelTileMask(tile)",(ROOT/"lib/voxel/propagate.glsl").read_text())
+        self.assertIn("voxelTileMask(tile)",(ROOT/"programs/shared/prepare5.csh.glsl").read_text())
 
     def test_image_budget(self):
         props = (ROOT/"shaders.properties").read_text()

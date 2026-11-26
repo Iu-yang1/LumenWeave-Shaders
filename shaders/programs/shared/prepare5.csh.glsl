@@ -49,22 +49,28 @@ vec3 gatherFace(ivec3 cell, ivec3 direction, vec3 localLight) {
 #endif
 
 void main() {
-#if defined(LW_VOXEL_INCREMENTAL_ACTIVE) && !defined(LW_GPU_COMPACTION)
-    if (!voxelTileNeedsUpdate(2)) {
-        return;
-    }
-#endif
 #ifdef LW_GPU_COMPACTION
-    ivec3 cell=activeTile(2)*4+ivec3(gl_LocalInvocationID);
+    ivec3 tile=activeTile(2);
 #else
-    ivec3 cell = ivec3(gl_GlobalInvocationID);
+    ivec3 tile=ivec3(gl_WorkGroupID);
 #endif
+#ifdef LW_VOXEL_INCREMENTAL_ACTIVE
+    uint tileMask=voxelTileMask(tile);
+    if((tileMask&2u)==0u) return;
+#endif
+    ivec3 cell=tile*4+ivec3(gl_LocalInvocationID);
     vec3 bounce = vec3(0.0);
 #ifdef LW_VOXEL_INCREMENTAL_ACTIVE
     ivec3 storageCell=voxelCacheCell(cell);
 #else
     ivec3 storageCell=cell;
 #endif
+    #ifdef LW_VOXEL_INCREMENTAL_ACTIVE
+    if((tileMask&4u)==0u) {
+        imageStore(lwVoxelSecond,storageCell,vec4(0.0));
+        return;
+    }
+    #endif
     if (imageLoad(lwVoxelOccupancy, cell).r < LW_VOXEL_WALL) {
         vec3 localLight = imageLoad(lwVoxelFirst, storageCell).rgb;
         for (int axis = 0; axis < 6; ++axis) {
