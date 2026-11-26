@@ -105,9 +105,9 @@ void main() {
     vec3 reflected=reflect(-eye,normal);
     float roughness=metadata.a;
     float smoothness=1.0-smoothstep(0.18,0.65,roughness);
-    if(smoothness<=0.001) return;
+    if(smoothness<=0.001 || MATERIAL_REFLECTION_STEPS == 0) return;
     vec2 hitUv;float travel;int hitKind;
-    vec4 hit=traceScreenReflection(viewPosition+toView*normal*0.07,toView*reflected,16,hitUv,travel,hitKind);
+    vec4 hit=traceScreenReflection(viewPosition+toView*normal*0.07,toView*reflected,MATERIAL_REFLECTION_STEPS,hitUv,travel,hitKind);
     vec3 correction=vec3(0.0);
     if(hit.a>0.0) {
         vec3 filtered=filterReflection(hit.rgb,hitUv,travel,hitKind,roughness);

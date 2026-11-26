@@ -130,3 +130,7 @@ option.PHYSICAL_ATMOSPHERE=实验性物理大气 LUT
 option.PHYSICAL_ATMOSPHERE.comment=GPU 球形大气光谱透射、多重散射、天空及大气透视；晴空物理模型与近似雨天混合。
 option.INCREMENTAL_VOXELS=实验性增量体素光照
 option.INCREMENTAL_VOXELS.comment=保留世界坐标环形传播缓存，方块变化和相机移动时重算脏区及进出边界。需要额外显存。
+option.MATERIAL_REFLECTION_STEPS=材质反射步数
+option.CLOUD_STEPS=云层积分步数
+option.SHAFT_STEPS=光束积分步数
+option.DH_SHADOW_STEPS=DH 远景阴影步数

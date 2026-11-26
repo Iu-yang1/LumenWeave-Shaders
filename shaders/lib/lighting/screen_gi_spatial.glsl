@@ -22,6 +22,8 @@ ScreenBounce spatialScreenBounce(vec3 viewPosition, vec3 normal, vec3 sun, vec2 
             if (any(lessThan(texel, ivec2(0))) || any(greaterThanEqual(texel, traceSize))) {
                 continue;
             }
+            vec2 weights = mix(1.0 - fraction, fraction, vec2(column, row));
+            if (weights.x * weights.y <= 0.00001) continue;
             vec4 sky = texelFetch(colortex9, texel, 0);
             float depthDifference = abs(sky.a - sceneDepth);
             if (sky.a <= 0.0 || depthDifference >= tolerance) {
@@ -32,7 +34,6 @@ ScreenBounce spatialScreenBounce(vec3 viewPosition, vec3 normal, vec3 sun, vec2 
             if (dot(normal, donorNormal) <= 0.90) {
                 continue;
             }
-            vec2 weights = mix(1.0 - fraction, fraction, vec2(column, row));
             float weight = weights.x * weights.y * (1.0 - smoothstep(0.35, 1.0, depthDifference / tolerance));
             coverage += weight;
             bounce.sky += sky.rgb * weight;

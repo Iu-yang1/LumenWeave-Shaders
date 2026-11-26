@@ -130,3 +130,7 @@ option.PHYSICAL_ATMOSPHERE=Experimental physical atmosphere LUTs
 option.PHYSICAL_ATMOSPHERE.comment=GPU spherical atmosphere with spectral transmission, multiple scattering, sky and aerial perspective. Uses a clear-air base with approximate rain blending.
 option.INCREMENTAL_VOXELS=Experimental incremental voxel light
 option.INCREMENTAL_VOXELS.comment=Retain propagation stages in a world-aligned rolling cache. Recompute edited tiles, entering and departing boundaries on camera movement. Extra GPU memory required.
+option.MATERIAL_REFLECTION_STEPS=Material SSR steps
+option.CLOUD_STEPS=Cloud integration steps
+option.SHAFT_STEPS=Light shaft steps
+option.DH_SHADOW_STEPS=DH far shadow steps

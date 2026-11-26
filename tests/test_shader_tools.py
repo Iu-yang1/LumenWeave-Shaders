@@ -50,6 +50,10 @@ class ShaderToolsTests(unittest.TestCase):
                 "SHADOW_MAP": "0", "SHADOW_RANGE": "48.0",
                 "WATER_WAVE_DETAIL": "4", "SHADOW_FILTER_TAPS": "4", "AO_SLICES": "2",
                 "WATER_REFLECTION_STEPS": "0",
+                "PHYSICAL_ATMOSPHERE": "false", "MATERIAL_SSR": "false",
+                "DH_SHADOWS": "false", "INCREMENTAL_VOXELS": "false",
+                "MATERIAL_REFLECTION_STEPS": "0", "CLOUD_STEPS": "12",
+                "SHAFT_STEPS": "6", "DH_SHADOW_STEPS": "14", "PROJECTION_JITTER": "0",
             },
         )
         self.assertEqual(profiles["profile.LowExposure"]["EXPOSURE"], "-1")
@@ -94,7 +98,7 @@ class ShaderToolsTests(unittest.TestCase):
 
     def test_personal_effects_are_independent_of_quality_profiles(self):
         for profile in preview_profiles(PREVIEW).values():
-            self.assertFalse({"MOTION_BLUR", "BLOOM", "WAVING_LEAVES", "WAVING_GRASS", "PROJECTION_JITTER"} & profile.keys())
+            self.assertFalse({"MOTION_BLUR", "BLOOM", "WAVING_LEAVES", "WAVING_GRASS"} & profile.keys())
 
     def test_relative_includes_and_cycles(self):
         with TemporaryDirectory() as directory:

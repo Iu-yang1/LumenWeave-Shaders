@@ -90,13 +90,16 @@ class AdvancedShaderContracts(unittest.TestCase):
         self.assertIn("LW_REFLECTION_DH_DEPTH dhDepthTex0",source)
         self.assertIn("LW_REFLECTION_DEPTH depthtex0",source)
 
-    def test_dh_shadows_opt_in(self):
+    def test_advanced_budget(self):
         props = (ROOT/"shaders/shaders.properties").read_text()
         self.assertIn("dhShadow.enabled = true",props)
         for line in props.splitlines():
             if line.startswith("profile."):
-                self.assertNotIn(" DH_SHADOWS",line)
-                self.assertNotIn(" MATERIAL_SSR",line)
+                enabled=line.startswith(("profile.Ultra =","profile.Extreme ="))
+                tokens=set(line.split())
+                for feature in ("DH_SHADOWS","MATERIAL_SSR","PHYSICAL_ATMOSPHERE","INCREMENTAL_VOXELS"):
+                    self.assertIn(feature if enabled else "!"+feature,tokens)
+                self.assertIn("PROJECTION_JITTER:"+("2" if enabled else "0"),tokens)
 
     def test_dh_deferred_direct_only_shadow(self):
         lighting=(ROOT/"shaders/lib/lighting/dh_terrain_shadows.glsl").read_text()

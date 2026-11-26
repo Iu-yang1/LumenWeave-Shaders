@@ -16,11 +16,12 @@ class AtmosphereGpuContract(unittest.TestCase):
         self.assertIn("ATMO_KM_PER_BLOCK",aerial)
         self.assertIn("#ifdef LW_ATMOSPHERE_LUT_ACTIVE",aerial)
 
-    def test_no_default_profile_change(self):
+    def test_high_tier_default_lut(self):
         props = (ROOT/"shaders.properties").read_text()
         for line in props.splitlines():
             if line.startswith("profile."):
-                self.assertNotIn(" PHYSICAL_ATMOSPHERE",line)
+                enabled=line.startswith(("profile.Ultra =","profile.Extreme ="))
+                self.assertIn("PHYSICAL_ATMOSPHERE" if enabled else "!PHYSICAL_ATMOSPHERE",line.split())
 
     def test_prefix_integration_and_horizon_warp(self):
         import math

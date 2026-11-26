@@ -215,6 +215,10 @@ vec3 temporalSky(vec3 current,vec2 uv,ivec2 pixel) {
 #endif
 
 vec3 resolveCurrent(ivec2 pixel, vec2 stableUv, vec3 position, vec2 normal, bool water, bool distant) {
+#ifndef LW_DYNAMIC_JITTER
+    // Fixed sampling already lives at the output pixel centre.
+    return texelFetch(colortex0, pixel, 0).rgb;
+#else
     ivec2 size = textureSize(colortex0, 0);
     vec2 location = (stableUv + jitterOffset(frameCounter)) * vec2(size) - 0.5;
     ivec2 base = ivec2(floor(location));
@@ -228,6 +232,9 @@ vec3 resolveCurrent(ivec2 pixel, vec2 stableUv, vec3 position, vec2 normal, bool
             if (any(lessThan(neighbor, ivec2(0))) || any(greaterThanEqual(neighbor, size))) {
                 continue;
             }
+            vec2 weight = mix(1.0 - fraction, fraction, vec2(column, row));
+            float w = weight.x * weight.y;
+            if (w <= 0.00001) continue;
             vec2 neighborUv = (vec2(neighbor) + 0.5) / vec2(size);
             vec3 samplePosition;
             vec2 sampleNormal;
@@ -240,13 +247,12 @@ vec3 resolveCurrent(ivec2 pixel, vec2 stableUv, vec3 position, vec2 normal, bool
                     || dot(referenceNormal, decodeNormal(sampleNormal)) < 0.60) {
                 continue;
             }
-            vec2 weight = mix(1.0 - fraction, fraction, vec2(column, row));
-            float w = weight.x * weight.y;
             color += texelFetch(colortex0, neighbor, 0).rgb * w;
             sum += w;
         }
     }
     return sum > 0.0001 ? color / sum : texelFetch(colortex0, pixel, 0).rgb;
+#endif
 }
 
 void main() {
