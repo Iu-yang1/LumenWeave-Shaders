@@ -7,19 +7,33 @@
 layout(rgba16f) uniform image3D lwVoxelFirst;
 layout(r32ui) readonly uniform uimage3D lwVoxelOccupancy;
 layout(rgba32i) readonly uniform iimage2D lwVoxelMeta;
-layout(r8ui) writeonly uniform uimage3D lwVoxelDirtyTiles;
+layout(r8ui) uniform uimage3D lwVoxelDirtyTiles;
 uniform int frameCounter;
 uniform float frameTime;
 shared ivec4 previous;
 shared ivec3 origin;
 shared uint occupied;
+shared bool skipTile;
+shared ivec3 tileMeta;
 void main(){
     if(gl_LocalInvocationIndex==0u){
         previous=imageLoad(lwVoxelMeta,ivec2(0));
         origin=voxelCacheOrigin();
         occupied=0u;
+        ivec3 tile=ivec3(gl_WorkGroupID);
+        int side=LW_GRID_SIZE/4;
+        int index=tile.x+side*(tile.y+side*tile.z);
+        tileMeta=ivec3(index%LW_GRID_SIZE,(index/LW_GRID_SIZE)%LW_GRID_SIZE,2*LW_GRID_SIZE+index/(LW_GRID_SIZE*LW_GRID_SIZE));
+        bool stationary=previous.w==frameCounter-1 && all(equal(cameraPositionInt,previous.xyz));
+        skipTile=false;
+        if(stationary && (imageLoad(lwVoxelDirtyTiles,tile+ivec3(96,0,0)).r&4u)==0u)
+            skipTile=imageLoad(lwVoxelFirst,tileMeta).r==0.0;
     }
     barrier();
+    if(skipTile) {
+        if(gl_LocalInvocationIndex==0u) imageStore(lwVoxelDirtyTiles,ivec3(gl_WorkGroupID),uvec4(0u));
+        return;
+    }
     ivec3 local=ivec3(gl_GlobalInvocationID);
     ivec3 cell=voxelWrapNear(local+origin);
     ivec3 historyCell=cell+ivec3(0,0,LW_GRID_SIZE);
@@ -36,7 +50,10 @@ void main(){
     if(max(max(target.r,max(target.g,target.b)),max(value.r,max(value.g,value.b)))>0.0) atomicOr(occupied,1u);
     barrier();
     // The original dirty seed slab is no longer needed by propagation.
-    if(gl_LocalInvocationIndex==0u) imageStore(lwVoxelDirtyTiles,ivec3(gl_WorkGroupID),uvec4(occupied));
+    if(gl_LocalInvocationIndex==0u) {
+        imageStore(lwVoxelDirtyTiles,ivec3(gl_WorkGroupID),uvec4(occupied));
+        imageStore(lwVoxelFirst,tileMeta,vec4(float(occupied),0.0,0.0,0.0));
+    }
 }
 #else
 layout(local_size_x=1,local_size_y=1) in;

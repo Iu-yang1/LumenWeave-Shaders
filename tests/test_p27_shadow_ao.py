@@ -94,7 +94,7 @@ class ShadowAoTests(unittest.TestCase):
         self.assertIn("lwGroupFlags[lane]=flags",seed)
         irrad=(ROOT/"lib/voxel/irradiance.glsl").read_text()
         self.assertIn("tile+ivec3(96,0,0)",irrad)
-        self.assertIn("return sampleWrappedVoxel(field,sampleCell)",irrad)
+        self.assertIn("return sampleWrappedVoxelSlab(field,sampleCell",irrad)
 
     def test_cloud_octave_rejection_exact(self):
         rng=random.Random(272)

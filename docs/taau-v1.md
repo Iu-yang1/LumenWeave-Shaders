@@ -1,0 +1,6 @@
+# Full-scene TAAU V1 implementation contract (research)
+
+Iris legacy depth buffers remain window-size. Render a sub-rectangle by transforming every geometry clip position, not by resizing an isolated colortex attachment. For render size R and display size D, scale s=R/D; clip.xy'=s*clip.xy+(s-1)*clip.w. Native render UV = outputUV*s; inverse = renderUV/s. Use integer R dimensions and exact pixel-center mapping at odd sizes. Jitter must be in render-pixel units, projected before viewport transform. Clear unused border and never sample it.
+
+Required integration: (1) audit ALL geometry entries including vanilla fallback, terrain/entities/hand/sky/weather/clouds/DH and translucent ordering; (2) shared render/output grid for projection, G-buffer fetch, depth and native/DH Hi-Z, shadows remain unscaled; (3) reconstruct output history via depth, normals, disocclusion and reactive water/emission mask; (4) post effects consume output grid or explicitly map depth; (5) validate resize, FOV, teleport, frame-rate, mod geometry, edges and thin foliage. 
+P62 implements an effect-level half-res spatial reconstruction plus existing full-resolution temporal history, but does not establish full-scene geometry TAAU. See Iris docs rendering and Photon public implementation for viewport-scale design context, no code copied. Keep full resolution until real pipeline validation.

@@ -23,7 +23,7 @@ def resource_budget(options, width, height):
     voxel_bytes = 20 * size ** 3 if enabled("VOXEL_LIGHTING") else 0
     if voxel_bytes and enabled("INCREMENTAL_VOXELS"):
         voxel_bytes += (18 if options.get("VOXEL_FUSION", "1") == "1" else 34) * size ** 3 + 128 * 32 * 32 + 16
-    smooth_bytes=8*size**3 if voxel_bytes and enabled("INCREMENTAL_VOXELS") and enabled("SMOOTH_LIGHTING") else 0
+    smooth_bytes=8*size**2*(size+2) if voxel_bytes and enabled("INCREMENTAL_VOXELS") and enabled("SMOOTH_LIGHTING") else 0
     voxel_bytes+=smooth_bytes
     legacy_full=bool(voxel_bytes and enabled("INCREMENTAL_VOXELS") and options.get("VOXEL_FUSION")=="0" and enabled("PHYSICAL_ATMOSPHERE") and options.get("ATMO_PREBAKED")=="0")
     atmo_bytes = (ATMO_BYTES+16*int(options.get("ATMO_UPDATE_MODE","1")=="1" and not legacy_full)) if enabled("PHYSICAL_ATMOSPHERE") else 0

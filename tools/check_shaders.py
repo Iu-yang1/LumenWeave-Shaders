@@ -315,7 +315,7 @@ def check_modern_properties(compiler, path):
             raise ValueError(f"DOF overwrites Nether GI history: {overrides}")
     for size in (32,64,96,128):
         config=preprocess_properties(compiler,path,{**flags,"SMOOTH_LIGHTING":"1","VOXEL_GRID_SIZE":str(size)})
-        if config["image.lwVoxelFirst"].split()[-3:]!=[str(size),str(size),str(2*size)]:
+        if config["image.lwVoxelFirst"].split()[-3:]!=[str(size),str(size),str(2*size+2)]:
             raise ValueError("Smoothed voxel slab dimensions incorrect")
         if config.get("program.world0/prepare8.enabled")=="false":
             raise ValueError("Smoothed voxel occupancy expansion disabled")

@@ -16,3 +16,5 @@ Release archives contain LumenWeave shader source, original generated lookup tex
 - The shipped cloud, atmospheric, End and optional water lookup assets are generated from LumenWeave's own models by tools on `develop`.
 
 - Natural environment V1: original water-wave, weather, exposure, depth-of-field and solar-glare implementation inspired by MakeUp 9.6a (pinned above) and the visual appearance of [SEUS Renewed](https://www.sonicether.com/seus/). No code or texture assets copied from SEUS.
+
+- Rendering Efficiency V3 water gradient asset: original deterministic generator tools/generate_water_normal.py, no third-party texture source. Iris documentation used for raw custom textures and pass/hand depth semantics; Photon viewport-scaling concept used as research reference only.

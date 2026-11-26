@@ -71,3 +71,14 @@ class RenderingEfficiencyTests(unittest.TestCase):
         self.assertIn("traceMaterialCorrection(pixel",src)
         self.assertIn("weightSum<0.20",src)
         self.assertIn("metadata.a<0.28",src)
+
+    def test_voxel_tile_metadata_and_zero_work(self):
+        for n in (32,64,96,128):
+            side=n//4
+            coords={(i%n,(i//n)%n,2*n+i//(n*n)) for i in range(side**3)}
+            self.assertEqual(len(coords),side**3)
+            self.assertTrue(all(2*n<=p[2]<2*n+2 for p in coords))
+        source=(S/"programs/shared/prepare6.csh.glsl").read_text()
+        self.assertIn("if(skipTile)",source)
+        self.assertIn("previous.w==frameCounter-1 && all(equal(cameraPositionInt,previous.xyz))",source)
+        self.assertIn("imageLoad(lwVoxelFirst,tileMeta).r==0.0",source)
