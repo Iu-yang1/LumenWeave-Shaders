@@ -9,6 +9,28 @@ layout(rgba16f) writeonly uniform image3D LW_VOXEL_WRITE;
 #include "/lib/voxel/cache_coordinates.glsl"
 #endif
 
+// 4^3 interior + six 4x4 faces. Corners/edges of the halo are
+// never sampled by the six-neighbour stencil.
+shared vec3 lwStencil[160];
+
+ivec3 stencilCell(int index) {
+    if (index < 64) return ivec3(index%4,(index/4)%4,index/16);
+    int face = (index-64)/16;
+    int u = (index-64)%4;
+    int v = ((index-64)/4)%4;
+    int side = face%2 == 0 ? -1 : 4;
+    if (face/2 == 0) return ivec3(side,u,v);
+    if (face/2 == 1) return ivec3(u,side,v);
+    return ivec3(u,v,side);
+}
+
+int stencilIndex(ivec3 p) {
+    if (p.x < 0 || p.x > 3) return 64 + (p.x>3 ? 16 : 0) + p.y + 4*p.z;
+    if (p.y < 0 || p.y > 3) return 96 + (p.y>3 ? 16 : 0) + p.x + 4*p.z;
+    if (p.z < 0 || p.z > 3) return 128 + (p.z>3 ? 16 : 0) + p.x + 4*p.y;
+    return p.x + 4*p.y + 16*p.z;
+}
+
 void main() {
 #ifdef LW_VOXEL_INCREMENTAL_ACTIVE
     if (!voxelTileNeedsUpdate(1)) {
@@ -16,12 +38,30 @@ void main() {
     }
 #endif
     ivec3 cell = ivec3(gl_GlobalInvocationID);
-    uint seed = imageLoad(lwVoxelOccupancy, cell).r;
+    ivec3 local = ivec3(gl_LocalInvocationID);
+    ivec3 base = cell-local;
 #ifdef LW_VOXEL_INCREMENTAL_ACTIVE
-    ivec3 storageCell = voxelCacheCell(cell);
+    ivec3 origin = voxelCacheOrigin();
+    ivec3 storageCell = voxelWrap(cell+origin);
 #else
     ivec3 storageCell = cell;
 #endif
+    uint seed = imageLoad(lwVoxelOccupancy, cell).r;
+
+    // Every lane participates before any wall early return.
+    for (int i=int(gl_LocalInvocationIndex); i<160; i+=64) {
+        ivec3 sampleCell = base + stencilCell(i);
+        vec3 light = vec3(0.0);
+        if (withinVoxelGrid(sampleCell)) {
+#ifdef LW_VOXEL_INCREMENTAL_ACTIVE
+            light = imageLoad(LW_VOXEL_READ,voxelWrap(sampleCell+origin)).rgb;
+#else
+            light = imageLoad(LW_VOXEL_READ,sampleCell).rgb;
+#endif
+        }
+        lwStencil[i] = light;
+    }
+    barrier();
     if (seed >= LW_VOXEL_WALL) {
         imageStore(LW_VOXEL_WRITE, storageCell, vec4(0.0));
         return;
@@ -29,19 +69,7 @@ void main() {
     vec3 source = seed == 0u ? vec3(0.0) : voxelSeedEmission(seed);
     vec3 incoming = vec3(0.0);
     for (int stepIndex = 0; stepIndex < 6; ++stepIndex) {
-        ivec3 neighbor = cell + LW_VOXEL_DIRECTIONS[stepIndex];
-        if (withinVoxelGrid(neighbor)) {
-#ifdef LW_VOXEL_INCREMENTAL_ACTIVE
-            // A valid local neighbour differs by one cell. Wrap only this
-            // storage offset rather than rebuilding the camera origin.
-            ivec3 wrapped = storageCell + LW_VOXEL_DIRECTIONS[stepIndex];
-            wrapped += ivec3(lessThan(wrapped,ivec3(0))) * LW_GRID_SIZE;
-            wrapped -= ivec3(greaterThanEqual(wrapped,ivec3(LW_GRID_SIZE))) * LW_GRID_SIZE;
-            incoming = max(incoming,imageLoad(LW_VOXEL_READ,wrapped).rgb);
-#else
-            incoming = max(incoming, imageLoad(LW_VOXEL_READ, neighbor).rgb);
-#endif
-        }
+        incoming = max(incoming,lwStencil[stencilIndex(local+LW_VOXEL_DIRECTIONS[stepIndex])]);
     }
     imageStore(LW_VOXEL_WRITE, storageCell, vec4(max(source, incoming * 0.73), 0.0));
 }
