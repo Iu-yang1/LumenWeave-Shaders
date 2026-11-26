@@ -22,7 +22,7 @@ def resource_budget(options, width, height):
     size = int(options["VOXEL_GRID_SIZE"])
     voxel_bytes = 20 * size ** 3 if enabled("VOXEL_LIGHTING") else 0
     if voxel_bytes and enabled("INCREMENTAL_VOXELS"):
-        voxel_bytes += 34 * size ** 3 + 128 * 32 * 32 + 16
+        voxel_bytes += (18 if options.get("VOXEL_FUSION", "1") == "1" else 34) * size ** 3 + 128 * 32 * 32 + 16
     atmo_bytes = ATMO_BYTES if enabled("PHYSICAL_ATMOSPHERE") else 0
     ssr = enabled("MATERIAL_SSR") and enabled("DEFERRED_LIGHTING") and enabled("ADVANCED_WATER") and not enabled("LITE_LIGHTING")
     taa = int(options["AA_MODE"]) >= 2 and enabled("DEFERRED_LIGHTING")

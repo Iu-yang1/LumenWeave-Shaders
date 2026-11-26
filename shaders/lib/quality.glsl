@@ -10,6 +10,7 @@
 #define AA_MODE 2 // [0 1 2 3]
 #define PROJECTION_JITTER 0 // [0 1 2]
 //#define INCREMENTAL_VOXELS
+#define VOXEL_FUSION 1 // [0 1]
 //#define PHYSICAL_ATMOSPHERE
 //#define MATERIAL_SSR
 #define HIZ_MODE 1 // [0 1 2]

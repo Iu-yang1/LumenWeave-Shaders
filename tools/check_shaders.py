@@ -165,7 +165,7 @@ def preview_profiles(root, config_root=None):
 
 def preprocess_properties(compiler, path, defines):
     rows = {}
-    values = {"MC_VERSION": "12101", "HIZ_MODE": "1", "AO_RECONSTRUCTION": "1", "PROJECTION_JITTER": "0", **(defines if isinstance(defines, dict) else dict.fromkeys(defines, "1"))}
+    values = {"MC_VERSION": "12101", "HIZ_MODE": "1", "AO_RECONSTRUCTION": "1", "PROJECTION_JITTER": "0", "VOXEL_FUSION": "1", **(defines if isinstance(defines, dict) else dict.fromkeys(defines, "1"))}
     source = ["#version 330", *(f"#define {name} {value}" for name, value in values.items())]
     for index, line in enumerate(read_source(path).splitlines()):
         directive = line.strip()
@@ -255,8 +255,8 @@ def check_modern_properties(compiler, path):
             raise ValueError("Dependent compute dispatch must be serial")
         if config.get("program.world1/begin1.enabled") != "false":
             raise ValueError("End must not update Overworld sky LUT")
-        if len([key for key in config if key.startswith("image.")]) != 16:
-            raise ValueError("Custom image allocation must remain within 16")
+        if len([key for key in config if key.startswith("image.")]) != 14:
+            raise ValueError("Fused custom image allocation must equal 14")
     print("Modern/legacy compute capability matrix: 5 cases OK")
 
 
@@ -418,6 +418,7 @@ def main():
         profiles["ultra-no-history"] = {**profiles["profile.Ultra"], "SCREEN_GI_HISTORY": "false"}
         profiles["ultra-no-spatial"] = {**profiles["profile.Ultra"], "SCREEN_GI_SPATIAL": "false"}
         profiles["ultra-dynamic-projection"] = {**profiles["profile.Ultra"], "PROJECTION_JITTER": "2"}
+        profiles["ultra-legacy-voxel"] = {**profiles["profile.Ultra"], "VOXEL_FUSION": "0"}
         profiles["ultra-full-ao"] = {**profiles["profile.Ultra"], "AO_RECONSTRUCTION": "0"}
         profiles["high-fixed-projection"] = {**profiles["profile.High"], "PROJECTION_JITTER": "1"}
         profiles["screen-gi"] = {**profiles["profile.Standard"], "SCREEN_AO": "false", "SCREEN_GI": "true"}

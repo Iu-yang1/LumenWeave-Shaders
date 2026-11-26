@@ -184,3 +184,8 @@ value.SHADOW_HYBRID.0=软件
 value.SHADOW_HYBRID.1=自动混合
 option.GLOW_SOFTNESS=局部辉光柔化
 option.GLOW_SOFTNESS.comment=连续压缩浓密散射，避免光源附近形成大面积雾幕，0恢复原线性散射。
+
+option.VOXEL_FUSION=体素传播融合
+option.VOXEL_FUSION.comment=将四次传播合并为两次共享内存计算，保留传播步数和半精度中间结果；关闭可对照原四通道。
+value.VOXEL_FUSION.0=四通道
+value.VOXEL_FUSION.1=两通道融合
