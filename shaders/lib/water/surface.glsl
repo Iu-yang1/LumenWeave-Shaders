@@ -17,11 +17,16 @@ float waterThickness(vec3 viewPosition, vec2 screen) {
     return clamp(dot(background - viewPosition, normalize(viewPosition)), 0.0, 48.0);
 }
 
-vec3 waveNormal(vec3 normal, vec3 position) {
+vec3 waveNormal(vec3 normal, vec3 position, float skyAccess) {
     vec2 footprintX = dFdx(position.xz);
     vec2 footprintY = dFdy(position.xz);
     vec2 slope = waterWaveSlope(position.xz, footprintX, footprintY, frameTimeCounter, frameTime);
-    slope *= mix(1.0, 1.45, rainStrength) * smoothstep(0.65, 0.95, abs(normal.y));
+    float rain=rainStrength*skyAccess*float(hasSkylight);
+    slope *= mix(1.0,1.35,rain);
+#if RAIN_RIPPLES > 0
+    if(rain>0.001) slope+=rainRippleSlope(position.xz,frameTimeCounter,max(length(footprintX),length(footprintY)))*rain;
+#endif
+    slope*=smoothstep(0.65,0.95,abs(normal.y));
     return normalize(normal - vec3(slope.x, 0.0, slope.y) * sign(normal.y));
 }
 

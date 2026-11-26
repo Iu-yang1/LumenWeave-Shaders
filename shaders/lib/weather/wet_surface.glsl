@@ -1,0 +1,32 @@
+// Water-film response; preserve metal and emissive material identity.
+uniform float wetness;
+#ifndef LW_CAMERA_INT_UNIFORM
+#define LW_CAMERA_INT_UNIFORM
+uniform ivec3 cameraPositionInt;
+#endif
+#ifndef LW_CAMERA_FRACT_UNIFORM
+#define LW_CAMERA_FRACT_UNIFORM
+uniform vec3 cameraPositionFract;
+#endif
+float wetHash(vec2 p) {
+    vec3 q=fract(vec3(p.xyx)*0.1031);
+    q+=dot(q,q.yzx+33.33);
+    return fract((q.x+q.y)*q.z);
+}
+float wetNoise(vec2 p) {
+    vec2 i=floor(p), t=fract(p);t=t*t*(3.0-2.0*t);
+    return mix(mix(wetHash(i),wetHash(i+vec2(1,0)),t.x),
+        mix(wetHash(i+vec2(0,1)),wetHash(i+1.0),t.x),t.y);
+}
+void wetSurface(inout vec3 albedo,inout Material material,vec3 normal,vec2 lightLevels,vec3 viewPosition) {
+    if(!hasSkylight || wetness<=0.001 || material.metallic>0.5 || max(material.emission.r,max(material.emission.g,material.emission.b))>0.001) return;
+    float exposed=smoothstep(0.80,0.99,lightLevels.y);
+    float film=wetness*exposed*(0.25+0.75*smoothstep(-0.1,0.85,normal.y));
+    if(film<=0.001) return;
+    vec2 pos=(worldDirection(viewPosition)+vec3(cameraPositionInt)+cameraPositionFract).xz;
+    float basin=smoothstep(0.46,0.72,wetNoise(pos*0.23));
+    float puddle=film*film*smoothstep(0.91,0.995,normal.y)*basin*PUDDLE_STRENGTH;
+    albedo*=1.0-film*mix(0.12,0.29,material.roughness);
+    material.roughness=mix(material.roughness,min(material.roughness,0.38),film);
+    material.roughness=mix(material.roughness,min(material.roughness,0.10),puddle);
+}

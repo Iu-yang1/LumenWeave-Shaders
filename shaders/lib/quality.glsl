@@ -18,6 +18,10 @@
 #define SCENE_BUDGET 1 // [0 1]
 #define SKY_ENV_REUSE 1 // [0 1]
 #define WATER_PHASE_LUT 0 // [0 1]
+#define WATER_HYBRID_WAVES 1 // [0 1]
+#define RAIN_RIPPLES 1 // [0 1 2]
+#define WET_SURFACES
+#define PUDDLE_STRENGTH 0.65 // [0.0 0.25 0.5 0.65 0.8 1.0]
 #define BRDF_REUSE 1 // [0 1]
 #define ATMO_PREBAKED 1 // [0 1]
 #define END_NEBULA_ASSET 1 // [0 1]

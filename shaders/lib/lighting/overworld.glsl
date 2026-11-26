@@ -5,7 +5,8 @@ const float sunPathRotation = -30.0;
 
 uniform mat4 gbufferModelViewInverse;
 uniform vec3 sunPosition;
-uniform float rainStrength;
+uniform float lwRain;
+#define rainStrength lwRain
 uniform bool hasSkylight;
 uniform bool hasCeiling;
 uniform float ambientLight;
@@ -162,6 +163,7 @@ vec3 ambientIrradiance(vec2 light, float up, vec3 sun) {
             + blockLightIrradiance(light.x);
     }
     vec3 hemisphere = overworldEnvironment(up, daylight(sun));
+    hemisphere = mix(hemisphere, mix(vec3(0.025,0.031,0.041),vec3(0.30,0.34,0.39),daylight(sun)),rainStrength*0.62);
     return vec3(ambientFloor()) + sky * hemisphere * 0.82 * AMBIENT_STRENGTH
         + blockLightIrradiance(light.x);
 }

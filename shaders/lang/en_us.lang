@@ -286,3 +286,12 @@ option.BRDF_REUSE=PBR material reuse
 option.BRDF_REUSE.comment=Share view Fresnel and SSR weights; skip zero-weight sky evaluation.
 value.BRDF_REUSE.0=Original
 value.BRDF_REUSE.1=Reuse
+
+screen.WEATHER=Weather
+option.WATER_HYBRID_WAVES=Hybrid water waves
+option.RAIN_RIPPLES=Rain ripples
+option.WET_SURFACES=Wet surfaces
+option.PUDDLE_STRENGTH=Puddle strength
+value.RAIN_RIPPLES.0=Off
+value.RAIN_RIPPLES.1=Low
+value.RAIN_RIPPLES.2=High

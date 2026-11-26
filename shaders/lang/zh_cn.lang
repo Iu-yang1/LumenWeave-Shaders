@@ -286,3 +286,12 @@ option.BRDF_REUSE=PBR材质计算复用
 option.BRDF_REUSE.comment=复用视角菲涅尔和SSR权重，跳过零贡献环境采样。
 value.BRDF_REUSE.0=原路径
 value.BRDF_REUSE.1=复用
+
+screen.WEATHER=天气
+option.WATER_HYBRID_WAVES=混合水面波浪
+option.RAIN_RIPPLES=雨滴涟漪
+option.WET_SURFACES=湿润地表
+option.PUDDLE_STRENGTH=积水强度
+value.RAIN_RIPPLES.0=关闭
+value.RAIN_RIPPLES.1=低
+value.RAIN_RIPPLES.2=高

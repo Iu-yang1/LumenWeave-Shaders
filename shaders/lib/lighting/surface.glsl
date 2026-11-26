@@ -8,9 +8,16 @@
 #include "/lib/lighting/lite_shadows.glsl"
 #endif
 
+#ifdef WET_SURFACES
+#include "/lib/weather/wet_surface.glsl"
+#endif
+
 vec3 surfaceRadiance(vec3 albedo, Material material, vec3 normal, vec3 view, vec3 sun, vec2 lightLevels, vec3 viewPosition, out vec4 specularMetadata, out vec4 specularEnvironment) {
     specularMetadata = vec4(0.0);
     specularEnvironment = vec4(0.0);
+    #ifdef WET_SURFACES
+    wetSurface(albedo,material,normal,lightLevels,viewPosition);
+    #endif
     vec3 f0 = material.f0;
     float skyAccess = smoothstep(0.56, 1.0, lightLevels.y);
     vec3 light = sun.y >= 0.0 ? sun : -sun;

@@ -11,17 +11,17 @@ vec3 waterScatteringColor(vec3 biome) {
 }
 
 float waterFresnel(float cosine, bool submerged) {
-    if (submerged) {
-        float transmittedSineSquared = 1.777 * (1.0 - cosine * cosine);
-        if (transmittedSineSquared >= 1.0) {
-            return 1.0;
-        }
-        cosine = sqrt(1.0 - transmittedSineSquared);
-    }
-    float complement = 1.0 - cosine;
-    float fifth = complement * complement;
-    fifth *= fifth * complement;
-    return 0.0204 + 0.9796 * fifth;
+    // Exact unpolarized dielectric Fresnel for both directions.
+    float n1=submerged ? 1.333 : 1.0;
+    float n2=submerged ? 1.0 : 1.333;
+    float ci=clamp(cosine,0.0,1.0);
+    float eta=n1/n2;
+    float st2=eta*eta*(1.0-ci*ci);
+    if(st2>=1.0) return 1.0;
+    float ct=sqrt(max(0.0,1.0-st2));
+    float rs=(n1*ci-n2*ct)/max(n1*ci+n2*ct,0.00001);
+    float rp=(n2*ci-n1*ct)/max(n2*ci+n1*ct,0.00001);
+    return 0.5*(rs*rs+rp*rp);
 }
 
 vec3 waterToAirDirection(vec3 incident, vec3 normal) {

@@ -116,7 +116,7 @@ void main() {
         return;
 #else
         vec3 position = (gbufferModelViewInverse * vec4(viewPosition, 1.0)).xyz + cameraPosition;
-        normal = waveNormal(normal, position);
+        normal = waveNormal(normal, position,smoothstep(0.56,1.0,lightLevels.y));
         float fresnel = waterFresnel(clamp(dot(normal, view), 0.0, 1.0), isEyeInWater == 1);
         vec3 reflection = skyRadiance(reflect(-view, normal), sun);
         float thickness = isEyeInWater == 1 ? 0.0

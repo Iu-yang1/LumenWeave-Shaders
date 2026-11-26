@@ -72,7 +72,7 @@ void main() {
     vec3 eyeDirection = normalize(worldDirection(-viewPosition));
     vec3 position = (gbufferModelViewInverse * vec4(viewPosition, 1.0)).xyz + cameraPosition;
     normal = faceforward(normal, -eyeDirection, normal);
-    normal = waveNormal(normal, position);
+    normal = waveNormal(normal, position,smoothstep(0.56,1.0,lightLevels.y));
     float fresnel = waterFresnel(clamp(dot(normal, eyeDirection), 0.0, 1.0), isEyeInWater == 1);
     vec3 reflected = reflect(-eyeDirection, normal);
     if (isEyeInWater == 1) {

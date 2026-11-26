@@ -66,7 +66,7 @@ vec3 applyAerialPerspective(vec3 scene, vec3 viewPosition, float boundaryFade) {
     float miePhase = 0.35 + 2.1 * forward * forward * forward * forward;
 #else
     float aerosol = aerialColumn(distanceToEye, height, height + displacement.y, 65.0)
-        * mix(0.00032, 0.0042, rainStrength);
+        * mix(0.00032, 0.0055, rainStrength);
     // Bounded Henyey-Greenstein lobe, not an isotropic screen fog.
     float g = mix(0.68, 0.48, rainStrength);
     float denominator = max(1.0 + g*g - 2.0*g*cosine, 0.04);
