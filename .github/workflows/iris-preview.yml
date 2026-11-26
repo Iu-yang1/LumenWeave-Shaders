@@ -42,9 +42,11 @@ jobs:
           python tools/package.py
           python tools/package.py --p0
           python tools/package.py --voxel-probe
+          python tools/package.py --taau-probe
           python -m zipfile --test dist/LumenWeave-Shaders-P5-Preview.zip
           python -m zipfile --test dist/LumenWeave-Shaders-P0.zip
           python -m zipfile --test dist/LumenWeave-Voxel-Probe.zip
+          python -m zipfile --test dist/LumenWeave-TAAU-Experimental-Probe.zip
           cd dist
           sha256sum --check -- *.sha256
       - name: Upload preview
@@ -74,6 +76,16 @@ jobs:
           path: |
             dist/LumenWeave-Voxel-Probe.zip
             dist/LumenWeave-Voxel-Probe.zip.sha256
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 30
+      - name: Upload TAAU probe
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: LumenWeave-TAAU-Experimental-Probe
+          path: |
+            dist/LumenWeave-TAAU-Experimental-Probe.zip
+            dist/LumenWeave-TAAU-Experimental-Probe.zip.sha256
           if-no-files-found: error
           compression-level: 0
           retention-days: 30

@@ -29,6 +29,15 @@ vec3 viewAt(ivec2 p,float depth){
     vec4 v=gbufferProjectionInverse*vec4(outputUvAt(vec2(p))*2.0-1.0,depth*2.0-1.0,1.0);
     return v.xyz/v.w;
 }
+vec2 octEncode(vec3 n){
+    n/=max(abs(n.x)+abs(n.y)+abs(n.z),1e-6);
+    return n.z>=0.0?n.xy:(1.0-abs(n.yx))*mix(vec2(-1.0),vec2(1.0),greaterThanEqual(n.xy,vec2(0.0)));
+}
+vec3 octDecode(vec2 p){
+    vec3 n=vec3(p,1.0-abs(p.x)-abs(p.y));
+    if(n.z<0.0) n.xy=(1.0-abs(n.yx))*mix(vec2(-1.0),vec2(1.0),greaterThanEqual(n.xy,vec2(0.0)));
+    return normalize(n);
+}
 void main(){
     ivec2 hi=ivec2(renderSize())-1;
     vec2 src=nativeUv(uv)*displaySize()-0.5;
@@ -37,7 +46,7 @@ void main(){
     vec3 n=texelFetch(colortex1,p,0).xyz;
     vec4 current=texelFetch(colortex0,p,0);
     historyColor=vec4(current.rgb,0.0);
-    historyGeometry=vec4(n,0.0);
+    historyGeometry=vec4(0.0);
     if(depth>=1.0 || dot(n,n)<0.5) return;
     vec3 view=viewAt(p,depth);
     float linearDepth=-view.z;
@@ -69,10 +78,8 @@ void main(){
             if(all(greaterThan(prev,vec2(0)))&&all(lessThan(prev,vec2(1)))){
                 ivec2 q=clamp(ivec2(prev*displaySize()),ivec2(0),ivec2(displaySize())-1);
                 vec4 hist=texelFetch(colortex4,q,0),geom=texelFetch(colortex5,q,0);
-                // Packed exact dimensions are avoided: history is invalidated by depth,
-                // normal, frame counter and a render-size tag.
-                float tag=renderSize().x+renderSize().y*65536.0;
-                if(frameCounter>0 && geom.a==tag && hist.a>0.0 && abs(hist.a+previous.z)<=max(0.08,-previous.z*0.02) && dot(n,geom.xyz)>0.90){
+                // Store both dimensions separately, avoiding float packing collisions.
+                if(frameCounter>0 && all(equal(geom.zw,renderSize())) && hist.a>0.0 && abs(hist.a+previous.z)<=max(0.08,-previous.z*0.02) && dot(n,octDecode(geom.xy))>0.90){
                     float motion=length((prev-uv)*displaySize());
                     vec3 envelope=max((high-low)*0.25,vec3(0.005));
                     resolved=mix(resolved,clamp(hist.rgb,low-envelope,high+envelope),mix(0.88,0.5,smoothstep(1.0,12.0,motion)));
@@ -81,5 +88,5 @@ void main(){
         }
     }
     historyColor=vec4(resolved,linearDepth);
-    historyGeometry=vec4(n,renderSize().x+renderSize().y*65536.0);
+    historyGeometry=vec4(octEncode(n),renderSize());
 }

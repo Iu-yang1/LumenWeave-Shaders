@@ -1,3 +1,4 @@
+#include "/lib/grid.glsl"
 in vec2 texCoord;
 in vec4 vertexColor;
 in vec3 normalWorld;
@@ -11,6 +12,7 @@ layout(location=1) out vec4 normal;
 const int colortex0Format=RGBA16F;
 const int colortex1Format=RGBA16F;
 void main(){
+    if(any(greaterThanEqual(gl_FragCoord.xy,renderSize()))) discard;
     vec4 base=vertexColor;
 #ifdef LW_TEXTURED
     base*=texture(gtexture,texCoord);
