@@ -4,9 +4,7 @@
 #define LW_REFLECTION_DEPTH depthtex1
 #define LW_REFLECTION_DH_DEPTH dhDepthTex1
 #endif
-#ifdef LW_NATIVE_HIZ
 #include "/lib/lighting/hiz.glsl"
-#endif
 uniform sampler2D colortex8;
 uniform mat4 gbufferProjection;
 #ifdef DISTANT_HORIZONS
@@ -53,12 +51,6 @@ bool reflectionRayDepth(vec3 ray,out vec2 uv,out float delta,out int kind) {
     uv=reflectionProjectedUv(ray,gbufferProjection,rayDepth);
     kind=0;
     if(!insideScreen(uv)) return false;
-#if defined(LW_NATIVE_HIZ) && defined(LW_HIZ_ACTIVE)
-    if(hizRayInFront(uv,rayDepth,textureSize(LW_REFLECTION_DEPTH,0))) {
-        delta=-1.0;
-        return true;
-    }
-#endif
     ivec2 pixel=depthPixelAtUv(LW_REFLECTION_DEPTH,uv);
     float depth=texelFetch(LW_REFLECTION_DEPTH,pixel,0).r;
     if(depth<1.0) {
@@ -87,6 +79,37 @@ bool reflectionRayDepth(vec3 ray,out vec2 uv,out float delta,out int kind) {
 vec4 traceScreenReflection(vec3 origin,vec3 direction,int steps,out vec2 hitUv,out float hitTravel,out int hitKind) {
     float travel=0.30;
     float maxTravel=steps<=8 ? 12.0 : 48.0;
+#ifdef LW_HIZ_ACTIVE
+    ivec2 candidate;float candidateTravel,candidateDelta;
+#ifdef LW_NATIVE_HIZ
+    const bool solid=false;
+#else
+    const bool solid=true;
+#endif
+#ifdef DISTANT_HORIZONS
+    const bool dhFallback=true;
+#else
+    const bool dhFallback=false;
+#endif
+    int status=hizTrace(LW_REFLECTION_DEPTH,gbufferProjection,gbufferProjectionInverse,
+        origin,direction,travel,maxTravel,max(32,steps*8),solid,dhFallback,true,
+        candidate,candidateTravel,candidateDelta);
+    if(status==1) {
+        float thickness=0.20+candidateTravel*0.035;
+        if(candidateDelta<thickness && candidateTravel>0.12) {
+            hitUv=depthPixelUv(LW_REFLECTION_DEPTH,candidate);
+            hitTravel=candidateTravel;hitKind=1;
+            vec2 edge=min(hitUv,1.0-hitUv);
+            float confidence=smoothstep(0.0,0.08,min(edge.x,edge.y))
+                *(1.0-smoothstep(18.0,48.0,hitTravel))
+                *(1.0-smoothstep(thickness*0.65,thickness,candidateDelta));
+            return vec4(texture(colortex8,hitUv).rgb,confidence);
+        }
+    } else if(status==0) {
+        hitUv=vec2(0);hitTravel=0.0;hitKind=0;
+        return vec4(0);
+    }
+#endif
     float stepRatio=pow((maxTravel+1.0)/1.30,1.0/float(max(steps-1,1)));
     float previousTravel=0.0;
     bool previousFront=false;

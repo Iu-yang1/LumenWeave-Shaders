@@ -68,7 +68,7 @@ class DeepPipelineTests(unittest.TestCase):
         rng=random.Random(1001)
         for width,height in ((17,19),(31,37),(64,33)):
             depths=[[rng.choice((rng.random(),1.0)) for _ in range(width)] for _ in range(height)]
-            for tile_size in (4,16):
+            for tile_size in (4,16,64):
                 for ty in range(0,height,tile_size):
                     for tx in range(0,width,tile_size):
                         values=[depths[y][x] for y in range(ty,min(ty+tile_size,height))
@@ -131,6 +131,9 @@ class DeepPipelineTests(unittest.TestCase):
         hi=(SHADERS/"lib/lighting/hiz.glsl").read_text()
         self.assertIn("rayDepth+0.0000002<bounds.x",hi)
         self.assertIn("bounds.y>=1.0",hi)
+        self.assertIn("hizTileExit",hi)
+        self.assertIn("scale=64;scale>=4;scale/=4",hi)
+        self.assertIn("solid",hi)
         props=(SHADERS/"shaders.properties").read_text()
         self.assertIn("image.lwHiZImage = lwHiZ rg rg32f",props)
         self.assertIn("indirect.prepare1 = 0 0",props)

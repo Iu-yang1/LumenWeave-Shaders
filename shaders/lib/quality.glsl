@@ -103,7 +103,7 @@
 
 // Stable native depth only; dynamic reanchoring can shift hit depth.
 #if defined(DEFERRED_LIGHTING) && !defined(LW_DYNAMIC_JITTER) && defined(IRIS_FEATURE_CUSTOM_IMAGES) && defined(IRIS_FEATURE_COMPUTE_SHADERS)
-#if defined(SCREEN_GI) || defined(LW_MATERIAL_SSR_ACTIVE)
+#if defined(SCREEN_GI) || defined(LW_MATERIAL_SSR_ACTIVE) || defined(ADVANCED_WATER)
 #define LW_HIZ_ACTIVE
 #endif
 #endif

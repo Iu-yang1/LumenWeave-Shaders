@@ -9,6 +9,13 @@ struct ScreenBounce {
 ScreenBounce screenBounceRay(vec3 origin, vec3 direction, mat3 toView, vec3 sun) {
     float travel = 0.16;
     ivec2 resolution = textureSize(depthtex0, 0);
+#ifdef LW_HIZ_ACTIVE
+    ivec2 candidate;float candidateTravel,candidateDelta;
+    int status=hizTrace(depthtex0,gbufferProjection,gbufferProjectionInverse,
+        origin,direction,travel,3.9,48,false,false,false,candidate,candidateTravel,candidateDelta);
+    if(status==0) return ScreenBounce(vec3(0),vec3(0),0.0);
+    if(status==1) travel=candidateTravel;
+#endif
     for (int tap = 0; tap < 8; ++tap) {
         vec3 position = origin + direction * travel;
         if (position.z >= -0.12) {
@@ -23,13 +30,14 @@ ScreenBounce screenBounceRay(vec3 origin, vec3 direction, mat3 toView, vec3 sun)
         if (min(edge.x, edge.y) <= 0.0) {
             break;
         }
+        ivec2 pixel = ivec2(uv * vec2(resolution));
 #ifdef LW_HIZ_ACTIVE
-        if (hizRayInFront(uv,clip.z/clip.w*0.5+0.5,resolution)) {
-            travel = travel * 1.32 + 0.16;
-            continue;
+        if(status==1) {
+            pixel=candidate;
+            uv=(vec2(pixel)+0.5)/vec2(resolution);
+            edge=min(uv,1.0-uv);
         }
 #endif
-        ivec2 pixel = ivec2(uv * vec2(resolution));
         float depth = texelFetch(depthtex0, pixel, 0).r;
         if (depth < 1.0) {
             vec2 pixelUv = (vec2(pixel) + 0.5) / vec2(resolution);
@@ -45,6 +53,9 @@ ScreenBounce screenBounceRay(vec3 origin, vec3 direction, mat3 toView, vec3 sun)
             hitPosition = reconstructViewPosition(pixelUv, depth);
 #endif
             float delta = hitPosition.z - position.z;
+#ifdef LW_HIZ_ACTIVE
+            if(status==1) delta=candidateDelta;
+#endif
             if (delta >= 0.0) {
                 float thickness = 0.12 + travel * 0.07;
                 if (delta >= thickness) {
@@ -92,6 +103,9 @@ ScreenBounce screenBounceRay(vec3 origin, vec3 direction, mat3 toView, vec3 sun)
                 return hit;
             }
         }
+        #ifdef LW_HIZ_ACTIVE
+        if(status==1) break;
+        #endif
         travel = travel * 1.32 + 0.16;
     }
     return ScreenBounce(vec3(0.0), vec3(0.0), 0.0);
