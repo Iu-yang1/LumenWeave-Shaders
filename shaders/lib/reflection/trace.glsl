@@ -4,6 +4,9 @@
 #define LW_REFLECTION_DEPTH depthtex1
 #define LW_REFLECTION_DH_DEPTH dhDepthTex1
 #endif
+#ifdef LW_NATIVE_HIZ
+#include "/lib/lighting/hiz.glsl"
+#endif
 uniform sampler2D colortex8;
 uniform mat4 gbufferProjection;
 #ifdef DISTANT_HORIZONS
@@ -43,6 +46,12 @@ bool reflectionRayDepth(vec3 ray,out vec2 uv,out float delta,out int kind) {
     uv=reflectionProjectedUv(ray,gbufferProjection);
     kind=0;
     if(!insideScreen(uv)) return false;
+#if defined(LW_NATIVE_HIZ) && defined(LW_HIZ_ACTIVE)
+    if(hizRayInFront(uv,ray,textureSize(LW_REFLECTION_DEPTH,0),gbufferProjection)) {
+        delta=-1.0;
+        return true;
+    }
+#endif
     ivec2 pixel=depthPixelAtUv(LW_REFLECTION_DEPTH,uv);
     float depth=texelFetch(LW_REFLECTION_DEPTH,pixel,0).r;
     if(depth<1.0) {
