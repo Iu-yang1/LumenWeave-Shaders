@@ -124,6 +124,18 @@ vec3 temporalColor(vec3 current, vec3 viewPosition, vec2 normal, ivec2 pixel, ma
         return current;
     }
     vec2 size = vec2(textureSize(colortex4, 0));
+#if defined(TEMPORAL_REUSE) && !defined(LW_DYNAMIC_JITTER)
+    if(!water && !distant && length((previousUv-texCoord)*size)<0.20) {
+        vec4 history=texelFetch(colortex4,pixel,0);
+        vec4 metadata=texelFetch(colortex5,pixel,0);
+        if(matchesHistoryDepth(history.a,expectedDepth) &&
+            all(lessThanEqual(abs(metadata.zw-size),vec2(1.0))) &&
+            dot(decodeNormal(normal),decodeNormal(metadata.xy))>0.96 &&
+            all(lessThanEqual(abs(history.rgb-current),vec3(0.001)+abs(current)*0.008))) {
+            return mix(current,history.rgb,0.92);
+        }
+    }
+#endif
     vec4 historySample = filteredHistory(previousUv, expectedDepth, normal, water, distant, false);
     if (historySample.a <= 0.0) {
         return current;

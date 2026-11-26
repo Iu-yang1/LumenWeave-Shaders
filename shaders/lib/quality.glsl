@@ -13,6 +13,9 @@
 //#define PHYSICAL_ATMOSPHERE
 //#define MATERIAL_SSR
 #define HIZ_MODE 1 // [0 1 2]
+#define ADAPTIVE_SHADING
+#define TEMPORAL_REUSE
+#define ADAPTIVE_SHADOWS
 //#define DH_SHADOWS
 //#define VOLUME_EFFECTS
 //#define VOXEL_LIGHTING

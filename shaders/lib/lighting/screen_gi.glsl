@@ -98,7 +98,13 @@ ScreenBounce screenBounceRay(vec3 origin, vec3 direction, mat3 toView, vec3 sun)
 #endif
 #ifdef SCENE_SHADOWS
                 if (hasSkylight && daylightWeight > 0.0) {
+#ifdef ADAPTIVE_SHADING
+                    if(daylightWeight>0.025)
+                        daylightWeight*=mix(1.0,sceneShadow(worldPosition,hitNormal,light),
+                            smoothstep(0.025,0.10,daylightWeight));
+#else
                     daylightWeight *= sceneShadow(worldPosition, hitNormal, light);
+#endif
                 }
 #endif
                 vec3 sky = max(ambientIrradiance(vec2(0.0, geometry.w), hitNormal.y, sun)

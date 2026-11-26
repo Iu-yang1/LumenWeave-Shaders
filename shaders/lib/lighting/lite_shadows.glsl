@@ -37,7 +37,7 @@ float filteredShadow(vec2 uv, float receiverDepth, ivec2 resolution) {
     return mix(mix(lowerLeft, lowerRight, fraction.x), mix(upperLeft, upperRight, fraction.x), fraction.y);
 }
 
-float softShadow(vec3 receiver) {
+float softShadow(vec3 receiver, float viewDistance) {
     const vec2 taps[8] = vec2[8](
         vec2(-0.59, -0.57), vec2(-0.22, -0.11), vec2(-0.87, 0.20), vec2(-0.17, 0.82),
         vec2(0.39, 0.42), vec2(0.62, -0.54), vec2(0.12, -0.85), vec2(0.89, 0.14)
@@ -46,8 +46,15 @@ float softShadow(vec3 receiver) {
     vec2 texel = 1.0 / vec2(resolution);
     float sum = 0.0;
     float count = 0.0;
-    for (int index = 0; index < SHADOW_FILTER_TAPS; ++index) {
-        float depth = shadowDepth(receiver.xy + taps[index] * texel * 3.5, resolution);
+    int blockerTaps=SHADOW_FILTER_TAPS;
+    int filterTaps=SHADOW_FILTER_TAPS;
+#ifdef ADAPTIVE_SHADOWS
+    if(viewDistance>28.0) blockerTaps=min(4,SHADOW_FILTER_TAPS);
+    if(viewDistance>48.0) filterTaps=min(4,SHADOW_FILTER_TAPS);
+#endif
+    for (int index = 0; index < blockerTaps; ++index) {
+        int tap=index*SHADOW_FILTER_TAPS/blockerTaps;
+        float depth = shadowDepth(receiver.xy + taps[tap] * texel * 3.5, resolution);
         if (depth < receiver.z) {
             sum += depth;
             count += 1.0;
@@ -59,10 +66,14 @@ float softShadow(vec3 receiver) {
     float separation = (receiver.z - sum / count) * (2.0 / abs(shadowProjection[2][2]));
     float radius = clamp(separation * 0.018 / (2.0 * shadowDistance * texel.x), 1.0, 8.0);
     float samples = filteredShadow(receiver.xy, receiver.z, resolution);
-    for (int index = 0; index < SHADOW_FILTER_TAPS; ++index) {
-        samples += filteredShadow(receiver.xy + taps[index] * texel * radius, receiver.z, resolution);
+#ifdef ADAPTIVE_SHADOWS
+    if(viewDistance>28.0 && radius<=1.5) filterTaps=min(4,filterTaps);
+#endif
+    for (int index = 0; index < filterTaps; ++index) {
+        int tap=index*SHADOW_FILTER_TAPS/filterTaps;
+        samples += filteredShadow(receiver.xy + taps[tap] * texel * radius, receiver.z, resolution);
     }
-    return samples / float(SHADOW_FILTER_TAPS + 1);
+    return samples / float(filterTaps + 1);
 }
 #endif
 
@@ -83,7 +94,7 @@ float sceneShadow(vec3 position, vec3 normal, vec3 light) {
     }
     samplePosition.z -= clamp(0.16 / float(shadowMapResolution), 0.00004, 0.00020);
 #ifdef SOFT_SHADOWS
-    float visibility = softShadow(samplePosition);
+    float visibility = softShadow(samplePosition,length(position));
 #else
     float visibility = texture(shadowtex0, samplePosition);
 #endif

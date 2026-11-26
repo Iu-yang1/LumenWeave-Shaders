@@ -140,3 +140,10 @@ option.HIZ_MODE.comment=Adaptive preserves the original ray budget and rejects p
 value.HIZ_MODE.0=Off
 value.HIZ_MODE.1=Adaptive
 value.HIZ_MODE.2=Full traversal
+
+option.ADAPTIVE_SHADING=Visibility-adaptive shading
+option.ADAPTIVE_SHADING.comment=Preserve near detail and reduce low-contribution reflection and indirect shadow work.
+option.TEMPORAL_REUSE=Static temporal reuse
+option.TEMPORAL_REUSE.comment=Alternate indirect-light refresh for stable views with geometry validation.
+option.ADAPTIVE_SHADOWS=Adaptive shadow filtering
+option.ADAPTIVE_SHADOWS.comment=Full near-field samples, fewer distant blocker and filter taps.

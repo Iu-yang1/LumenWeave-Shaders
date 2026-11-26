@@ -25,15 +25,28 @@ uniform sampler2D depthtex0;
 uniform mat4 gbufferProjection;
 
 #include "/lib/lighting/screen_gi.glsl"
+#if defined(TEMPORAL_REUSE) && defined(SCREEN_GI_HISTORY) && defined(LW_TAA_ACTIVE) && !defined(LW_DYNAMIC_JITTER)
+#define LW_GI_REUSE
+#include "/lib/temporal/reproject.glsl"
+uniform sampler2D colortex9;
+uniform sampler2D colortex7;
+#ifdef LW_VOXEL_DIFFUSE_ACTIVE
+uniform sampler2D colortex10;
+#endif
+#endif
 
 /*
 const int colortex9Format = RGBA16F;
+const bool colortex9Clear = false;
+const vec4 colortex9ClearColor = vec4(0.0, 0.0, 0.0, 0.0);
 */
 #ifdef LW_VOXEL_DIFFUSE_ACTIVE
 layout(location = 1) out vec4 blockTrace;
 /* RENDERTARGETS: 9,10 */
 /*
 const int colortex10Format = RGBA16F;
+const bool colortex10Clear = false;
+const vec4 colortex10ClearColor = vec4(0.0, 0.0, 0.0, 0.0);
 */
 #else
 /* RENDERTARGETS: 9 */
@@ -62,6 +75,30 @@ void main() {
 #ifdef LW_STABLE_DYNAMIC
     viewPosition = stableViewSurfacePosition(viewPosition, sampleUv,
         transpose(mat3(gbufferModelViewInverse)) * normal, gbufferProjectionInverse);
+#endif
+#ifdef LW_GI_REUSE
+    // Every tile receives a fresh trace at least every other frame.
+    ivec2 tile=ivec2(gl_FragCoord.xy);
+    vec2 previousUv;float expectedDepth;
+    vec3 cameraDelta=vec3(cameraPositionInt-previousCameraPositionInt)
+        +cameraPositionFract-previousCameraPositionFract;
+    if(((tile.x+tile.y+frameCounter)&1)==0 && -viewPosition.z>3.0 &&
+        dot(cameraDelta,cameraDelta)<0.0004 &&
+        reprojectStableTerrain(viewPosition,previousUv,expectedDepth,gbufferPreviousProjection) &&
+        length((previousUv-sampleUv)*vec2(fullSize))<0.35 &&
+        all(lessThan(tile,textureSize(colortex9,0)))) {
+        vec4 previous=texelFetch(colortex9,tile,0);
+        vec4 metadata=texelFetch(colortex7,pixel,0);
+        if(matchesHistoryDepth(previous.a,expectedDepth) &&
+            all(lessThanEqual(abs(metadata.zw-vec2(fullSize)),vec2(1.0))) &&
+            dot(normal,decodeNormal(metadata.xy))>0.92) {
+            skyTrace=vec4(previous.rgb,-viewPosition.z);
+#ifdef LW_VOXEL_DIFFUSE_ACTIVE
+            blockTrace=texelFetch(colortex10,tile,0);
+#endif
+            return;
+        }
+    }
 #endif
     ScreenBounce bounce = screenDiffuseBounce(viewPosition, normal, sunDirection());
     skyTrace = vec4(bounce.sky, -viewPosition.z);

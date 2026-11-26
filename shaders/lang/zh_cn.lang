@@ -140,3 +140,10 @@ option.HIZ_MODE.comment=自适应模式保留原采样预算并跳过已证实�
 value.HIZ_MODE.0=关闭
 value.HIZ_MODE.1=自适应
 value.HIZ_MODE.2=完整遍历
+
+option.ADAPTIVE_SHADING=可见贡献自适应
+option.ADAPTIVE_SHADING.comment=优先近景，减少低贡献反射与间接阴影计算。
+option.TEMPORAL_REUSE=静态时域复用
+option.TEMPORAL_REUSE.comment=静态视角下交替刷新间接光，保留几何验证。
+option.ADAPTIVE_SHADOWS=自适应阴影滤波
+option.ADAPTIVE_SHADOWS.comment=近处完整采样，远处减少阴影搜索与滤波次数。

@@ -90,8 +90,8 @@ void main() {
     reflectionGeometry=vec4(0.0);
 #endif
     vec4 metadata=texelFetch(colortex12,pixel,0);
-    vec4 fallback=texelFetch(colortex13,pixel,0);
-    if(fallback.a<=0.0 || max(metadata.r,max(metadata.g,metadata.b))<=0.001) return;
+    float reflectance=max(metadata.r,max(metadata.g,metadata.b));
+    if(reflectance<=0.001) return;
     float depth=texelFetch(depthtex0,pixel,0).r;
     vec4 materialDepth=texelFetch(colortex2,pixel,0);
     if(depth>=1.0 || abs(depth-materialDepth.x)>0.00000012) return;
@@ -107,20 +107,30 @@ void main() {
     float roughness=metadata.a;
     float smoothness=1.0-smoothstep(0.18,0.65,roughness);
     if(smoothness<=0.001 || MATERIAL_REFLECTION_STEPS == 0) return;
+    float contribution=1.0;
+    int steps=MATERIAL_REFLECTION_STEPS;
+#ifdef ADAPTIVE_SHADING
+    contribution=(1.0-smoothstep(80.0,144.0,-viewPosition.z))
+        *smoothstep(0.002,0.012,reflectance*smoothness);
+    if(contribution<=0.001) return;
+    if(-viewPosition.z>36.0 || roughness>0.38)
+        steps=min(steps,max(9,steps/2));
+#endif
     vec2 hitUv;float travel;int hitKind;
-    vec4 hit=traceScreenReflection(viewPosition+toView*normal*0.07,toView*reflected,MATERIAL_REFLECTION_STEPS,hitUv,travel,hitKind);
+    vec4 hit=traceScreenReflection(viewPosition+toView*normal*0.07,toView*reflected,steps,hitUv,travel,hitKind);
     vec3 correction=vec3(0.0);
     if(hit.a>0.0) {
         vec3 filtered=filterReflection(hit.rgb,hitUv,travel,hitKind,roughness);
         // Replace exact environment contribution; indoor rays are independent of sky access.
-        correction=(filtered*metadata.rgb-fallback.rgb)*(hit.a*smoothness);
+        vec3 fallback=texelFetch(colortex13,pixel,0).rgb;
+        correction=(filtered*metadata.rgb-fallback)*(hit.a*smoothness);
     }
 #ifdef LW_TAA_ACTIVE
     correction=temporalReflectionCorrection(correction,hit.a,viewPosition,normal,texCoord);
     reflectionHistory=vec4(correction,-viewPosition.z);
     reflectionGeometry=vec4(geometry.xy,vec2(textureSize(depthtex0,0)));
 #endif
-    opaqueOutput.rgb=max(opaqueOutput.rgb+correction,vec3(0.0));
+    opaqueOutput.rgb=max(opaqueOutput.rgb+correction*contribution,vec3(0.0));
     sceneOutput.rgb=applySceneFog(opaqueOutput.rgb,viewPosition);
 }
 #else
