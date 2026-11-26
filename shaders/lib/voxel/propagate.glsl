@@ -12,6 +12,7 @@ layout(rgba16f) writeonly uniform image3D LW_VOXEL_WRITE;
 // 4^3 interior + six 4x4 faces. Corners/edges of the halo are
 // never sampled by the six-neighbour stencil.
 shared vec3 lwStencil[160];
+shared uint lwOpenMask[2];
 
 ivec3 stencilCell(int index) {
     if (index < 64) return ivec3(index%4,(index/4)%4,index/16);
@@ -47,6 +48,35 @@ void main() {
     ivec3 storageCell = cell;
 #endif
     uint seed = imageLoad(lwVoxelOccupancy, cell).r;
+
+    // Dense open tiles benefit from cooperative halo reads; solid/sparse
+    // tiles keep the direct stencil instead of loading an unused halo.
+    if (gl_LocalInvocationIndex < 2u) lwOpenMask[gl_LocalInvocationIndex] = 0u;
+    barrier();
+    if (seed < LW_VOXEL_WALL)
+        atomicOr(lwOpenMask[gl_LocalInvocationIndex/32u],1u << (gl_LocalInvocationIndex%32u));
+    barrier();
+    int openCount = bitCount(lwOpenMask[0]) + bitCount(lwOpenMask[1]);
+    if (openCount < 32) {
+        if (seed >= LW_VOXEL_WALL) {
+            imageStore(LW_VOXEL_WRITE,storageCell,vec4(0.0));
+            return;
+        }
+        vec3 source = seed == 0u ? vec3(0.0) : voxelSeedEmission(seed);
+        vec3 incoming = vec3(0.0);
+        for (int stepIndex=0; stepIndex<6; ++stepIndex) {
+            ivec3 neighbor=cell+LW_VOXEL_DIRECTIONS[stepIndex];
+            if (withinVoxelGrid(neighbor)) {
+#ifdef LW_VOXEL_INCREMENTAL_ACTIVE
+                incoming=max(incoming,imageLoad(LW_VOXEL_READ,voxelWrap(neighbor+origin)).rgb);
+#else
+                incoming=max(incoming,imageLoad(LW_VOXEL_READ,neighbor).rgb);
+#endif
+            }
+        }
+        imageStore(LW_VOXEL_WRITE,storageCell,vec4(max(source,incoming*0.73),0.0));
+        return;
+    }
 
     // Every lane participates before any wall early return.
     for (int i=int(gl_LocalInvocationIndex); i<160; i+=64) {
