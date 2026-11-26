@@ -41,11 +41,18 @@ void main() {
 #ifdef LW_DH_WATER
     vec3 eyeDirection = normalize(worldDirection(-viewPosition));
     vec3 position = (gbufferModelViewInverse * vec4(viewPosition, 1.0)).xyz + cameraPosition;
+    normal = faceforward(normal, -eyeDirection, normal);
     normal = waveNormal(normal, position);
     float fresnel = waterFresnel(clamp(dot(normal, eyeDirection), 0.0, 1.0), isEyeInWater == 1);
     vec3 reflected = reflect(-eyeDirection, normal);
-    lit = mix(lit, skyRadiance(reflected, sun), fresnel)
-        + waterSunGlint(normal, eyeDirection, sun, smoothstep(0.56, 1.0, lightLevels.y));
+    if (isEyeInWater == 1) {
+        vec3 airDirection = waterToAirDirection(-eyeDirection, normal);
+        vec3 air = dot(airDirection, airDirection) > 0.0 ? skyRadiance(airDirection, sun) : lit;
+        lit = mix(air, lit, fresnel);
+    } else {
+        lit = mix(lit, skyRadiance(reflected, sun), fresnel)
+            + waterSunGlint(normal, eyeDirection, sun, smoothstep(0.56, 1.0, lightLevels.y));
+    }
 #endif
     outputColor = vec4(applySceneFog(lit, viewPosition), vertexColor.a);
 }

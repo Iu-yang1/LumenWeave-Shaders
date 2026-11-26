@@ -37,7 +37,7 @@ vec3 celestialIrradiance(vec3 sun) {
     if (!hasSkylight) {
         return vec3(0.0);
     }
-    return (sun.y >= 0.0 ? sunTint(sun) * 4.2 : vec3(0.16, 0.19, 0.24)) * SUNLIGHT_STRENGTH;
+    return (sun.y >= 0.0 ? sunTint(sun) * 5.4 : vec3(0.095, 0.13, 0.20)) * SUNLIGHT_STRENGTH;
 }
 
 vec3 skyRadiance(vec3 direction, vec3 sun) {
@@ -49,8 +49,8 @@ vec3 skyRadiance(vec3 direction, vec3 sun) {
     float cosine = max(dot(direction, sun), 0.0);
     float twilight = 1.0 - smoothstep(0.06, 0.36, abs(sun.y));
     float day = daylight(sun);
-    vec3 horizon = mix(vec3(0.029, 0.037, 0.054), vec3(0.63, 0.77, 0.94), day);
-    vec3 zenith = mix(vec3(0.007, 0.011, 0.024), vec3(0.15, 0.32, 0.62), day);
+    vec3 horizon = mix(vec3(0.020, 0.029, 0.050), vec3(0.61, 0.75, 0.94), day);
+    vec3 zenith = mix(vec3(0.003, 0.006, 0.018), vec3(0.10, 0.25, 0.57), day);
 #ifdef LITE_LIGHTING
     float skyGradient = (3.2 * height) / (1.0 + 2.35 * height);
 #else
@@ -58,6 +58,9 @@ vec3 skyRadiance(vec3 direction, vec3 sun) {
 #endif
     vec3 color = mix(horizon, zenith, skyGradient);
     color += vec3(0.56, 0.19, 0.05) * twilight * pow(cosine, 5.0) * exp(-5.0 * height);
+    // Low-frequency night-sky band; stars are rendered in the sky pass.
+    float band = 1.0 - smoothstep(0.0, 0.24, abs(dot(direction, normalize(vec3(0.36, 0.48, 0.80)))));
+    color += vec3(0.010, 0.012, 0.022) * band * band * height * (1.0 - day);
     color = mix(color, mix(vec3(0.024), vec3(0.45, 0.51, 0.57), day), rainStrength * 0.83);
     return color;
 }

@@ -20,7 +20,11 @@ vec2 waterWaveSlope(vec2 position, vec2 footprintX, vec2 footprintY, float time,
 #else
         float resolved = exp(-0.5 * variance);
 #endif
-        slope += directions[wave] * (steepness[wave] * cos(phase) * resolved);
+        // Fade unresolved waves smoothly before evaluating their trigonometry.
+        float coverageWeight = smoothstep(0.002, 0.012, resolved);
+        if (coverageWeight > 0.0) {
+            slope += directions[wave] * (steepness[wave] * cos(phase) * resolved * coverageWeight);
+        }
     }
     return slope * WATER_WAVE_STRENGTH;
 }

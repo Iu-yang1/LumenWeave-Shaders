@@ -118,3 +118,4 @@ option.IMAGE_SHARPENING.comment=Clamps sharpening to nearby colors to limit halo
 option.SHADOW_FILTER_TAPS=Shadow filter samples
 option.AO_SLICES=AO direction slices
 option.AO_STRENGTH=Ambient occlusion strength
+option.AERIAL_DENSITY=Aerial perspective density

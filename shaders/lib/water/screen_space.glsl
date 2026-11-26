@@ -44,9 +44,23 @@ vec3 physicalWater(vec3 tint, vec3 originalNormal, vec3 viewPosition, vec3 view,
     vec3 normal = waveNormal(originalNormal, position);
     mat3 toView = transpose(mat3(gbufferModelViewInverse));
     vec3 reflected = reflect(-view, normal);
-    vec4 hit = traceWaterReflection(viewPosition, toView * reflected);
-    vec3 reflection = mix(skyRadiance(reflected, sun), hit.rgb, hit.a);
-    float fresnel = waterFresnel(clamp(dot(view, normal), 0.0, 1.0), isEyeInWater == 1);
+    bool submerged = isEyeInWater == 1;
+    float fresnel = waterFresnel(clamp(dot(view, normal), 0.0, 1.0), submerged);
+    vec3 scatter = waterScatteringColor(tint)
+        * (ambientIrradiance(vec2(0.0, skyAccess), 1.0, sun) + celestialIrradiance(sun) * 0.16);
+    vec3 reflection = submerged ? scatter : skyRadiance(reflected, sun);
+#if WATER_REFLECTION_STEPS > 0
+    if (fresnel > 0.025) {
+        vec4 hit = traceWaterReflection(viewPosition, toView * reflected);
+        if (submerged) {
+            hit.rgb = mix(scatter, hit.rgb, exp(-waterExtinction() * 3.0));
+        }
+        reflection = mix(reflection, hit.rgb, hit.a * smoothstep(0.025, 0.045, fresnel));
+    }
+#endif
+    if (submerged && fresnel >= 0.9999) {
+        return reflection;
+    }
 
     vec2 screen = gl_FragCoord.xy / vec2(textureSize(depthtex1, 0));
     float originalDepth = texture(depthtex1, screen).r;
@@ -62,6 +76,7 @@ vec3 physicalWater(vec3 tint, vec3 originalNormal, vec3 viewPosition, vec3 view,
     if (refractedBackground.z >= viewPosition.z) {
         refractedUv = screen;
         sampledDepth = originalDepth;
+        background = reconstructViewPosition(screen, originalDepth);
     } else {
         background = refractedBackground;
     }
@@ -71,11 +86,15 @@ vec3 physicalWater(vec3 tint, vec3 originalNormal, vec3 viewPosition, vec3 view,
         thickness = 0.0;
     }
     vec3 transmission = exp(-waterExtinction() * thickness);
-    vec3 scatter = waterScatteringColor(tint)
-        * (ambientIrradiance(vec2(0.0, skyAccess), 1.0, sun) + celestialIrradiance(sun) * 0.16);
     vec3 through = mix(scatter, texture(colortex8, refractedUv).rgb, transmission);
+    if (submerged && sampledDepth >= 1.0 && originalDepth >= 1.0) {
+        vec3 airDirection = waterToAirDirection(-view, normal);
+        if (dot(airDirection, airDirection) > 0.0) {
+            through = skyRadiance(airDirection, sun);
+        }
+    }
 #ifdef SCENE_SHADOWS
     skyAccess *= sceneShadow(position - cameraPosition, originalNormal, sun.y >= 0.0 ? sun : -sun);
 #endif
-    return mix(through, reflection, fresnel) + waterSunGlint(normal, view, sun, skyAccess);
+    return mix(through, reflection, fresnel) + (submerged ? vec3(0.0) : waterSunGlint(normal, view, sun, skyAccess));
 }

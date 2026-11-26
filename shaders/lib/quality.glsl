@@ -18,6 +18,7 @@
 #define SHADOW_RANGE 128.0 // [48.0 64.0 96.0 128.0 160.0 192.0]
 #define EXPOSURE 0 // [-2 -1 0 1 2]
 //#define SHOW_COLOR_CHART
+#define AERIAL_DENSITY 1.0 // [0.0 0.5 0.75 1.0 1.5 2.0]
 #define SUNLIGHT_STRENGTH 1.0 // [0.5 0.75 1.0 1.25 1.5]
 #define AMBIENT_STRENGTH 1.0 // [0.5 0.75 1.0 1.25 1.5]
 #define BLOCKLIGHT_STRENGTH 1.0 // [0.5 0.75 1.0 1.25 1.5]

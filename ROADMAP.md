@@ -156,3 +156,12 @@
 Actions 生成可安装 ZIP，运行时仍由 Iris 针对实际 GPU 编译。每次交付应记录源码提交、ZIP 摘要、运行组合、覆盖场景和已知问题。推送主分支不自动等同于发布稳定版。
 
 持续遵守：UTF-8 无 BOM、Git 提交签名、不提交本地日志和工具、不复制受限参考源码。游戏测试使用静音隔离桌面和存档副本，保持用户前台可用；安装与缓存优先放在 H 盘。
+
+## Natural Rendering V2 (candidate)
+
+- Correct water-to-air Snell direction and preserve sky radiance before water fog; screen-space reflection/refraction remains an approximation, including DH.
+- Fix neighbor UV reprojection, tighten distant history normal rejection, fade unresolved water waves, and tune sun/ambient balance and shadow bias.
+- Add optional-density analytical height-dependent aerial perspective, shared by native terrain and DH. Lite uses midpoint density; standard uses an exponential-height integral. No extra textures or passes. Existing volume effects remain separate.
+- Night sky uses the existing star geometry and a broad sky band. No SEUS PTGI source imported.
+- Medium uses 8 SSR steps; High through Extreme retain 16. Actual frame-time and runtime visual acceptance are pending.
+- Research reference: [Hillaire, EGSR 2020](https://sebh.github.io/publications/egsr2020.pdf) and [AtmosphereRenderer](https://github.com/AirGuanZ/AtmosphereRenderer) (MIT). Future LUT work is separate from this analytic implementation; no upstream code or paper PDF copied.

@@ -45,6 +45,9 @@ vec3 clipHistory(ivec2 pixel, vec3 history) {
     vec3 upper = lower;
     for (int row = -1; row <= 1; ++row) {
         for (int column = -1; column <= 1; ++column) {
+            if (row == 0 && column == 0) {
+                continue;
+            }
             ivec2 adjacent = clamp(pixel + ivec2(column, row), ivec2(0), limit);
             vec3 sampleColor = texelFetch(colortex0, adjacent, 0).rgb;
             lower = min(lower, sampleColor);
@@ -61,7 +64,7 @@ vec4 filteredHistory(vec2 uv, float expectedDepth, vec2 normal, bool water) {
     vec2 fraction = fract(position);
     vec4 result = vec4(0.0);
     vec3 currentNormal = decodeNormal(normal);
-    float normalThreshold = water ? 0.86 : mix(0.86, -0.05, smoothstep(32.0, 128.0, expectedDepth));
+    float normalThreshold = water ? 0.86 : mix(0.86, 0.25, smoothstep(32.0, 128.0, expectedDepth));
     for (int row = 0; row < 2; ++row) {
         for (int column = 0; column < 2; ++column) {
             ivec2 samplePixel = base + ivec2(column, row);
@@ -172,7 +175,8 @@ void main() {
             vec2 neighborNormal;
             mat4 neighborProjection;
             bool neighborWater;
-            if (temporalGeometry(neighbor, texCoord, neighborPosition, neighborNormal, neighborProjection, neighborWater)
+            vec2 neighborUv = (vec2(neighbor) + 0.5) / vec2(size);
+            if (temporalGeometry(neighbor, neighborUv, neighborPosition, neighborNormal, neighborProjection, neighborWater)
                     && !neighborWater && -neighborPosition.z < closest - (valid ? max(0.1, closest * 0.012) : 0.0)) {
                 closest = -neighborPosition.z;
                 viewPosition = neighborPosition;

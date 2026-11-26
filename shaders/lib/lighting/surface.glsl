@@ -27,7 +27,7 @@ vec3 surfaceRadiance(vec3 albedo, Material material, vec3 normal, vec3 view, vec
     float visibility = smoothstep(0.0, 0.18, abs(sun.y)) * mix(1.0, 0.19, rainStrength);
     vec3 diffuse = albedo * (1.0 - material.metallic) * (1.0 - f0);
     vec3 indirect = (diffuse + f0 * mix(0.27, 0.50, material.roughness)) * ambient;
-    if (!hasSkylight) {
+    if (!hasSkylight || skyAccess * visibility <= 0.0 || dot(normal, light) <= 0.0) {
         return indirect + material.emission;
     }
 #ifdef SCENE_SHADOWS

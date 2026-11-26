@@ -4,6 +4,7 @@ uniform int fogShape;
 uniform int isEyeInWater;
 
 #include "/lib/water/optics.glsl"
+#include "/lib/atmosphere/aerial.glsl"
 
 #ifdef DISTANT_HORIZONS
 #include "/lib/lighting/dh_fog.glsl"
@@ -17,6 +18,16 @@ vec3 applySceneFog(vec3 lit, vec3 viewPosition) {
             * (ambientIrradiance(vec2(0.0, 0.7), 1.0, sunDirection())
                 + celestialIrradiance(sunDirection()) * 0.08);
         return lit * transmission + scatter * (1.0 - transmission);
+    }
+    if (isEyeInWater == 0 && hasSkylight) {
+        float boundary;
+#ifdef DISTANT_HORIZONS
+        float range = max(float(dhRenderDistance), 256.0);
+        boundary = smoothstep(range * 0.79, range, distanceToEye);
+#else
+        boundary = smoothstep(max(fogStart, fogEnd * 0.75), max(fogEnd, fogStart + 0.001), distanceToEye);
+#endif
+        return applyAerialPerspective(lit, viewPosition, boundary);
     }
 #ifdef DISTANT_HORIZONS
     if (isEyeInWater == 0 && !hasCeiling) {
