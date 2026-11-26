@@ -23,7 +23,7 @@ def resource_budget(options, width, height):
     voxel_bytes = 20 * size ** 3 if enabled("VOXEL_LIGHTING") else 0
     if voxel_bytes and enabled("INCREMENTAL_VOXELS"):
         voxel_bytes += (18 if options.get("VOXEL_FUSION", "1") == "1" else 34) * size ** 3 + 128 * 32 * 32 + 16
-    smooth_bytes=8*size**2*(size+3) if voxel_bytes and enabled("INCREMENTAL_VOXELS") and enabled("SMOOTH_LIGHTING") else 0
+    smooth_bytes=8*size**2*(size+5) if voxel_bytes and enabled("INCREMENTAL_VOXELS") and enabled("SMOOTH_LIGHTING") else 0
     rain_column_bytes=8*size**2 if voxel_bytes and enabled("INCREMENTAL_VOXELS") and enabled("WET_SURFACES") and options.get("RAIN_GEOMETRY","1")=="1" and not smooth_bytes else 0
     voxel_bytes+=rain_column_bytes
     diffuse_smooth_bytes=8*size**3 if smooth_bytes and enabled("VOXEL_GI") and enabled("DEFERRED_LIGHTING") and options.get("VOXEL_DIFFUSE_SMOOTHING","1")=="1" else 0

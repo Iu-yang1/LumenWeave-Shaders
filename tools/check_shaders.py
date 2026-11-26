@@ -322,7 +322,7 @@ def check_modern_properties(compiler, path):
             raise ValueError(f"DOF overwrites Nether GI history: {overrides}")
     for size in (32,64,96,128):
         config=preprocess_properties(compiler,path,{**flags,"SMOOTH_LIGHTING":"1","VOXEL_GRID_SIZE":str(size)})
-        if config["image.lwVoxelFirst"].split()[-3:]!=[str(size),str(size),str(2*size+3)]:
+        if config["image.lwVoxelFirst"].split()[-3:]!=[str(size),str(size),str(2*size+5)]:
             raise ValueError("Smoothed voxel slab dimensions incorrect")
         weather=preprocess_properties(compiler,path,{**flags,"SMOOTH_LIGHTING":"1","WET_SURFACES":"1","VOXEL_GRID_SIZE":str(size)})
         wet_only=preprocess_properties(compiler,path,{**flags,"WET_SURFACES":"1","VOXEL_GRID_SIZE":str(size)})

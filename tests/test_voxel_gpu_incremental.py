@@ -33,7 +33,7 @@ class VoxelGpuIncrementalTests(unittest.TestCase):
         props = (ROOT/"shaders.properties").read_text()
         self.assertEqual(len({line.split("=",1)[0].strip() for line in props.splitlines()
                               if line.startswith("image.")}),20)
-        self.assertIn("image.lwExposureState = lwExposureSampler rgba rgba32f float false false 1 1",props)
+        self.assertIn("image.lwExposureState = lwExposureSampler rgba rgba32f float false false 2 1",props)
 
     def test_ring_cache_exact_scroll(self):
         import random

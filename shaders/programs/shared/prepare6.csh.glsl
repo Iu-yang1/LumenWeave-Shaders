@@ -20,6 +20,14 @@ shared uint transitioning;
 shared uint previousSupport;
 shared bool skipTile;
 shared ivec3 tileMeta;
+// Two disjoint parity banks; no workgroup may read a bank being written.
+ivec3 historyTileMeta(ivec3 tile,int parity){
+    int side=LW_GRID_SIZE/4;
+    int index=tile.x+side*(tile.y+side*tile.z);
+    return ivec3(index%LW_GRID_SIZE,(index/LW_GRID_SIZE)%LW_GRID_SIZE,2*LW_GRID_SIZE+2*parity+index/(LW_GRID_SIZE*LW_GRID_SIZE));
+}
+vec2 priorTileState(ivec3 tile,int parity){return imageLoad(lwVoxelFirst,historyTileMeta(tile,parity)).rg;}
+bool hasHistorySupport(vec4 v){return any(greaterThan(v,vec4(0.0)));}
 shared vec2 directDecay;
 #ifdef LW_VOXEL_DIFFUSE_SMOOTH
 shared vec2 diffuseDecay;
@@ -44,18 +52,37 @@ void main(){
         occupied=0u;
         transitioning=0u;
         ivec3 tile=ivec3(gl_WorkGroupID);
-        int side=LW_GRID_SIZE/4;
-        int index=tile.x+side*(tile.y+side*tile.z);
-        tileMeta=ivec3(index%LW_GRID_SIZE,(index/LW_GRID_SIZE)%LW_GRID_SIZE,2*LW_GRID_SIZE+index/(LW_GRID_SIZE*LW_GRID_SIZE));
-        bool stationary=previous.w==frameCounter-1 && all(equal(cameraPositionInt,previous.xyz));
+        int parity=frameCounter&1;
+        tileMeta=historyTileMeta(tile,parity);
+        ivec3 movement=cameraPositionInt-previous.xyz;
+        bool fresh=previous.w==frameCounter-1;
+        ivec3 lo=tile*4+movement,hi=lo+ivec3(3);
         skipTile=false;
-        vec4 prior=imageLoad(lwVoxelFirst,tileMeta);
-        previousSupport=uint(prior.r);
+        previousSupport=0u;
         uint mask=imageLoad(lwVoxelDirtyTiles,tile+ivec3(96,0,0)).r;
-        // Only skip on an unchanged world-local tile with a settled history.
-        // Dirty radius-two covers both direct and diffuse target changes.
-        if(stationary && (mask&3u)==0u && prior.g==0.0)
-            skipTile=true;
+        // Entering cells or dirty targets must be processed. A retained
+        // tile may overlap 1..8 old tiles when the camera crosses a block.
+        if(fresh && (mask&3u)==0u && withinVoxelGrid(lo) && withinVoxelGrid(hi)){
+            ivec3 first=lo/4,last=hi/4;
+            vec2 prior=priorTileState(first,1-parity);
+            if(all(equal(first,last))){
+                // Exact tile mapping: reuse settled support even when lit.
+                previousSupport=uint(prior.r);
+                skipTile=prior.g==0.0;
+            }else if(prior.r==0.0 && prior.g==0.0){
+                // Misaligned tiles can only reuse proven empty history.
+                // Do not spread conservative lit flags on repeated movement.
+                skipTile=true;
+                for(int z=first.z;z<=last.z && skipTile;++z)
+                    for(int y=first.y;y<=last.y && skipTile;++y)
+                        for(int x=first.x;x<=last.x && skipTile;++x){
+                            ivec3 p=ivec3(x,y,z);
+                            if(all(equal(p,first))) continue;
+                            vec2 state=priorTileState(p,1-parity);
+                            skipTile=state.r==0.0 && state.g==0.0;
+                        }
+            }
+        }
         if(!skipTile){
             float dt=clamp(frameTime,0.0,0.25);
             directDecay=exp2(-dt/vec2(DIRECT_RISE_HALF,DIRECT_FALL_HALF));
@@ -66,7 +93,10 @@ void main(){
     }
     barrier();
     if(skipTile) {
-        if(gl_LocalInvocationIndex==0u) imageStore(lwVoxelDirtyTiles,ivec3(gl_WorkGroupID),uvec4(previousSupport));
+        if(gl_LocalInvocationIndex==0u){
+            imageStore(lwVoxelDirtyTiles,ivec3(gl_WorkGroupID),uvec4(previousSupport));
+            imageStore(lwVoxelFirst,tileMeta,vec4(float(previousSupport),0.0,0.0,0.0));
+        }
         return;
     }
     ivec3 local=ivec3(gl_GlobalInvocationID);
@@ -85,7 +115,7 @@ void main(){
     value=settleHistory(value,target,old,wall,pending);
     if(pending) atomicOr(transitioning,1u);
     if(!valid || any(notEqual(value,old))) imageStore(lwVoxelFirst,historyCell,value);
-    if(max(max(target.r,max(target.g,target.b)),max(value.r,max(value.g,value.b)))>0.0) atomicOr(occupied,1u);
+    if(hasHistorySupport(target) || hasHistorySupport(value)) atomicOr(occupied,1u);
 #ifdef LW_VOXEL_DIFFUSE_SMOOTH
     // Raw diffuse propagation remains independent. A separate world-space
     // history follows its own irradiance, including hue changes and removals.
@@ -99,7 +129,7 @@ void main(){
     if(diffusePending) atomicOr(transitioning,2u);
     if(!valid || any(notEqual(diffuseValue,diffuseOld))) imageStore(lwVoxelSecond,historyCell,diffuseValue);
     // Union support ensures the tile cannot be skipped while diffuse tails remain.
-    if(max(max(diffuseTarget.r,max(diffuseTarget.g,diffuseTarget.b)),max(diffuseValue.r,max(diffuseValue.g,diffuseValue.b)))>0.0) atomicOr(occupied,2u);
+    if(hasHistorySupport(diffuseTarget) || hasHistorySupport(diffuseValue)) atomicOr(occupied,2u);
 #endif
     barrier();
     // The original dirty seed slab is no longer needed by propagation.

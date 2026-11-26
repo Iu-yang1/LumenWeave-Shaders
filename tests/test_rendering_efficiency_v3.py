@@ -76,13 +76,17 @@ class RenderingEfficiencyTests(unittest.TestCase):
     def test_voxel_tile_metadata_and_zero_work(self):
         for n in (32,64,96,128):
             side=n//4
-            coords={(i%n,(i//n)%n,2*n+i//(n*n)) for i in range(side**3)}
-            self.assertEqual(len(coords),side**3)
-            self.assertTrue(all(2*n<=p[2]<2*n+2 for p in coords))
+            banks=[{(i%n,(i//n)%n,2*n+2*parity+i//(n*n)) for i in range(side**3)} for parity in (0,1)]
+            self.assertEqual(len(banks[0]),side**3)
+            self.assertEqual(len(banks[1]),side**3)
+            self.assertTrue(banks[0].isdisjoint(banks[1]))
+            self.assertTrue(all(2*n<=p[2]<2*n+4 for bank in banks for p in bank))
         source=(S/"programs/shared/prepare6.csh.glsl").read_text()
         self.assertIn("if(skipTile)",source)
-        self.assertIn("previous.w==frameCounter-1 && all(equal(cameraPositionInt,previous.xyz))",source)
-        self.assertIn("(mask&3u)==0u && prior.g==0.0",source)
+        self.assertIn("bool fresh=previous.w==frameCounter-1",source)
+        self.assertIn("withinVoxelGrid(lo) && withinVoxelGrid(hi)",source)
+        self.assertIn("(mask&3u)==0u",source)
+        self.assertIn("skipTile=prior.g==0.0",source)
         self.assertIn("uvec4(previousSupport)",source)
 
     def test_taau_grid_contract(self):
@@ -118,8 +122,8 @@ class RenderingEfficiencyTests(unittest.TestCase):
         self.assertIn("c.x-cell.y",src)
         self.assertIn("known<4.0",src)
         for n in (32,64,96,128):
-            self.assertLess(2*n+2,2*n+3)
-            self.assertGreaterEqual(2*n+2,2*n+2)
+            self.assertLess(2*n+4,2*n+5)
+            self.assertNotIn(2*n+4,range(2*n,2*n+4))
         def retention(center,neighbors):
             if len(neighbors)!=4: return None
             lower=sum(n<center for n in neighbors)
