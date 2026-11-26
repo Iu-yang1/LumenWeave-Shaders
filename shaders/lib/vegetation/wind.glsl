@@ -2,7 +2,10 @@ uniform float frameTimeCounter;
 uniform float rainStrength;
 
 vec3 vegetationDisplacement(vec3 position, vec2 stem, int materialId, float tip, float distanceToEye) {
-    float reach = 1.0 - smoothstep(WIND_DISTANCE * 0.65, WIND_DISTANCE, distanceToEye);
+    // Distant cutout leaves are smaller than a pixel: smoothly reduce motion before it aliases.
+    float reach = materialId == 10030
+        ? 1.0 - smoothstep(WIND_DISTANCE * 0.35, WIND_DISTANCE * 0.70, distanceToEye)
+        : 1.0 - smoothstep(WIND_DISTANCE * 0.65, WIND_DISTANCE, distanceToEye);
     if (reach <= 0.0 || materialId < 10030 || materialId > 10033) {
         return vec3(0.0);
     }

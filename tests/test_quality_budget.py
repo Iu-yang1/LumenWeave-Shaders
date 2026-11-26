@@ -17,15 +17,15 @@ class QualityBudgetTests(unittest.TestCase):
             result = resource_budget(options, 1920, 1080)
             if tier in ("Ultra", "Extreme"):
                 size = int(options["VOXEL_GRID_SIZE"])
-                self.assertAlmostEqual(result["voxel_mib"], (56 * size ** 3 + 4 * 32 ** 3 + 16) / MIB)
+                self.assertAlmostEqual(result["voxel_mib"], (56 * size ** 3 + 4 * 128 * 32 * 32 + 16) / MIB)
                 self.assertEqual(result["atmosphere_mib"], ATMO_BYTES / MIB)
-                self.assertEqual(result["extra_color_single_mib"], 40 * 1920 * 1080 / MIB)
+                self.assertEqual(result["extra_color_single_mib"], 32 * 1920 * 1080 / MIB)
             else:
                 self.assertTrue(all(value == 0 for value in result.values()))
 
     def test_fixed_mode_removes_dynamic_owner_payload(self):
         options = preview_profiles(PREVIEW)["profile.Ultra"]
-        dynamic = resource_budget(options, 1920, 1080)
+        dynamic = resource_budget({**options, "PROJECTION_JITTER": "2"}, 1920, 1080)
         fixed = resource_budget({**options, "PROJECTION_JITTER": "1"}, 1920, 1080)
         self.assertAlmostEqual(dynamic["extra_color_single_mib"] - fixed["extra_color_single_mib"], 8 * 1920 * 1080 / MIB)
         self.assertEqual(dynamic["voxel_mib"], fixed["voxel_mib"])

@@ -287,6 +287,10 @@ def check_projection_sampling(compiler, profiles):
         ("Extreme auto", "Extreme", "0", False),
         ("Ultra dynamic override", "Ultra", "2", True),
         ("High fixed override", "High", "1", False),
+        ("Medium fixed default", "Medium", "1", False),
+        ("Ultra fixed default", "Ultra", "1", False),
+        ("Extreme fixed default", "Extreme", "1", False),
+        ("Extreme dynamic override", "Extreme", "2", True),
     )
     stages = ("gbuffers_terrain.vsh", "gbuffers_water.vsh", "dh_terrain.vsh",
               "dh_water.vsh", "deferred1.fsh", "composite1.fsh")

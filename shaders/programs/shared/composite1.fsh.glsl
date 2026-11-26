@@ -136,7 +136,8 @@ vec3 temporalColor(vec3 current, vec3 viewPosition, vec2 normal, ivec2 pixel, ma
     weight *= smoothstep(0.0, 0.5, historySample.a);
     float materialId = texelFetch(colortex2, pixel, 0).y;
     if (materialId >= 10030.0 && materialId <= 10033.0) {
-        weight *= 0.45;
+        // Nearby moving vegetation needs rejection; distant settled foliage benefits from history.
+        weight *= mix(0.45,1.0,smoothstep(24.0,64.0,-viewPosition.z));
     }
     return mix(current, clipped, weight);
 }
@@ -284,7 +285,12 @@ void main() {
         projectionInverse = dhProjectionInverse;
     }
 #endif
+    // With fixed raster sampling the original depth already belongs to the output ray.
+#ifdef LW_DYNAMIC_JITTER
     vec3 stablePosition = stableSurfacePosition(viewPosition, stableUv, normal, projectionInverse);
+#else
+    vec3 stablePosition = viewPosition;
+#endif
     vec3 current = resolveCurrent(pixel, stableUv, stablePosition, normal, water, distant);
     sceneColor.rgb = temporalColor(current, stablePosition, normal, pixel, previousProjection, water, distant);
     colorHistory = vec4(sceneColor.rgb, water ? stablePosition.z : -stablePosition.z);

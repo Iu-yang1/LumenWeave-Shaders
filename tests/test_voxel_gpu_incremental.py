@@ -86,3 +86,30 @@ class VoxelGpuIncrementalTests(unittest.TestCase):
             actual=[{c:stage[wrap(c)] for c in domain} for stage in ring]
             self.assertEqual(actual,full_rebuild(origin,size,emitters,walls,4))
             oldorigin=origin
+
+    def test_separable_dirty_expansion_is_exact(self):
+        import random
+        rng=random.Random(45744560427)
+        for size in (4,8):
+            domain=set(itertools.product(range(size),repeat=3))
+            for probability in (0.0,0.03,0.4,1.0):
+                dirty={c for c in domain if rng.random()<probability}
+                mask={c:3 if c in dirty else 0 for c in domain}
+                for axis in range(3):
+                    new={}
+                    for c in domain:
+                        bits=0
+                        for d in range(-2,3):
+                            other=list(c)
+                            other[axis]+=d
+                            bits |= mask.get(tuple(other),0)&(3 if abs(d)<=1 else 2)
+                        new[c]=bits
+                    mask=new
+                for c in domain:
+                    for radius,bit in ((1,1),(2,2)):
+                        expected=any(max(abs(a-b) for a,b in zip(c,p))<=radius for p in dirty)
+                        self.assertEqual(bool(mask[c]&bit),expected)
+        source=(ROOT/"lib/voxel/expand_dirty.glsl").read_text()
+        self.assertIn("32*(LW_DIRTY_AXIS+1)",source)
+        for suffix in ("a","b","c"):
+            self.assertTrue((ROOT/"world0"/f"prepare_{suffix}.csh").is_file())

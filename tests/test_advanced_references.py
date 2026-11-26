@@ -99,7 +99,7 @@ class AdvancedShaderContracts(unittest.TestCase):
                 tokens=set(line.split())
                 for feature in ("DH_SHADOWS","MATERIAL_SSR","PHYSICAL_ATMOSPHERE","INCREMENTAL_VOXELS"):
                     self.assertIn(feature if enabled else "!"+feature,tokens)
-                self.assertIn("PROJECTION_JITTER:"+("2" if enabled else "0"),tokens)
+                self.assertIn("PROJECTION_JITTER:"+("1" if line.startswith(("profile.Medium =","profile.High =","profile.Ultra =","profile.Extreme =")) else "0"),tokens)
 
     def test_dh_deferred_direct_only_shadow(self):
         lighting=(ROOT/"shaders/lib/lighting/dh_terrain_shadows.glsl").read_text()

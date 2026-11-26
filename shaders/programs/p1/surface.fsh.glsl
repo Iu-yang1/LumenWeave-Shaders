@@ -60,7 +60,13 @@ void main() {
         base.a = 1.0;
     }
 #else
+#ifdef LW_OPAQUE_TERRAIN
+    // Modest positive mip bias only for distant leaves; preserve near texture detail.
+    float leafBias = blockId == 10030 ? 0.35*smoothstep(24.0,80.0,-viewPosition.z) : 0.0;
+    base *= texture(gtexture,texCoord,leafBias);
+#else
     base *= texture(gtexture, texCoord);
+#endif
 #endif
 #endif
     if (base.a <= 0.0 || renderStage == MC_RENDER_STAGE_SUN) {

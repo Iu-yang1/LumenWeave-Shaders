@@ -19,6 +19,7 @@ float distantTerrainVisibility(vec3 position,vec3 normalView,vec3 lightView) {
     vec3 origin=position+normalView*bias;
     float travel=max(2.5,bias*1.6);
     float maxTravel=clamp(depth*0.22,48.0,384.0);
+    float stepRatio=pow((maxTravel+4.0)/(travel+4.0),1.0/float(max(DH_SHADOW_STEPS-1,1)));
     float occlusion=0.0;
     for(int tap=0;tap<DH_SHADOW_STEPS;++tap) {
         if(travel>maxTravel) break;
@@ -47,7 +48,7 @@ float distantTerrainVisibility(vec3 position,vec3 normalView,vec3 lightView) {
             }
         }
         if(occlusion>0.98) break;
-        travel=travel*1.28+max(2.0,bias);
+        travel=(travel+4.0)*stepRatio-4.0;
     }
     return 1.0-occlusion*0.80;
 }

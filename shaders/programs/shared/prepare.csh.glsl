@@ -12,6 +12,8 @@ layout(r32ui) coherent uniform uimage3D lwVoxelDirtyTiles;
 layout(rgba32i) readonly uniform iimage2D lwVoxelMeta;
 #include "/lib/voxel/cache_coordinates.glsl"
 uniform int frameCounter;
+shared ivec4 lwPreviousMeta;
+shared uint lwGroupDirty;
 #else
 layout(rgba16f) writeonly uniform image3D lwVoxelFirst;
 #endif
@@ -19,9 +21,13 @@ layout(rgba16f) writeonly uniform image3D lwVoxelFirst;
 void main() {
     ivec3 cell = ivec3(gl_GlobalInvocationID);
     uint seed = imageLoad(lwVoxelOccupancy, cell).r;
-    vec3 source = seed < LW_VOXEL_WALL ? voxelSeedEmission(seed) : vec3(0.0);
 #ifdef LW_VOXEL_INCREMENTAL_ACTIVE
-    ivec4 previous = imageLoad(lwVoxelMeta, ivec2(0));
+    if(gl_LocalInvocationIndex==0u) {
+        lwPreviousMeta=imageLoad(lwVoxelMeta,ivec2(0));
+        lwGroupDirty=0u;
+    }
+    barrier();
+    ivec4 previous=lwPreviousMeta;
     ivec3 previousLocal = cell + (cameraPositionInt - previous.xyz);
     ivec3 cacheCell = voxelCacheCell(cell);
     bool fullRebuild = previous.w != frameCounter - 1;
@@ -36,13 +42,17 @@ void main() {
     }
     bool seedChanged = fullRebuild || entered || imageLoad(lwVoxelPrevSeed,cacheCell).r != seed;
     if (seedChanged) {
+        vec3 source=seed < LW_VOXEL_WALL ? voxelSeedEmission(seed) : vec3(0.0);
         imageStore(lwVoxelStage0,cacheCell,vec4(source,0.0));
         imageStore(lwVoxelPrevSeed,cacheCell,uvec4(seed));
     }
-    if (seedChanged || lostNeighbor) {
-        imageAtomicOr(lwVoxelDirtyTiles,ivec3(gl_WorkGroupID),1u);
+    if (seedChanged || lostNeighbor) atomicOr(lwGroupDirty,1u);
+    barrier();
+    if(gl_LocalInvocationIndex==0u && lwGroupDirty!=0u) {
+        imageStore(lwVoxelDirtyTiles,ivec3(gl_WorkGroupID),uvec4(1u));
     }
 #else
+    vec3 source=seed < LW_VOXEL_WALL ? voxelSeedEmission(seed) : vec3(0.0);
     imageStore(lwVoxelFirst, cell, vec4(source, 0.0));
 #endif
 }
