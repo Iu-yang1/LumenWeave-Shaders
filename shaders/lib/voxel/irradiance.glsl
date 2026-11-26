@@ -2,6 +2,9 @@
 
 uniform sampler3D lwVoxelLight;
 #ifdef LW_VOXEL_INCREMENTAL_ACTIVE
+uniform usampler3D lwVoxelDirtySampler;
+#endif
+#ifdef LW_VOXEL_INCREMENTAL_ACTIVE
 #include "/lib/voxel/cache_coordinates.glsl"
 
 // Most lookups use hardware filtering. Only ring seams need a manual 8-tap
@@ -46,7 +49,14 @@ vec3 sampleVoxelIrradiance(sampler3D field, vec3 relativePosition, vec3 normal, 
         return vec3(0.0);
     }
 #ifdef LW_VOXEL_INCREMENTAL_ACTIVE
-    return sampleWrappedVoxel(field,cell+normal*offset)*weight;
+    vec3 sampleCell=cell+normal*offset;
+#if defined(ADAPTIVE_SHADING) && !defined(LW_DIMENSION_END) && !defined(LW_DIMENSION_NETHER)
+    // The radius-two support mask includes four propagation steps, the
+    // diffuse neighbour and the trilinear halo. Unlit tiles are exact zero.
+    ivec3 tile=clamp(ivec3(floor(sampleCell/4.0)),ivec3(0),ivec3(LW_GRID_SIZE/4-1));
+    if((texelFetch(lwVoxelDirtySampler,tile+ivec3(96,0,0),0).r&4u)==0u) return vec3(0.0);
+#endif
+    return sampleWrappedVoxel(field,sampleCell)*weight;
 #else
     vec3 uv = (cell + normal * offset) / float(LW_GRID_SIZE);
     return texture(field, uv).rgb * weight;

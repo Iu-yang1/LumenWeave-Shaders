@@ -150,6 +150,9 @@ uniform mat4 gbufferProjection;
 #endif
 #ifdef SCREEN_AO
 #include "/lib/lighting/gtao.glsl"
+#ifdef LW_AO_SPATIAL
+#include "/lib/lighting/gtao_spatial.glsl"
+#endif
 #endif
 #ifdef SCREEN_GI
 #include "/lib/lighting/screen_gi.glsl"
@@ -243,7 +246,11 @@ void main() {
     vec3 normalInView = transpose(mat3(gbufferModelViewInverse)) * normal;
     // In dense fog the AO contrast is already attenuated; keep full near detail.
     if(visibleWeight>0.035) {
+        #ifdef LW_AO_SPATIAL
+        float ao=spatialGroundTruthOcclusion(texCoord,viewPosition,normal,normalInView);
+        #else
         float ao=groundTruthOcclusion(texCoord,viewPosition,normalInView);
+        #endif
         material.occlusion*=mix(1.0,mix(0.23,1.0,ao),smoothstep(0.035,0.12,visibleWeight));
     }
 #endif

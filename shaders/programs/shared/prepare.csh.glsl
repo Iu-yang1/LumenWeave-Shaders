@@ -14,7 +14,7 @@ layout(rgba32i) readonly uniform iimage2D lwVoxelMeta;
 uniform int frameCounter;
 shared ivec4 lwPreviousMeta;
 shared ivec3 lwCacheOrigin;
-shared uint lwGroupFlags[8];
+shared uint lwGroupFlags[64];
 #else
 layout(rgba16f) writeonly uniform image3D lwVoxelFirst;
 #endif
@@ -27,7 +27,6 @@ void main() {
         lwPreviousMeta=imageLoad(lwVoxelMeta,ivec2(0));
         lwCacheOrigin=voxelCacheOrigin();
     }
-    if(gl_LocalInvocationIndex<8u) lwGroupFlags[gl_LocalInvocationIndex]=0u;
     barrier();
     ivec4 previous=lwPreviousMeta;
     ivec3 movement=cameraPositionInt-previous.xyz;
@@ -54,11 +53,20 @@ void main() {
     // Any emitting seed can reach at most four cells in the four stencil passes.
     if(seed>0u && seed<LW_VOXEL_WALL) flags|=4u;
     if(seed>=LW_VOXEL_WALL) flags|=8u;
-    if(flags!=0u) atomicOr(lwGroupFlags[gl_LocalInvocationIndex/8u],flags);
+    // No contended shared atomics, even in dense solid terrain.
+    // Each of eight reducers ORs one group of eight independent flags.
+    uint lane=gl_LocalInvocationIndex;
+    lwGroupFlags[lane]=flags;
     barrier();
-    if(gl_LocalInvocationIndex==0u) {
+    if(lane<8u) {
         uint mask=0u;
-        for(int i=0;i<8;++i) mask|=lwGroupFlags[i];
+        for(uint i=0u;i<8u;++i) mask|=lwGroupFlags[lane*8u+i];
+        lwGroupFlags[lane*8u]=mask;
+    }
+    barrier();
+    if(lane==0u) {
+        uint mask=0u;
+        for(int i=0;i<8;++i) mask|=lwGroupFlags[i*8];
         imageStore(lwVoxelDirtyTiles,ivec3(gl_WorkGroupID),uvec4(mask));
     }
 #else

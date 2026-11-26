@@ -2,9 +2,6 @@
 // The scene has already received atmospheric extinction in applySceneFog.
 // Integrate only the additional source term; no second scene attenuation.
 #include "/lib/voxel/irradiance.glsl"
-#ifdef LW_VOXEL_INCREMENTAL_ACTIVE
-uniform usampler3D lwVoxelDirtySampler;
-#endif
 
 vec3 integrateLocalScatter(vec3 direction, float surfaceDistance) {
     float radius = float(LW_GRID_SIZE) * 0.5;

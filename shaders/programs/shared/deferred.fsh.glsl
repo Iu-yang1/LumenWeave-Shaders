@@ -25,6 +25,13 @@ uniform sampler2D depthtex0;
 uniform mat4 gbufferProjection;
 
 #include "/lib/lighting/screen_gi.glsl"
+#ifdef LW_AO_SPATIAL
+#include "/lib/lighting/gtao.glsl"
+/*
+const int colortex3Format = RG16F;
+const vec4 colortex3ClearColor = vec4(1.0,0.0,0.0,0.0);
+*/
+#endif
 #if defined(LW_TEMPORAL_REUSE) && defined(SCREEN_GI_HISTORY) && defined(LW_TAA_ACTIVE) && !defined(LW_DYNAMIC_JITTER)
 #if GI_REUSE_MODE == 2 || (GI_REUSE_MODE == 1 && (defined(LW_DIMENSION_NETHER) || defined(LW_DIMENSION_END)))
 #define LW_GI_REUSE
@@ -46,7 +53,12 @@ const bool colortex9Clear = false;
 #endif
 #ifdef LW_VOXEL_DIFFUSE_ACTIVE
 layout(location = 1) out vec4 blockTrace;
+#ifdef LW_AO_SPATIAL
+layout(location = 2) out vec2 aoTrace;
+/* RENDERTARGETS: 9,10,3 */
+#else
 /* RENDERTARGETS: 9,10 */
+#endif
 /*
 const int colortex10Format = RGBA16F;
 const vec4 colortex10ClearColor = vec4(0.0, 0.0, 0.0, 0.0);
@@ -55,7 +67,12 @@ const vec4 colortex10ClearColor = vec4(0.0, 0.0, 0.0, 0.0);
 const bool colortex10Clear = false;
 #endif
 #else
+#ifdef LW_AO_SPATIAL
+layout(location = 1) out vec2 aoTrace;
+/* RENDERTARGETS: 9,3 */
+#else
 /* RENDERTARGETS: 9 */
+#endif
 #endif
 
 void main() {
@@ -67,6 +84,9 @@ void main() {
     float depth = texelFetch(depthtex0, pixel, 0).r;
     float terrainDepth = texelFetch(colortex2, pixel, 0).r;
     skyTrace = vec4(0.0);
+#ifdef LW_AO_SPATIAL
+    aoTrace=vec2(1.0,0.0);
+#endif
 #ifdef LW_VOXEL_DIFFUSE_ACTIVE
     blockTrace = vec4(0.0);
 #endif
@@ -74,10 +94,20 @@ void main() {
         return;
     }
     vec3 viewPosition = reconstructViewPosition(sampleUv, depth);
-    if (-viewPosition.z >= 30.0) {
-        return;
-    }
+    float viewDepth=-viewPosition.z;
+#ifdef LW_AO_SPATIAL
+    if(viewDepth>=52.0) return;
+#else
+    if(viewDepth>=30.0) return;
+#endif
     vec3 normal = decodeNormal(texelFetch(colortex1, pixel, 0).xy);
+#ifdef LW_AO_SPATIAL
+    if(viewDepth>=4.0) {
+        vec3 normalView=transpose(mat3(gbufferModelViewInverse))*normal;
+        aoTrace=vec2(groundTruthOcclusion(sampleUv,viewPosition,normalView),viewDepth);
+    }
+    if(viewDepth>=30.0) return;
+#endif
 #ifdef LW_STABLE_DYNAMIC
     viewPosition = stableViewSurfacePosition(viewPosition, sampleUv,
         transpose(mat3(gbufferModelViewInverse)) * normal, gbufferProjectionInverse);

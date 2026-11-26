@@ -57,7 +57,7 @@ class ShaderToolsTests(unittest.TestCase):
                 "ADAPTIVE_SHADING": "true", "ADAPTIVE_SHADOWS": "true", "TEMPORAL_REUSE": "true",
                 "GI_REUSE_MODE": "1", "HIZ_MODE": "1", "EMISSION_STRENGTH": "1.5",
                 "LOCAL_GLOW_STRENGTH": "1.7", "DARK_AMBIENT": "0.65",
-                "BLOOM": "false", "BLOOM_STRENGTH": "0.04", "BLOOM_THRESHOLD": "1.5", "BLOOM_FILTER": "0",
+                "BLOOM": "false", "BLOOM_STRENGTH": "0.04", "BLOOM_THRESHOLD": "1.5", "BLOOM_FILTER": "0", "AO_RECONSTRUCTION": "1",
             },
         )
         self.assertEqual(profiles["profile.LowExposure"]["EXPOSURE"], "-1")
