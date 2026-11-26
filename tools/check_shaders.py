@@ -349,6 +349,12 @@ def check_modern_properties(compiler, path):
         config=preprocess_properties(compiler,path,{"GEOMETRY_TAAU_SCALE":str(scale),"AA_MODE":"2","DEFERRED_LIGHTING":"1"})
         if ("uniform.int.lwRasterFrame" in config)!=(scale<100):
             raise ValueError("Geometry raster frame uniform gate incorrect")
+    for mode in (0,1,2):
+        geometry=preprocess_properties(compiler,path,{**flags,"GEOMETRY_TAAU_SCALE":"75","PROJECTION_JITTER":str(mode),"GI_REUSE_MODE":"2","VOXEL_GI":"1","DOF_MODE":"1","AUTO_EXPOSURE":"1"})
+        if geometry.get("program.world0/composite5.enabled")!="false":
+            raise ValueError("Geometry mode must preserve persistent raw block GI")
+        if geometry.get("program.world0/deferred2_a.enabled")!="false":
+            raise ValueError("Geometry mode must preserve persistent raw sky GI")
     print("Modern/legacy compute, exposure and volume history capability matrix: OK")
 
 

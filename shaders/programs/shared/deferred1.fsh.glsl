@@ -85,7 +85,10 @@ uniform sampler2D dhDepthTex0;
 #endif
 #if defined(LW_DIMENSION_END) || defined(LW_DIMENSION_NETHER)
 vec4 dimensionBackground(vec2 uv) {
-    vec3 direction=normalize(worldDirection((gbufferProjectionInverse*vec4(unjitteredUv(uv,true)*2.0-1.0,1.0,1.0)).xyz));
+#ifdef LW_GEOMETRY_TAAU
+    uv=unjitteredUv(uv,true);
+#endif
+    vec3 direction=normalize(worldDirection((gbufferProjectionInverse*vec4(uv*2.0-1.0,1.0,1.0)).xyz));
     vec3 color=skyRadiance(direction,vec3(0,1,0));
 #ifdef LW_DIMENSION_END
     color+=endSkyDetail(direction,96.0/max(float(lwRasterSize(depthtex0).y),1.0));

@@ -200,7 +200,7 @@
 
 // Fixed-grid and no-TAA paths share the unused ownership attachment.
 // AO-only presets can now use the existing deferred prepass without SSGI.
-#if AO_RECONSTRUCTION == 1 && (PROJECTION_JITTER == 1 || AA_MODE < 2) && defined(DEFERRED_LIGHTING) && defined(SCREEN_AO) && !defined(LW_DIMENSION_END) && !defined(LW_DIMENSION_NETHER)
+#if AO_RECONSTRUCTION == 1 && (PROJECTION_JITTER == 1 || AA_MODE < 2 || defined(LW_GEOMETRY_TAAU)) && defined(DEFERRED_LIGHTING) && defined(SCREEN_AO) && !defined(LW_DIMENSION_END) && !defined(LW_DIMENSION_NETHER)
 #define LW_AO_SPATIAL
 #endif
 
@@ -211,7 +211,7 @@
 
 // GI's half-size transient texture is free after deferred shading, provided
 // no cross-frame raw GI reuse is requested. No additional color attachment.
-#if VOLUME_RECONSTRUCTION == 1 && (PROJECTION_JITTER == 1 || AA_MODE < 2) && defined(VOLUME_EFFECTS) && defined(DEFERRED_LIGHTING) && defined(IRIS_FEATURE_COMPUTE_SHADERS) && defined(IRIS_FEATURE_CUSTOM_IMAGES) && !(defined(TEMPORAL_REUSE) && GI_REUSE_MODE == 2 && defined(SCREEN_GI) && defined(SCREEN_GI_SPATIAL) && defined(SCREEN_GI_HISTORY) && defined(LW_TAA_ACTIVE)) && !defined(LW_DIMENSION_END) && !defined(LW_DIMENSION_NETHER)
+#if VOLUME_RECONSTRUCTION == 1 && (PROJECTION_JITTER == 1 || AA_MODE < 2 || defined(LW_GEOMETRY_TAAU)) && defined(VOLUME_EFFECTS) && defined(DEFERRED_LIGHTING) && defined(IRIS_FEATURE_COMPUTE_SHADERS) && defined(IRIS_FEATURE_CUSTOM_IMAGES) && !(defined(TEMPORAL_REUSE) && GI_REUSE_MODE == 2 && defined(SCREEN_GI) && defined(SCREEN_GI_SPATIAL) && defined(SCREEN_GI_HISTORY) && defined(LW_TAA_ACTIVE)) && !defined(LW_DIMENSION_END) && !defined(LW_DIMENSION_NETHER)
 #define LW_CELESTIAL_VOLUME_SPATIAL
 #endif
 #if defined(LW_CELESTIAL_VOLUME_SPATIAL) && defined(LW_TAA_ACTIVE) && VOLUME_TEMPORAL == 1 && !defined(LW_IMAGE_BUDGET_FULL)
@@ -233,11 +233,11 @@
 #endif
 #endif
 // Raw GI history owns colortex9 in specific dimensions. Never overwrite it.
-#if defined(LW_MATERIAL_SSR_ACTIVE) && SSR_HALF_RES == 1 && defined(IRIS_FEATURE_CUSTOM_IMAGES) && defined(IRIS_FEATURE_COMPUTE_SHADERS) && (PROJECTION_JITTER == 1 || AA_MODE < 2) && !(defined(TEMPORAL_REUSE) && defined(SCREEN_GI) && defined(SCREEN_GI_SPATIAL) && defined(SCREEN_GI_HISTORY) && AA_MODE >= 2 && (GI_REUSE_MODE == 2 || (GI_REUSE_MODE == 1 && (defined(LW_DIMENSION_NETHER) || defined(LW_DIMENSION_END)))))
+#if defined(LW_MATERIAL_SSR_ACTIVE) && SSR_HALF_RES == 1 && defined(IRIS_FEATURE_CUSTOM_IMAGES) && defined(IRIS_FEATURE_COMPUTE_SHADERS) && (PROJECTION_JITTER == 1 || AA_MODE < 2 || defined(LW_GEOMETRY_TAAU)) && !(defined(TEMPORAL_REUSE) && defined(SCREEN_GI) && defined(SCREEN_GI_SPATIAL) && defined(SCREEN_GI_HISTORY) && AA_MODE >= 2 && (GI_REUSE_MODE == 2 || (GI_REUSE_MODE == 1 && (defined(LW_DIMENSION_NETHER) || defined(LW_DIMENSION_END)))))
 #define LW_SSR_HALF
 #endif
 // colortex10 is transient except when the raw block GI trace is retained.
-#if DOF_MODE != 0 && !(defined(TEMPORAL_REUSE) && defined(SCREEN_GI) && defined(SCREEN_GI_SPATIAL) && defined(SCREEN_GI_HISTORY) && defined(VOXEL_GI) && defined(DEFERRED_LIGHTING) && AA_MODE >= 2 && PROJECTION_JITTER != 2 && defined(VOXEL_LIGHTING) && defined(IRIS_FEATURE_CUSTOM_IMAGES) && defined(IRIS_FEATURE_COMPUTE_SHADERS) && defined(IRIS_FEATURE_BLOCK_EMISSION_ATTRIBUTE) && defined(IRIS_FEATURE_REVERSED_CULLING) && (GI_REUSE_MODE == 2 || (GI_REUSE_MODE == 1 && (defined(LW_DIMENSION_NETHER) || defined(LW_DIMENSION_END)))))
+#if DOF_MODE != 0 && !(defined(TEMPORAL_REUSE) && defined(SCREEN_GI) && defined(SCREEN_GI_SPATIAL) && defined(SCREEN_GI_HISTORY) && defined(VOXEL_GI) && defined(DEFERRED_LIGHTING) && AA_MODE >= 2 && (PROJECTION_JITTER != 2 || defined(LW_GEOMETRY_TAAU)) && defined(VOXEL_LIGHTING) && defined(IRIS_FEATURE_CUSTOM_IMAGES) && defined(IRIS_FEATURE_COMPUTE_SHADERS) && defined(IRIS_FEATURE_BLOCK_EMISSION_ATTRIBUTE) && defined(IRIS_FEATURE_REVERSED_CULLING) && (GI_REUSE_MODE == 2 || (GI_REUSE_MODE == 1 && (defined(LW_DIMENSION_NETHER) || defined(LW_DIMENSION_END)))))
 #define LW_DOF_HALF
 #endif
 #if defined(LW_VOXEL_INCREMENTAL_ACTIVE) && defined(IRIS_VERSION) && IRIS_VERSION >= 11107 && MC_VERSION >= 260100 && defined(IRIS_FEATURE_SSBO)

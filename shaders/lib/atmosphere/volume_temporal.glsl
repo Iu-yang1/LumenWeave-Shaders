@@ -39,6 +39,9 @@ vec4 temporalCelestialVolume(ivec2 p,ivec2 size,vec3 direction,float depth,bool 
             vec4 clip=gbufferPreviousProjection*vec4(mat3(gbufferPreviousModelView)*direction,0.0);
             if(clip.w>0.0) {
                 vec2 uv=clip.xy/clip.w*0.5+0.5;
+#ifdef LW_GEOMETRY_TAAU
+                uv+=jitterOffset(frameCounter-1);
+#endif
                 vec2 pixel=uv*vec2(size)-0.5;
                 ivec2 donor=ivec2(floor(pixel+0.5));
                 if(all(greaterThanEqual(donor,ivec2(0))) && all(lessThan(donor,size)) &&

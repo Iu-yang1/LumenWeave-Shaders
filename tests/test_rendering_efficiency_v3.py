@@ -194,3 +194,9 @@ class RenderingEfficiencyTests(unittest.TestCase):
         for lang in ("en_us","zh_cn"):
             localized=properties(S/f"lang/{lang}.lang")
             self.assertFalse({f"option.{n}" for n in public}-localized.keys())
+
+    def test_geometry_temporal_volume_reprojection(self):
+        self.assertIn("uv+=jitterOffset(frameCounter-1)",(S/"lib/atmosphere/volume_temporal.glsl").read_text())
+        for name in ("composite_a","composite_b"):
+            source=(S/f"programs/shared/{name}.csh.glsl").read_text()
+            self.assertEqual(source.count("const vec2 workGroupsRender"),5)
