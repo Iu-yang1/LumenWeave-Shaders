@@ -37,3 +37,12 @@ class AutofocusTests(unittest.TestCase):
         final=(S/"programs/shared/final.fsh.glsl").read_text()
         self.assertIn("scene=lwDofResolve(colortex10,texCoord,scene,depth)",final)
         self.assertNotIn("confidence>=0.999",final)
+
+    def test_resolution_scaled_blur_and_bounded_taps(self):
+        dof=(S/"lib/post/dof.glsl").read_text()
+        self.assertIn("max(viewHeight,1.0)/1080.0",dof)
+        self.assertIn("ringWeight>0.0 && (DOF_QUALITY==2 || i<4)",dof)
+        for height in (720,1080,1440,2160):
+            scale=height/1080
+            self.assertAlmostEqual(min(.5*48*scale,14*scale)/height,14/1080)
+        self.assertAlmostEqual(2**.02,1.01395948,places=7)

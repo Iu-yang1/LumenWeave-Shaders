@@ -10,7 +10,9 @@ void main() {
     ivec3 tile = ivec3(gl_GlobalInvocationID);
     int limit = VOXEL_GRID_SIZE/4;
     if (any(greaterThanEqual(tile,ivec3(limit)))) return;
-    uint occupied = 0u;
+    // Only nonzero support is consumed by the sampling paths. Try the
+    // tile itself before scanning its halo; lit interiors need one fetch.
+    uint occupied = imageLoad(lwVoxelDirtyTiles,tile).r;
     // Trilinear sampling straddles tile boundaries; include all 26
     // neighbouring tiles to prove an entire sampling tile is black.
     for (int z=-1; z<=1 && occupied==0u; ++z)

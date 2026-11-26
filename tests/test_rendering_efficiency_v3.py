@@ -219,3 +219,11 @@ class RenderingEfficiencyTests(unittest.TestCase):
         resolve=(S/"programs/shared/composite1.fsh.glsl").read_text()
         self.assertIn("ivec2 outputPixel=ivec2(gl_FragCoord.xy)",resolve)
         self.assertIn("all(equal(donor,pixel))",resolve)
+
+    def test_settled_lighting_fast_paths(self):
+        source=(S/"programs/shared/prepare6.csh.glsl").read_text()
+        self.assertIn("if(all(equal(old,target)))",source)
+        self.assertIn("directDecay=exp2(-dt/vec2",source)
+        self.assertIn("diffuseDecay=exp2(-dt/vec2",source)
+        self.assertIn("uint occupied = imageLoad(lwVoxelDirtyTiles,tile).r",(S/"programs/shared/prepare8.csh.glsl").read_text())
+        self.assertIn("min(now,old)*1.01395948",(S/"programs/shared/composite1.fsh.glsl").read_text())

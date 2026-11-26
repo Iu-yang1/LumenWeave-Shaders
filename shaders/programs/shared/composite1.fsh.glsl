@@ -209,8 +209,11 @@ vec3 temporalColor(vec3 current, vec3 viewPosition, vec2 normal, ivec2 pixel, ma
         const vec3 lumaWeights=vec3(0.2126,0.7152,0.0722);
         float now=max(dot(current,lumaWeights),0.002);
         float old=max(dot(historySample.rgb,lumaWeights),0.002);
+        // Exactly the zero-weight part of the logarithmic response below.
+        // Skip chromaticity, division and exponential work for settled light.
+        if(max(now,old)<=min(now,old)*1.01395948) return resolved;
         float colorMatch=1.0-smoothstep(0.20,0.65,length(current/now-historySample.rgb/old));
-        float adapt=exp2(-clamp(frameTime,0.0,0.25)/(now>old?0.10:0.18));
+        float adapt=exp2(-clamp(frameTime,0.0,0.25)/(now>old?DIRECT_RISE_HALF:DIRECT_FALL_HALF));
         float ratio=clamp(mix(now,old,adapt)/now,0.2,5.0);
         resolved=mix(resolved,current*ratio,colorMatch*(1.0-smoothstep(0.1,1.0,motion))*smoothstep(0.02,0.12,abs(log2(old/now))));
     }

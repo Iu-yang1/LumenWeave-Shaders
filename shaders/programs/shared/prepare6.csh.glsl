@@ -20,8 +20,13 @@ shared uint transitioning;
 shared uint previousSupport;
 shared bool skipTile;
 shared ivec3 tileMeta;
+shared vec2 directDecay;
+#ifdef LW_VOXEL_DIFFUSE_SMOOTH
+shared vec2 diffuseDecay;
+#endif
 vec4 settleHistory(vec4 value,vec4 target,vec4 old,bool wall,out bool pending){
     if(wall) { pending=false;return vec4(0.0); }
+    if(all(equal(old,target))) { pending=false;return target; }
     // Compare representable half-float values; snap a sub-quantum tail
     // so a converged tile cannot remain active indefinitely.
     vec4 tolerance=max(abs(target)*0.0015,vec4(0.0005));
@@ -51,6 +56,13 @@ void main(){
         // Dirty radius-two covers both direct and diffuse target changes.
         if(stationary && (mask&3u)==0u && prior.g==0.0)
             skipTile=true;
+        if(!skipTile){
+            float dt=clamp(frameTime,0.0,0.25);
+            directDecay=exp2(-dt/vec2(DIRECT_RISE_HALF,DIRECT_FALL_HALF));
+#ifdef LW_VOXEL_DIFFUSE_SMOOTH
+            diffuseDecay=exp2(-dt/vec2(DIFFUSE_RISE_HALF,DIFFUSE_FALL_HALF));
+#endif
+        }
     }
     barrier();
     if(skipTile) {
@@ -64,8 +76,8 @@ void main(){
     bool valid=previous.w==frameCounter-1 && withinVoxelGrid(previousLocal);
     vec4 target=imageLoad(lwVoxelFirst,cell);
     vec4 old=valid?imageLoad(lwVoxelFirst,historyCell):target;
-    float halfLife=dot(target.rgb,vec3(0.2126,0.7152,0.0722))>dot(old.rgb,vec3(0.2126,0.7152,0.0722))?DIRECT_RISE_HALF:DIRECT_FALL_HALF;
-    vec4 value=mix(target,old,exp2(-clamp(frameTime,0.0,0.25)/halfLife));
+    float decay=dot(target.rgb,vec3(0.2126,0.7152,0.0722))>dot(old.rgb,vec3(0.2126,0.7152,0.0722))?directDecay.x:directDecay.y;
+    vec4 value=mix(target,old,decay);
     // New opaque walls must never retain old light. Quantize tiny tails to zero.
     bool wall=imageLoad(lwVoxelOccupancy,local).r>=LW_VOXEL_WALL;
     if(wall) value=vec4(0.0);
@@ -79,8 +91,8 @@ void main(){
     // history follows its own irradiance, including hue changes and removals.
     vec4 diffuseTarget=imageLoad(lwVoxelSecond,cell);
     vec4 diffuseOld=valid?imageLoad(lwVoxelSecond,historyCell):diffuseTarget;
-    float diffuseHalf=dot(diffuseTarget.rgb,vec3(0.2126,0.7152,0.0722))>dot(diffuseOld.rgb,vec3(0.2126,0.7152,0.0722))?DIFFUSE_RISE_HALF:DIFFUSE_FALL_HALF;
-    vec4 diffuseValue=mix(diffuseTarget,diffuseOld,exp2(-clamp(frameTime,0.0,0.25)/diffuseHalf));
+    float diffuseFactor=dot(diffuseTarget.rgb,vec3(0.2126,0.7152,0.0722))>dot(diffuseOld.rgb,vec3(0.2126,0.7152,0.0722))?diffuseDecay.x:diffuseDecay.y;
+    vec4 diffuseValue=mix(diffuseTarget,diffuseOld,diffuseFactor);
     if(wall) diffuseValue=vec4(0.0);
     bool diffusePending;
     diffuseValue=settleHistory(diffuseValue,diffuseTarget,diffuseOld,wall,diffusePending);

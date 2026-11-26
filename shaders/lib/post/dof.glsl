@@ -1,5 +1,10 @@
 #include "/lib/post/camera_depth.glsl"
 uniform float centerDepthSmooth;
+#ifndef LW_VIEW_SIZE_UNIFORMS
+#define LW_VIEW_SIZE_UNIFORMS
+uniform float viewWidth;
+uniform float viewHeight;
+#endif
 // Iris uses ticks, not seconds. Legacy native-depth fallback only.
 const float centerDepthHalflife = 4.4;
 #ifdef LW_AUTO_FOCUS
@@ -31,8 +36,9 @@ float lwCoC(float depth,float focus) {
     // Scale optical blur with output height; continuous focus dead band.
     float power=1.0/focus-1.0/depth;
     float magnitude=max(abs(power)-0.003,0.0);
-    float radius=magnitude*48.0*strength;
-    return sign(power)*min(radius,14.0);
+    float pixelScale=max(viewHeight,1.0)/1080.0;
+    float radius=magnitude*48.0*strength*pixelScale;
+    return sign(power)*min(radius,14.0*pixelScale);
 }
 vec3 lwDofGather(sampler2D source,vec2 uv,vec3 center,float depth,float coc,float focus) {
     if(depth<=0.0) return center;
@@ -47,7 +53,8 @@ vec3 lwDofGather(sampler2D source,vec2 uv,vec3 center,float depth,float coc,floa
     float farTotal=1.0,nearTotal=0.0;
     // A smooth radius and weight avoid the old hard 0.65-pixel switch.
     float radius=abs(coc), blur=smoothstep(0.15,1.5,radius);
-    float nearRadius=max(radius,5.0);
+    float pixelScale=max(viewHeight,1.0)/1080.0;
+    float nearRadius=max(radius,5.0*pixelScale);
     for(int i=0;i<count;++i){
         // One depth/color pair per direction, plus optional close foreground dilation.
         vec2 p=clamp(uv+taps[i]*texel*max(radius,1.0),texel*0.5,1.0-texel*0.5);
@@ -62,12 +69,15 @@ vec3 lwDofGather(sampler2D source,vec2 uv,vec3 center,float depth,float coc,floa
             }
         }
 #if DOF_QUALITY > 0
-        if(radius<nearRadius-0.5 || DOF_QUALITY==2){
-            float ring=DOF_QUALITY==2?max(radius,10.0):nearRadius;
+        // Four extra cardinal donors in Balanced; all eight in Cinematic.
+        // Fade the extra ring as it merges into the primary sampling disk.
+        float ring=DOF_QUALITY==2?max(radius,10.0*pixelScale):nearRadius;
+        float ringWeight=smoothstep(0.25,1.5,(ring-radius)/pixelScale);
+        if(ringWeight>0.0 && (DOF_QUALITY==2 || i<4)){
             vec2 q=clamp(uv+taps[i]*texel*ring,texel*0.5,1.0-texel*0.5);
             float nearDepth=lwDofDepth(q);
             if(nearDepth>0.0 && nearDepth<depth*0.97){
-                float cover=smoothstep(ring-1.5,ring+1.5,-lwCoC(nearDepth,focus));
+                float cover=ringWeight*smoothstep(ring-1.5*pixelScale,ring+1.5*pixelScale,-lwCoC(nearDepth,focus));
                 if(cover>0.001){nearSum+=texture(source,q).rgb*cover;nearTotal+=cover;}
             }
         }
