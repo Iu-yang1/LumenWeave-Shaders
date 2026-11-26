@@ -56,12 +56,12 @@ public final class RendererExtension implements ClientModInitializer {
         if(chunk==null||world==null||chunk.getLevel()!=world)return;
         var pos=chunk.getPos();
         for(int i=0;i<chunk.getSections().length;i++)
-            STORE.added(new SectionStore.Key(pos.x,world.getSectionYFromSectionIndex(i),pos.z));
+            STORE.added(new SectionStore.Key(pos.x(),world.getSectionYFromSectionIndex(i),pos.z()));
     }
     public static void chunkUnloaded(ClientLevel level,ChunkPos pos){
         if(world!=level)return;
         for(int y=level.getMinSectionY();y<=level.getMaxSectionY();y++)
-            STORE.removed(new SectionStore.Key(pos.x,y,pos.z));
+            STORE.removed(new SectionStore.Key(pos.x(),y,pos.z()));
     }
     public static void blockChanged(Level level,BlockPos pos){
         if(world==level)STORE.changed(new SectionStore.Key(Math.floorDiv(pos.getX(),16),Math.floorDiv(pos.getY(),16),Math.floorDiv(pos.getZ(),16)));
