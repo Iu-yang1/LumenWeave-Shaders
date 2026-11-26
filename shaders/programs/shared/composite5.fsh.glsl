@@ -15,11 +15,11 @@ layout(location=0) out vec4 outputColor;
 const int colortex10Format = RGBA16F;
 */
 #include "/lib/post/dof.glsl"
-const float centerDepthHalflife = 6.0;
 void main(){
-    float d=lwDofDepth(texCoord), coc=lwCoC(d,lwFocusDepth());
+    float focus=lwFocusDepth();
+    float d=lwDofDepth(texCoord), coc=lwCoC(d,focus);
     vec3 center=texture(LW_DOF_SOURCE,texCoord).rgb;
-    outputColor=vec4(lwDofGather(LW_DOF_SOURCE,texCoord,center,d,coc),d);
+    outputColor=vec4(lwDofGather(LW_DOF_SOURCE,texCoord,center,d,coc,focus),d);
 }
 #else
 /* RENDERTARGETS: 0 */

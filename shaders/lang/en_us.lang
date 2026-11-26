@@ -334,3 +334,12 @@ value.GEOMETRY_TAAU_SCALE.67=67%
 value.GEOMETRY_TAAU_SCALE.75=75%
 value.GEOMETRY_TAAU_SCALE.85=85%
 value.GEOMETRY_TAAU_SCALE.100=100%
+
+option.DOF_AF_SPEED=Autofocus half-life (s)
+option.DOF_AF_AREA=Autofocus metering area
+option.DOF_QUALITY=Depth of field sample quality
+value.DOF_QUALITY.0=Fast
+value.DOF_QUALITY.1=Balanced
+value.DOF_QUALITY.2=Cinematic
+option.DOF_AF_SPEED.comment=Optical focus changes smoothly; larger values slow focus pulls.
+option.DOF_AF_AREA.comment=Size of the reticle-centered robust depth metering region.

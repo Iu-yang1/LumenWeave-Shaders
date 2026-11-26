@@ -6,9 +6,15 @@ uniform vec3 sunPosition;
 uniform bool hasSkylight;
 uniform int isEyeInWater;
 uniform float lwRain;
+#ifndef LW_POST_DEPTH0_UNIFORM
+#define LW_POST_DEPTH0_UNIFORM
 uniform sampler2D depthtex0;
+#endif
 #ifdef DISTANT_HORIZONS
+#ifndef LW_POST_DH_DEPTH0_UNIFORM
+#define LW_POST_DH_DEPTH0_UNIFORM
 uniform sampler2D dhDepthTex0;
+#endif
 #endif
 #ifdef LW_CELESTIAL_VOLUME_SPATIAL
 uniform sampler2D colortex9;

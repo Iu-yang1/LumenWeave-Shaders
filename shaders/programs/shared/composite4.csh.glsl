@@ -2,7 +2,7 @@
 #include "/lib/coordinates/raster_grid.glsl"
 layout(local_size_x=1) in;
 const ivec3 workGroups = ivec3(1, 1, 1);
-#ifdef LW_EXPOSURE_METER
+ #ifdef LW_CAMERA_STATE
 #include "/lib/color/scene.glsl"
 layout(rgba32f) uniform image2D lwExposureState;
 #ifdef LW_TAA_DIRECT
@@ -14,12 +14,17 @@ uniform sampler2D colortex0;
 #endif
 uniform float frameTime;
 uniform int frameCounter;
-#ifdef SOLAR_GLARE
+ #if defined(SOLAR_GLARE) && defined(LW_EXPOSURE_METER)
 #include "/lib/post/solar_visibility.glsl"
-#else
+#elif defined(LW_EXPOSURE_METER)
+#define LW_POST_DEPTH0_UNIFORM
 uniform sampler2D depthtex0;
 #endif
+#ifdef LW_AUTO_FOCUS
+#include "/lib/post/autofocus.glsl"
+#endif
 void main(){
+#ifdef LW_EXPOSURE_METER
     float sum=0.0,weight=0.0,terrainSum=0.0,terrainWeight=0.0;
     // Rotate four subcell phases. Sky contributes, but does not drown the terrain meter.
     vec2 phase=vec2(float(frameCounter&1),float((frameCounter>>1)&1))*0.5+0.25;
@@ -46,6 +51,10 @@ void main(){
     glare=min(current,mix(current,previous.b,exp2(-clamp(frameTime,0.0,0.25)/0.10)));
 #endif
     imageStore(lwExposureState,ivec2(0),vec4(next,old,glare,target));
+#endif
+#ifdef LW_AUTO_FOCUS
+    imageStore(lwExposureState,ivec2(1,0),lwAdvanceFocus(imageLoad(lwExposureState,ivec2(1,0)),frameTime));
+#endif
 }
 #else
 void main(){}

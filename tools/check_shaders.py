@@ -311,6 +311,11 @@ def check_modern_properties(compiler, path):
         config=preprocess_properties(compiler,path,{**flags,"AUTO_EXPOSURE":"1","DOF_MODE":"1",**overrides})
         if len([k for k in config if k.startswith("image.")])>16 or ("image.lwExposureState" in config)!=expected:
             raise ValueError(f"Exposure image budget violated: {overrides}")
+        if expected and config["image.lwExposureState"].split()[-2:]!=["2","1"]:
+            raise ValueError("Camera state atlas size incorrect")
+        focus_only=preprocess_properties(compiler,path,{**flags,"DOF_MODE":"1",**overrides})
+        if ("image.lwExposureState" in focus_only)!=expected:
+            raise ValueError("Autofocus must not require auto exposure")
         if (config.get("program.world0/composite5.enabled")!="false")!=half:
             raise ValueError(f"DOF and persistent GI overlap: {overrides}")
         if overrides.get("VOXEL_GI")=="1" and config.get("program.world-1/composite5.enabled")!="false":
@@ -544,6 +549,8 @@ def main():
             sources = [p for p in PREVIEW.rglob("*") if p.suffix in STAGES and p.stem in names]
             variants = {
                 "v5-geometry-dynamic": {**profiles["profile.Extreme"],"GEOMETRY_TAAU_SCALE":"75","PROJECTION_JITTER":"2"},
+                "camera-focus-only": {**profiles["profile.Ultra"],"AUTO_EXPOSURE":"false","DOF_MODE":"1","DOF_QUALITY":"0"},
+                "camera-focus-cinematic": {**profiles["profile.Extreme"],"DOF_MODE":"3","DOF_QUALITY":"2"},
                 "v5-native": {**profiles["profile.Ultra"],"GEOMETRY_TAAU_SCALE":"100"},
                 "v5-geometry-half": {**profiles["profile.Extreme"],"GEOMETRY_TAAU_SCALE":"50","DOF_MODE":"2","MOTION_BLUR":"true"},
                 "v5-geometry-full-hiz": {**profiles["profile.Ultra"],"GEOMETRY_TAAU_SCALE":"67","HIZ_MODE":"2","GI_REUSE_MODE":"2"},

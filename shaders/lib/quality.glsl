@@ -38,6 +38,9 @@
 #define DOF_MODE 0 // [0 1 2 3]
 #define DOF_FOCUS 8.0 // [2.0 4.0 8.0 16.0 32.0 64.0]
 #define DOF_STRENGTH 0.5 // [0.25 0.5 0.75 1.0]
+#define DOF_AF_SPEED 0.22 // [0.10 0.16 0.22 0.35 0.50]
+#define DOF_AF_AREA 1.0 // [0.5 1.0 1.5 2.0]
+#define DOF_QUALITY 1 // [0 1 2]
 #define SOLAR_GLARE
 #define GLARE_STRENGTH 0.25 // [0.1 0.25 0.5 0.75 1.0]
 //#define LENS_GHOSTS
@@ -227,9 +230,15 @@
 #define LW_HIZ_ACTIVE
 #endif
 #endif
-#ifdef AUTO_EXPOSURE
+#if defined(AUTO_EXPOSURE) || DOF_MODE == 1 || DOF_MODE == 3
 #if defined(IRIS_FEATURE_CUSTOM_IMAGES) && defined(IRIS_FEATURE_COMPUTE_SHADERS) && !(defined(INCREMENTAL_VOXELS) && defined(VOXEL_LIGHTING) && defined(IRIS_FEATURE_BLOCK_EMISSION_ATTRIBUTE) && defined(IRIS_FEATURE_REVERSED_CULLING) && defined(PHYSICAL_ATMOSPHERE) && (VOXEL_FUSION != 1 || ATMO_PREBAKED != 1))
+#define LW_CAMERA_STATE
+#ifdef AUTO_EXPOSURE
 #define LW_EXPOSURE_METER
+#endif
+#if DOF_MODE == 1 || DOF_MODE == 3
+#define LW_AUTO_FOCUS
+#endif
 #endif
 #endif
 // Raw GI history owns colortex9 in specific dimensions. Never overwrite it.

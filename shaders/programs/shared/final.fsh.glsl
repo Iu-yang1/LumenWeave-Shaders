@@ -7,7 +7,6 @@
 #include "/lib/post/exposure.glsl"
 #if DOF_MODE != 0
 #include "/lib/post/dof.glsl"
-const float centerDepthHalflife = 6.0;
 #ifdef LW_DOF_HALF
 uniform sampler2D colortex10;
 #endif
@@ -51,14 +50,13 @@ void main() {
         scene = sharpenScene(LW_POST_SOURCE, texCoord, scene);
     }
 #if DOF_MODE != 0
-    float depth=lwDofDepth(texCoord), coc=lwCoC(depth,lwFocusDepth());
+    float depth=lwDofDepth(texCoord);
     if(depth>0.0) {
 #ifdef LW_DOF_HALF
-        vec4 blurred=texture(colortex10,texCoord);
-        float confidence=1.0-smoothstep(0.04,0.18,abs(blurred.a-depth)/max(depth,0.5));
-        scene=confidence>=0.999 ? blurred.rgb : mix(lwDofGather(LW_POST_SOURCE,texCoord,scene,depth,coc),blurred.rgb,confidence);
+        scene=lwDofResolve(colortex10,texCoord,scene,depth);
 #else
-        scene=lwDofGather(LW_POST_SOURCE,texCoord,scene,depth,coc);
+        float focus=lwFocusDepth();
+        scene=lwDofGather(LW_POST_SOURCE,texCoord,scene,depth,lwCoC(depth,focus),focus);
 #endif
     }
 #endif

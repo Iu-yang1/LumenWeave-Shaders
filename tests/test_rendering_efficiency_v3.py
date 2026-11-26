@@ -39,7 +39,7 @@ class RenderingEfficiencyTests(unittest.TestCase):
 
     def test_dof_near_coverage_and_hand_depth(self):
         src=(S/"lib/post/dof.glsl").read_text()
-        self.assertIn("depthtex2",src)
+        self.assertIn("depthtex2",(S/"lib/post/camera_depth.glsl").read_text())
         self.assertIn("nearTotal",src)
         self.assertIn("-lwCoC(d,focus)",src)
 

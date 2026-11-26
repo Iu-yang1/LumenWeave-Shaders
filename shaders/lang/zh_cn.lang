@@ -334,3 +334,12 @@ value.GEOMETRY_TAAU_SCALE.67=67%
 value.GEOMETRY_TAAU_SCALE.75=75%
 value.GEOMETRY_TAAU_SCALE.85=85%
 value.GEOMETRY_TAAU_SCALE.100=100%
+
+option.DOF_AF_SPEED=自动对焦半衰期（秒）
+option.DOF_AF_AREA=自动对焦测距范围
+option.DOF_QUALITY=景深采样质量
+value.DOF_QUALITY.0=快速
+value.DOF_QUALITY.1=均衡
+value.DOF_QUALITY.2=电影
+option.DOF_AF_SPEED.comment=以光学焦度平滑改变对焦，数值越大过渡越慢。
+option.DOF_AF_AREA.comment=准星周围的稳健深度测距区域大小。

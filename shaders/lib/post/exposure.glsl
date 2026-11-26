@@ -1,6 +1,9 @@
 #ifdef AUTO_EXPOSURE
 #ifdef LW_EXPOSURE_METER
+#ifndef LW_CAMERA_STATE_SAMPLER
+#define LW_CAMERA_STATE_SAMPLER
 uniform sampler2D lwExposureSampler;
+#endif
 float lwExposureEV(){
     vec4 state=texelFetch(lwExposureSampler,ivec2(0),0);
 #ifdef LW_EXPOSURE_FINAL
