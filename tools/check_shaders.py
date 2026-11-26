@@ -325,8 +325,10 @@ def check_modern_properties(compiler, path):
         if ("image.lwExposureState" in manual_idle)!=expected:
             raise ValueError("Manual focus must also support idle state")
         separated=preprocess_properties(compiler,path,{**flags,"DOF_MODE":"1","DOF_FILTER":"2",**overrides})
-        if (separated.get("program.world0/composite6.enabled")!="false")!=half:
-            raise ValueError(f"Separable DOF overlaps persistent GI: {overrides}")
+        if (separated.get("program.world0/composite7.enabled")!="false")!=half or separated.get("program.world0/composite6.enabled")!="false":
+            raise ValueError(f"Tiled separable DOF overlaps persistent GI: {overrides}")
+        if separated.get("program.world0/composite5.enabled")!="false":
+            raise ValueError("Tiled DOF must not also execute the raster horizontal pass")
         if ("image.lwExposureState" in focus_only)!=expected:
             raise ValueError("Autofocus must not require auto exposure")
         if (config.get("program.world0/composite5.enabled")!="false")!=half:
@@ -558,7 +560,7 @@ def main():
         profiles = preview_profiles(PREVIEW)
         if args.v4_focused:
             check_modern_properties(args.compiler, PREVIEW / "shaders.properties")
-            names = {"begin","shadowcomp","prepare","prepare2","prepare4","prepare_d","prepare_e","prepare5","prepare6","prepare6_a","prepare7","prepare8","deferred","deferred_a","deferred1","deferred2","deferred2_a","composite","composite_a","composite_b","composite1","composite2","composite3","composite4","composite5","composite6","final","gbuffers_terrain","gbuffers_water","gbuffers_weather","dh_terrain","dh_water"}
+            names = {"begin","shadowcomp","prepare","prepare2","prepare4","prepare_d","prepare_e","prepare5","prepare6","prepare6_a","prepare7","prepare8","deferred","deferred_a","deferred1","deferred2","deferred2_a","composite","composite_a","composite_b","composite1","composite2","composite3","composite4","composite5","composite6","composite7","final","gbuffers_terrain","gbuffers_water","gbuffers_weather","dh_terrain","dh_water"}
             sources = [p for p in PREVIEW.rglob("*") if p.suffix in STAGES and p.stem in names]
             variants = {
                 "v5-geometry-dynamic": {**profiles["profile.Extreme"],"GEOMETRY_TAAU_SCALE":"75","PROJECTION_JITTER":"2"},
@@ -567,6 +569,7 @@ def main():
                 "camera-idle-manual": {**profiles["profile.Ultra"],"AUTO_EXPOSURE":"false","DOF_MODE":"2","DOF_IDLE":"1","PERIPHERAL_OPTICS":"1"},
                 "camera-mipmap": {**profiles["profile.Ultra"],"DOF_MODE":"1","DOF_FILTER":"1"},
                 "camera-separable": {**profiles["profile.Ultra"],"DOF_MODE":"1","DOF_FILTER":"2"},
+                "camera-separable-motion": {**profiles["profile.Extreme"],"DOF_MODE":"2","DOF_FILTER":"2","MOTION_BLUR":"true"},
                 "reference-reuse": {**profiles["profile.Extreme"],"EDGE_TAAU":"0","APPROX_REUSE":"0","PERCEPTUAL_GI":"0","MULTIRATE_VOLUME":"0","SSR_FOOTPRINT":"0","LOW_FREQ_CACHE":"0","DIFFUSE_SH":"0"},
                 "perceptual-fast": {**profiles["profile.Extreme"],"PERCEPTUAL_GI":"2","MULTIRATE_VOLUME":"2","SSR_FOOTPRINT":"2"},
                 "camera-focus-only": {**profiles["profile.Ultra"],"AUTO_EXPOSURE":"false","DOF_MODE":"1","DOF_QUALITY":"0"},

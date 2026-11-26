@@ -274,6 +274,9 @@
 // colortex10 is transient except when the raw block GI trace is retained.
 #if DOF_MODE != 0 && !(defined(TEMPORAL_REUSE) && defined(SCREEN_GI) && defined(SCREEN_GI_SPATIAL) && defined(SCREEN_GI_HISTORY) && defined(VOXEL_GI) && defined(DEFERRED_LIGHTING) && AA_MODE >= 2 && (PROJECTION_JITTER != 2 || defined(LW_GEOMETRY_TAAU)) && defined(VOXEL_LIGHTING) && defined(IRIS_FEATURE_CUSTOM_IMAGES) && defined(IRIS_FEATURE_COMPUTE_SHADERS) && defined(IRIS_FEATURE_BLOCK_EMISSION_ATTRIBUTE) && defined(IRIS_FEATURE_REVERSED_CULLING) && (GI_REUSE_MODE == 2 || (GI_REUSE_MODE == 1 && (defined(LW_DIMENSION_NETHER) || defined(LW_DIMENSION_END)))))
 #define LW_DOF_HALF
+#if DOF_FILTER == 2 && defined(IRIS_FEATURE_COMPUTE_SHADERS) && defined(IRIS_FEATURE_CUSTOM_IMAGES)
+#define LW_DOF_TILE_FUSION
+#endif
 #endif
 #if defined(LW_VOXEL_INCREMENTAL_ACTIVE) && defined(IRIS_VERSION) && IRIS_VERSION >= 11107 && MC_VERSION >= 260100 && defined(IRIS_FEATURE_SSBO)
 #define LW_GPU_COMPACTION

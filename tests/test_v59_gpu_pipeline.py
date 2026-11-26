@@ -111,3 +111,27 @@ class V59PipelineTests(unittest.TestCase):
             history = tuple(half(x) for x in color)
             copied = tuple(half(x) for x in history)
             self.assertEqual(copied, history)
+
+    def test_tile_dof_halo_and_edges(self):
+        rng = random.Random(593)
+        for width, height in ((1, 1), (961, 541), (1920, 1080), (3840, 2160)):
+            halo = min(16, math.ceil(8 * height / 1080) + 1)
+            for _ in range(10000):
+                x, y = rng.randrange(width), rng.randrange(height)
+                base_x, base_y = x // 8 * 8, y // 16 * 16
+                donor_y = max(0, min(height - 1, y + rng.randint(-24, 24)))
+                local_x, local_y = x - base_x, donor_y - base_y + halo
+                cache = 0 <= local_x < 8 and 0 <= local_y < 16 + 2 * halo
+                if cache:
+                    recovered = (base_x + local_x, base_y + local_y - halo)
+                    self.assertEqual(recovered, (x, donor_y))
+                # On a cache miss the kernel evaluates the same horizontal donor.
+                self.assertTrue(0 <= donor_y < height)
+            self.assertLessEqual(8 * (16 + 2 * halo), 384)
+        shader = (ROOT / "programs/shared/composite7.csh.glsl").read_text()
+        self.assertLess(shader.index("barrier();"), shader.index("if(any(greaterThanEqual(p,size))) return;"))
+        self.assertIn("unpackHalf2x16(packHalf2x16(value.xy))", shader)
+        self.assertIn("return lwDofHorizontalAt(source,p,size,focus);", shader)
+        self.assertIn("imageStore(colorimg10,p", shader)
+        for dimension in ("world0", "world-1", "world1"):
+            self.assertTrue((ROOT / dimension / "composite7.csh").exists())

@@ -37,3 +37,17 @@ matching the first active vertex invocation; unsupported hardware uses
 original atomics. No geometric assumption about quad indices is required.
 Neither change alters the scene shadow draw or implements a cross-tile
 motion/DOF fusion. Real loader flip behavior and GPU speed require testing.
+
+## Tiled separable DOF
+
+DOF_FILTER=2 on compute/custom-image-capable loaders now replaces the
+horizontal and vertical raster passes with composite7. Each 8x16 output
+tile caches the horizontal results plus the vertical donor halo, explicitly
+round-tripped through half-float to match the old store/load boundary.
+Far-out or edge donors retain the same horizontal function. The vertical
+filter writes the existing colortex10 directly, with no extra image slots
+or new full-resolution attachment. Legacy loaders retain composite5/6;
+GI history ownership still excludes DOF half-buffer writes. This removes
+one half-resolution global store/load boundary, but does not fuse moving
+motion blur with DOF or guarantee a measured speed-up (halo recomputation
+and texture-cache behavior need GPU tests). Disk and mip DOF are unchanged.
