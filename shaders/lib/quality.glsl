@@ -18,6 +18,7 @@
 #define HIZ_MODE 1 // [0 1 2]
 #define ADAPTIVE_SHADING
 #define APPROX_REUSE 1 // [0 1]
+#define EDGE_TAAU 0 // [0 1]
 #define PERCEPTUAL_GI 1 // [0 1 2]
 #define MULTIRATE_VOLUME 1 // [0 1 2]
 #define SSR_FOOTPRINT 1 // [0 1 2]
@@ -197,6 +198,9 @@
 #define LW_TAA_ACTIVE
 #if GEOMETRY_TAAU_SCALE < 100
 #define LW_GEOMETRY_TAAU
+#if EDGE_TAAU == 1
+#define LW_EDGE_TAAU
+#endif
 #elif SCENE_TAAU_SCALE < 100
 #define LW_SCENE_TAAU
 #endif

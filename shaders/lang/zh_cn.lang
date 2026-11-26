@@ -372,3 +372,6 @@ option.DOF_IDLE_STRENGTH=闲置失焦强度
 option.PERIPHERAL_OPTICS=边缘模糊与色散
 option.PERIPHERAL_OPTICS.comment=轻微径向模糊与色散，不增加暗角压暗。
 option.PERIPHERAL_STRENGTH=边缘光学效果强度
+
+option.EDGE_TAAU=边缘自适应时域超分
+option.EDGE_TAAU.comment=LumenWeave 四样本方向性重建与反应式时域融合，非 AMD 官方 FSR。需要几何 TAAU，保留固定投影采样。

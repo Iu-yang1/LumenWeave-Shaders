@@ -33,9 +33,13 @@ class PerceptualTests(unittest.TestCase):
         self.assertLess(r['sh']['max_abs'],1e-12)
     def test_profiles_and_ordering(self):
         profiles=preview_profiles(ROOT/'shaders')
-        for options in profiles.values():
-            for key in ('PERCEPTUAL_GI','MULTIRATE_VOLUME','SSR_FOOTPRINT','LOW_FREQ_CACHE','DIFFUSE_SH'):
+        for name,options in profiles.items():
+            fast=name in ('profile.Natural','profile.Potato','profile.Low','profile.Standard')
+            for key in ('PERCEPTUAL_GI','MULTIRATE_VOLUME','SSR_FOOTPRINT'):
+                self.assertEqual(options[key],'2' if fast else '1')
+            for key in ('LOW_FREQ_CACHE','DIFFUSE_SH'):
                 self.assertEqual(options[key],'1')
+            self.assertEqual(options['EDGE_TAAU'],'1' if name in ('profile.Ultra','profile.Extreme') else '0')
         for n in itertools.product((0,1),repeat=2):
             for axis in ((1,0),(0,1)):
                 candidates=[n,tuple(a^b for a,b in zip(n,axis)),tuple(a^(1-b) for a,b in zip(n,axis)),tuple(1-a for a in n)]

@@ -563,7 +563,7 @@ def main():
                 "camera-idle-manual": {**profiles["profile.Ultra"],"AUTO_EXPOSURE":"false","DOF_MODE":"2","DOF_IDLE":"1","PERIPHERAL_OPTICS":"1"},
                 "camera-mipmap": {**profiles["profile.Ultra"],"DOF_MODE":"1","DOF_FILTER":"1"},
                 "camera-separable": {**profiles["profile.Ultra"],"DOF_MODE":"1","DOF_FILTER":"2"},
-                "reference-reuse": {**profiles["profile.Extreme"],"APPROX_REUSE":"0","PERCEPTUAL_GI":"0","MULTIRATE_VOLUME":"0","SSR_FOOTPRINT":"0","LOW_FREQ_CACHE":"0","DIFFUSE_SH":"0"},
+                "reference-reuse": {**profiles["profile.Extreme"],"EDGE_TAAU":"0","APPROX_REUSE":"0","PERCEPTUAL_GI":"0","MULTIRATE_VOLUME":"0","SSR_FOOTPRINT":"0","LOW_FREQ_CACHE":"0","DIFFUSE_SH":"0"},
                 "perceptual-fast": {**profiles["profile.Extreme"],"PERCEPTUAL_GI":"2","MULTIRATE_VOLUME":"2","SSR_FOOTPRINT":"2"},
                 "camera-focus-only": {**profiles["profile.Ultra"],"AUTO_EXPOSURE":"false","DOF_MODE":"1","DOF_QUALITY":"0"},
                 "camera-focus-cinematic": {**profiles["profile.Extreme"],"DOF_MODE":"3","DOF_QUALITY":"2"},

@@ -55,7 +55,18 @@ uniform mat4 dhPreviousProjection;
 #include "/lib/temporal/scene_grid.glsl"
 #endif
 
+#ifdef LW_EDGE_TAAU
+#include "/lib/temporal/edge_reconstruction.glsl"
+bool lwLocalBoundsValid=false;
+vec3 lwLocalLower=vec3(0.0),lwLocalUpper=vec3(0.0);
+#endif
 vec3 clipHistory(ivec2 pixel, vec3 history) {
+#ifdef LW_EDGE_TAAU
+    if(lwLocalBoundsValid){
+        vec3 extent=max((lwLocalUpper-lwLocalLower)*0.15,max(abs((lwLocalLower+lwLocalUpper)*0.5)*0.12,vec3(0.002)));
+        return clamp(history,max(lwLocalLower-extent,vec3(0.0)),lwLocalUpper+extent);
+    }
+#endif
     ivec2 size=textureSize(colortex0,0);
     ivec2 limit=size-1;
 #ifdef LW_GEOMETRY_TAAU
@@ -199,6 +210,11 @@ vec3 temporalColor(vec3 current, vec3 viewPosition, vec2 normal, ivec2 pixel, ma
     // Reactive water/bright changes cannot drag old lighting into a new sample.
     float change=length(current-historySample.rgb)/max(length(current)+length(historySample.rgb),0.02);
     weight*=mix(1.0,water?0.15:0.42,smoothstep(0.08,0.5,change));
+#ifdef LW_EDGE_TAAU
+    // Reactive proxy from observed color change, not a native motion-vector
+    // or transparency mask. Preserve geometry validation and Fixed projection.
+    weight*=1.0-0.55*smoothstep(0.12,0.42,change);
+#endif
 #endif
     float materialId = texelFetch(colortex2, pixel, 0).y;
     if (materialId >= 10030.0 && materialId <= 10033.0) {
@@ -305,6 +321,77 @@ vec3 resolveCurrent(ivec2 pixel, vec2 stableUv, vec3 position, vec2 normal, bool
     vec2 coordinate=(stableUv+jitterOffset(frameCounter))*vec2(lowSize)-0.5;
     ivec2 base=ivec2(floor(coordinate));
     vec2 fraction=fract(coordinate);
+#ifdef LW_EDGE_TAAU
+    // Reuse exactly the four spatial donors; no separate full-screen EASU
+    // or sharpening pass. Geometry validation precedes edge reconstruction.
+    vec3 colors[4];float weights[4];bool valid[4];
+    vec3 referenceNormal=decodeNormal(normal);
+    vec3 reference=texelFetch(colortex0,pixel,0).rgb;
+    vec3 lower=reference,upper=reference;
+    int accepted=0;float baseTotal=0.0;
+    float sourceDepth=texelFetch(depthtex0,pixel,0).r;
+    float sourceMaterial=texelFetch(colortex2,pixel,0).y;
+    for(int i=0;i<4;++i){
+        ivec2 offset=ivec2(i&1,i>>1);
+        ivec2 donor=clamp(base+offset,ivec2(0),lowSize-1);
+        vec2 w=mix(1.0-fraction,fraction,vec2(offset));
+        weights[i]=w.x*w.y;
+        colors[i]=reference;
+        valid[i]=false;
+        if(weights[i]<=0.00001) continue;
+        bool match=all(equal(donor,pixel));
+        if(!match && !water && !distant){
+            // Coplanar raw depth shortcut only for matching opaque ownership,
+            // material and normal. Depth variation uses the full check.
+            float d=texelFetch(depthtex0,donor,0).r;
+            vec4 md=texelFetch(colortex2,donor,0);
+            vec4 g=texelFetch(colortex1,donor,0);
+            match=d<1.0 && g.z!=-1.0 && abs(d-md.x)<=0.00000012 &&
+                abs(d-texelFetch(depthtex1,donor,0).r)<=0.00000012 &&
+                md.y==sourceMaterial && abs(d-sourceDepth)<=0.00000012 &&
+                dot(referenceNormal,decodeNormal(g.xy))>0.96;
+        }
+        if(!match){
+            vec2 uv=(vec2(donor)+0.5)/vec2(lowSize);
+            vec3 p;vec2 n;mat4 prev;bool donorWater;
+            match=temporalGeometry(donor,uv,p,n,prev,donorWater) && donorWater==water &&
+                (texelFetch(depthtex0,donor,0).r>=1.0)==distant &&
+                abs(p.z-position.z)<=max(0.10,-position.z*0.035) &&
+                dot(referenceNormal,decodeNormal(n))>=(water?0.86:0.75);
+        }
+        if(!match) continue;
+        colors[i]=all(equal(donor,pixel))?reference:texelFetch(colortex0,donor,0).rgb;
+        valid[i]=true;accepted++;baseTotal+=weights[i];
+        lower=min(lower,colors[i]);upper=max(upper,colors[i]);
+    }
+    if(baseTotal<=0.001) return reference;
+    vec3 mean=vec3(0.0),result=vec3(0.0);
+    float y0=lwUpscaleLuma(colors[0]),y1=lwUpscaleLuma(colors[1]),y2=lwUpscaleLuma(colors[2]),y3=lwUpscaleLuma(colors[3]);
+    vec2 gradient=vec2((y1+y3)-(y0+y2),(y2+y3)-(y0+y1))*0.5;
+    float span=max(max(y0,y1),max(y2,y3))-min(min(y0,y1),min(y2,y3));
+    float contrast=smoothstep(0.04,0.32,span/max(max(max(y0,y1),max(y2,y3)),0.015));
+    float magnitude=length(gradient);
+    gradient=magnitude>0.00001?gradient/magnitude:vec2(0.0);
+    float total=0.0;
+    for(int i=0;i<4;++i){
+        if(!valid[i])continue;
+        float w=weights[i];
+        mean+=colors[i]*w;
+        float edgeWeight=w*lwEdgeWeight(vec2(i&1,i>>1)-fraction,gradient,contrast);
+        result+=colors[i]*edgeWeight;total+=edgeWeight;
+    }
+    mean/=baseTotal;
+    vec3 reconstructed=result/max(total,0.0001);
+    // A bounded contrast-aware detail term never overshoots local HDR range.
+    if(accepted==4 && !water && !distant){
+        reconstructed=lwBoundedDetail(reconstructed,mean,lower,upper,0.30*contrast);
+        // Reuse the current donor envelope for temporal clipping only on
+        // low-contrast surfaces; silhouettes keep the original 3x3 check.
+        lwLocalBoundsValid=contrast<0.08;
+        lwLocalLower=lower;lwLocalUpper=upper;
+    }
+    return reconstructed;
+#else
     vec3 result=vec3(0.0);float weightSum=0.0;
     vec3 referenceNormal=decodeNormal(normal);
     for(int y=0;y<2;++y)for(int x=0;x<2;++x){
@@ -325,6 +412,7 @@ vec3 resolveCurrent(ivec2 pixel, vec2 stableUv, vec3 position, vec2 normal, bool
         result+=texelFetch(colortex0,donor,0).rgb*weight;weightSum+=weight;
     }
     return weightSum>0.001?result/weightSum:texelFetch(colortex0,pixel,0).rgb;
+#endif
 #elif defined(LW_SCENE_TAAU)
     ivec2 fullSize=textureSize(depthtex0,0),lowSize=lwSceneRenderSize(fullSize);
     vec2 coord=lwSceneLowCoord(stableUv,fullSize,frameCounter);

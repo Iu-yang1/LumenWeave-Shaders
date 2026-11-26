@@ -372,3 +372,6 @@ option.DOF_IDLE_STRENGTH=Idle defocus strength
 option.PERIPHERAL_OPTICS=Peripheral lens blur and dispersion
 option.PERIPHERAL_OPTICS.comment=Subtle radial softness and chromatic separation, no dark vignette.
 option.PERIPHERAL_STRENGTH=Peripheral effect strength
+
+option.EDGE_TAAU=Edge-adaptive temporal upscaler
+option.EDGE_TAAU.comment=LumenWeave four-donor directional spatial reconstruction and reactive temporal blend. Not AMD FSR; requires reduced geometry TAA. Fixed projection is preserved.
