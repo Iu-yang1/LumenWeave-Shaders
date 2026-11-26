@@ -33,8 +33,11 @@ class DimensionLightingTests(unittest.TestCase):
 
     def test_dimension_fog_optical_depth(self):
         source = (ROOT / "lib/lighting/fog.glsl").read_text()
-        self.assertIn("mix(0.012, 0.027, horizon)", source)
-        self.assertIn("mix(0.0035, 0.010, horizon)", source)
+        density_source = (ROOT / "lib/lighting/overworld.glsl").read_text()
+        self.assertIn("mix(0.012, 0.027, horizon)", density_source)
+        self.assertIn("mix(0.0035, 0.010, horizon)", density_source)
+        self.assertIn("dimensionFogDensity(direction)", source)
+        self.assertIn("opticalDepth = distanceToEye * density;", source)
         self.assertIn("skyRadiance(direction, sunDirection())", source)
         self.assertIn("isEyeInWater == 0 && !hasSkylight", source)
         for density in (.012, .027, .0035, .010):
