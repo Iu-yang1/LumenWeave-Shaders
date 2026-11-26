@@ -24,7 +24,7 @@ ScreenBounce screenBounceRay(vec3 origin, vec3 direction, mat3 toView, vec3 sun)
             break;
         }
 #ifdef LW_HIZ_ACTIVE
-        if (hizRayInFront(uv,position,resolution,gbufferProjection)) {
+        if (hizRayInFront(uv,clip.z/clip.w*0.5+0.5,resolution)) {
             travel = travel * 1.32 + 0.16;
             continue;
         }
