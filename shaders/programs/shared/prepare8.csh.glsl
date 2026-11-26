@@ -4,7 +4,7 @@
 #include "/lib/voxel/settings.glsl"
 layout(local_size_x=4,local_size_y=4,local_size_z=4) in;
 const ivec3 workGroups = ivec3(8,8,8);
-#if defined(LW_LOCAL_SCATTER_ACTIVE) && defined(LW_VOXEL_INCREMENTAL_ACTIVE)
+#if defined(LW_VOXEL_SMOOTH_ACTIVE) || (defined(LW_LOCAL_SCATTER_ACTIVE) && defined(LW_VOXEL_INCREMENTAL_ACTIVE))
 layout(r8ui) uniform uimage3D lwVoxelDirtyTiles;
 void main() {
     ivec3 tile = ivec3(gl_GlobalInvocationID);

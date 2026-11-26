@@ -1,5 +1,44 @@
 #version 430 core
 #include "/lib/quality.glsl"
+#ifdef LW_VOXEL_SMOOTH_ACTIVE
+#include "/lib/voxel/grid.glsl"
+#include "/lib/voxel/dispatch.glsl"
+#include "/lib/voxel/cache_coordinates.glsl"
+layout(rgba16f) uniform image3D lwVoxelFirst;
+layout(r32ui) readonly uniform uimage3D lwVoxelOccupancy;
+layout(rgba32i) readonly uniform iimage2D lwVoxelMeta;
+layout(r8ui) writeonly uniform uimage3D lwVoxelDirtyTiles;
+uniform int frameCounter;
+uniform float frameTime;
+shared ivec4 previous;
+shared ivec3 origin;
+shared uint occupied;
+void main(){
+    if(gl_LocalInvocationIndex==0u){
+        previous=imageLoad(lwVoxelMeta,ivec2(0));
+        origin=voxelCacheOrigin();
+        occupied=0u;
+    }
+    barrier();
+    ivec3 local=ivec3(gl_GlobalInvocationID);
+    ivec3 cell=voxelWrapNear(local+origin);
+    ivec3 historyCell=cell+ivec3(0,0,LW_GRID_SIZE);
+    ivec3 previousLocal=local+cameraPositionInt-previous.xyz;
+    bool valid=previous.w==frameCounter-1 && withinVoxelGrid(previousLocal);
+    vec4 target=imageLoad(lwVoxelFirst,cell);
+    vec4 old=valid?imageLoad(lwVoxelFirst,historyCell):target;
+    float halfLife=dot(target.rgb,vec3(0.2126,0.7152,0.0722))>dot(old.rgb,vec3(0.2126,0.7152,0.0722))?0.10:0.18;
+    vec4 value=mix(target,old,exp2(-clamp(frameTime,0.0,0.25)/halfLife));
+    // New opaque walls must never retain old light. Quantize tiny tails to zero.
+    if(imageLoad(lwVoxelOccupancy,local).r>=LW_VOXEL_WALL) value=vec4(0.0);
+    if(max(value.r,max(value.g,value.b))<0.0005) value=vec4(0.0);
+    if(!valid || any(notEqual(value,old))) imageStore(lwVoxelFirst,historyCell,value);
+    if(max(max(target.r,max(target.g,target.b)),max(value.r,max(value.g,value.b)))>0.0) atomicOr(occupied,1u);
+    barrier();
+    // The original dirty seed slab is no longer needed by propagation.
+    if(gl_LocalInvocationIndex==0u) imageStore(lwVoxelDirtyTiles,ivec3(gl_WorkGroupID),uvec4(occupied));
+}
+#else
 layout(local_size_x=1,local_size_y=1) in;
 const ivec3 workGroups=ivec3(1,1,1);
 #ifdef LW_VOXEL_INCREMENTAL_ACTIVE
@@ -9,4 +48,5 @@ uniform int frameCounter;
 void main(){ imageStore(lwVoxelMeta,ivec2(0),ivec4(cameraPositionInt,frameCounter)); }
 #else
 void main(){}
+#endif
 #endif

@@ -54,7 +54,11 @@ vec3 integrateLocalScatter(vec3 direction, float surfaceDistance) {
 #ifdef LW_VOXEL_INCREMENTAL_ACTIVE
             ivec3 tile = clamp(ivec3(floor(cell/4.0)),ivec3(0),ivec3(LW_GRID_SIZE/4-1));
             if(any(notEqual(tile,lastTile))) {
+#ifdef LW_VOXEL_SMOOTH_ACTIVE
+                tileLit=texelFetch(lwVoxelDirtySampler,tile+ivec3(32,0,0),0).r!=0u;
+#else
                 tileLit=(texelFetch(lwVoxelDirtySampler,tile+ivec3(96,0,0),0).r&4u)!=0u;
+#endif
                 lastTile=tile;
             }
             if (!tileLit) {
@@ -76,7 +80,7 @@ vec3 integrateLocalScatter(vec3 direction, float surfaceDistance) {
                 * (1.0 - smoothstep(radius - 12.0, radius - 1.0, travel));
             if (coverage > 0.0) {
 #ifdef LW_VOXEL_INCREMENTAL_ACTIVE
-                vec4 field = sampleWrappedVoxelRgbaAtOrigin(lwVoxelLight,cell,cacheOrigin);
+                vec4 field = sampleLightRgbaAtOrigin(cell,cacheOrigin);
 #else
                 vec4 field = textureLod(lwVoxelLight,cell/float(LW_GRID_SIZE),0.0);
 #endif

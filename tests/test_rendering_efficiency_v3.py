@@ -38,3 +38,14 @@ class RenderingEfficiencyTests(unittest.TestCase):
         self.assertIn("depthtex2",src)
         self.assertIn("nearTotal",src)
         self.assertIn("-lwCoC(d,focus)",src)
+
+    def test_voxel_history_atlas(self):
+        source=(S/"programs/shared/prepare6.csh.glsl").read_text()
+        self.assertIn("historyCell=cell+ivec3(0,0,LW_GRID_SIZE)",source)
+        self.assertIn("previous.w==frameCounter-1 && withinVoxelGrid(previousLocal)",source)
+        self.assertIn(">=LW_VOXEL_WALL) value=vec4(0.0)",source)
+        self.assertIn("sampleLightRgbaAtOrigin(cell,cacheOrigin)",(S/"lib/atmosphere/local_scatter.glsl").read_text())
+        for size in (32,64,96,128):
+            cells={(x+31)%size for x in range(size)}
+            self.assertEqual(len(cells),size)
+            self.assertTrue(set(range(size)).isdisjoint(range(size,2*size)))

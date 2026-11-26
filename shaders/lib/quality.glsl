@@ -125,6 +125,10 @@
 #endif
 #endif
 
+#if defined(SMOOTH_LIGHTING) && defined(LW_VOXEL_INCREMENTAL_ACTIVE)
+#define LW_VOXEL_SMOOTH_ACTIVE
+#endif
+
 // The legacy four-stage voxel cache plus runtime static atmosphere tables
 // already occupies the loader's 16 custom-image slots.
 #if defined(LW_VOXEL_INCREMENTAL_ACTIVE) && VOXEL_FUSION != 1 && defined(PHYSICAL_ATMOSPHERE) && ATMO_PREBAKED != 1
