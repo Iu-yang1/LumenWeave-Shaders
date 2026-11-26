@@ -48,9 +48,15 @@ float horizonCosine(vec2 originUv, vec2 stepUv, vec3 position, vec3 observer, ve
     return clamp(horizon, -1.0, 1.0);
 }
 
-float visibleArc(float horizon, float gamma) {
-    float bound = min(horizon, max(gamma + LW_PI * 0.5, 0.0));
-    return 0.25 * (cos(gamma) - cos(2.0 * bound - gamma) + 2.0 * bound * sin(gamma));
+float visibleArcCosine(float cosine,float gamma,float cg,float sg) {
+    // cos(gamma+pi/2)=-sin(gamma). Avoid acos for a fully open arc;
+    // use the double-angle identity otherwise, without more trig calls.
+    if(cosine<=-sg) return 0.5*(cg+(gamma+LW_PI*0.5)*sg);
+    float h=acos(clamp(cosine,-1.0,1.0));
+    float sinH=sqrt(max(1.0-cosine*cosine,0.0));
+    float cosDouble=2.0*cosine*cosine-1.0;
+    float sinDouble=2.0*cosine*sinH;
+    return 0.25*(cg-cosDouble*cg-sinDouble*sg+2.0*h*sg);
 }
 
 float groundTruthOcclusion(vec2 uv, vec3 position, vec3 normal) {
@@ -75,13 +81,16 @@ float groundTruthOcclusion(vec2 uv, vec3 position, vec3 normal) {
         if (weight < 0.0001) {
             continue;
         }
-        float gamma = atan(projectedNormal.y, max(projectedNormal.x, 0.00001));
+        vec2 angleVector=vec2(max(projectedNormal.x,0.00001),projectedNormal.y);
+        float gamma=atan(angleVector.y,angleVector.x);
+        vec2 angleUnit=angleVector*inversesqrt(dot(angleVector,angleVector));
+        float cg=angleUnit.x,sg=angleUnit.y;
         vec2 stepUv = axis * projectionScale * scale;
-        float positive = acos(horizonCosine(uv, stepUv, position, observer, normal));
-        float negative = acos(horizonCosine(uv, -stepUv, position, observer, normal));
-        visible += weight * (visibleArc(positive, gamma) + visibleArc(negative, -gamma));
+        float positive=horizonCosine(uv,stepUv,position,observer,normal);
+        float negative=horizonCosine(uv,-stepUv,position,observer,normal);
+        visible+=weight*(visibleArcCosine(positive,gamma,cg,sg)+visibleArcCosine(negative,-gamma,cg,-sg));
         // Analytic sum of the two unobstructed arcs, for |gamma|<=pi/2.
-        unoccluded += weight * (cos(gamma) + gamma*sin(gamma));
+        unoccluded+=weight*(cg+gamma*sg);
     }
     float visibility = clamp(visible / max(unoccluded, 0.0001), 0.0, 1.0);
     visibility = 1.0 - clamp((1.0 - visibility) * AO_STRENGTH, 0.0, 1.0);

@@ -30,9 +30,6 @@ float distantTerrainVisibility(vec3 position,vec3 normalView,vec3 lightView) {
         vec4 clip=dhProjection*vec4(ray,1.0);
         if(clip.w<=0.0) break;
         vec2 uv=clip.xy/clip.w*0.5+0.5;
-#ifdef LW_GEOMETRY_TAAU
-        uv+=jitterOffset(frameCounter);
-#endif
 #ifdef LW_TAA_ACTIVE
         uv+=jitterOffset(frameCounter);
 #endif

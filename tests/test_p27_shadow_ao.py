@@ -43,9 +43,9 @@ class ShadowAoTests(unittest.TestCase):
             for axis in (0,1):
                 self.assertAlmostEqual(sum(p[axis] for p in selected),0.)
         source=(ROOT/"lib/lighting/lite_shadows.glsl").read_text()
-        self.assertIn("receiverDepthAt(receiver,gradient,p,resolution)",source)
+        self.assertIn("receiver.z+dot(gradientPixel,vec2(p)+0.5-receiverPixel)",source)
         self.assertIn("sum+=plane-depth",source)
-        self.assertIn("compareShadowTexel(receiver,gradient",source)
+        self.assertIn("compareShadowPlaneTexel(receiverPixel,receiver.z,gradientPixel",source)
         self.assertIn("blockerTaps==8 ? 1 : 2",source)
 
     def test_shared_ao_geometry_and_full_resolution_fallback(self):

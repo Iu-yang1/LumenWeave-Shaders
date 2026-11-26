@@ -76,7 +76,7 @@ float cloudSolarOpticalDepth(vec3 position,float detail) {
 #endif
 }
 
-vec4 cloudVolumeTransfer(vec3 origin, vec3 direction, vec3 sun, float maxDistance) {
+vec4 cloudVolumeTransferBudget(vec3 origin,vec3 direction,vec3 sun,float maxDistance,float fallbackRate) {
     if (!hasSkylight) {
         return vec4(0.0,0.0,0.0,1.0);
     }
@@ -117,6 +117,10 @@ vec4 cloudVolumeTransfer(vec3 origin, vec3 direction, vec3 sun, float maxDistanc
     float fraction=mix(1.0,MULTIRATE_VOLUME==2?0.50:0.75,farRate);
     steps=min(steps,max(min(4,CLOUD_STEPS),int(ceil(float(steps)*fraction))));
 #endif
+    // A failed spatial reconstruction still samples the current ray.
+    // Only distant cloud layers use the lower fallback integration rate.
+    if(fallbackRate<1.0 && start>=48.0)
+        steps=min(steps,max(min(4,CLOUD_STEPS),int(ceil(float(steps)*fallbackRate))));
     float stepSize = span / float(steps);
     float day = daylight(sun);
     vec3 tint = sunTint(sun);
@@ -202,12 +206,15 @@ vec4 cloudVolumeTransfer(vec3 origin, vec3 direction, vec3 sun, float maxDistanc
     return vec4(scattering*coverage,mix(1.0,transmission,coverage));
 }
 
+vec4 cloudVolumeTransfer(vec3 origin,vec3 direction,vec3 sun,float maxDistance){
+    return cloudVolumeTransferBudget(origin,direction,sun,maxDistance,1.0);
+}
 vec3 applyCloudVolume(vec3 scene,vec3 origin,vec3 direction,vec3 sun,float maxDistance) {
     vec4 transfer=cloudVolumeTransfer(origin,direction,sun,maxDistance);
     return scene*transfer.a+transfer.rgb;
 }
 
-vec3 applyLightShafts(vec3 scene, vec3 origin, vec3 direction, vec3 sun, float maxDistance) {
+vec3 applyLightShaftsBudget(vec3 scene,vec3 origin,vec3 direction,vec3 sun,float maxDistance,float fallbackRate) {
     if (!hasSkylight) {
         return scene;
     }
@@ -237,6 +244,10 @@ vec3 applyLightShafts(vec3 scene, vec3 origin, vec3 direction, vec3 sun, float m
         extraSamples=0;
     }
 #endif
+    if(fallbackRate<1.0 && span>=12.0 && phase*day<0.12){
+        steps=min(steps,max(min(2,SHAFT_STEPS),int(ceil(float(steps)*fallbackRate))));
+        extraSamples=0;
+    }
     float stepSize=span/float(steps);
     float density=0.0;
     vec3 rayStep=direction*stepSize;
@@ -279,3 +290,5 @@ vec3 applyLightShafts(vec3 scene, vec3 origin, vec3 direction, vec3 sun, float m
     }
     return scene + celestialIrradiance(sun) * (density * stepSize * phase * day * (0.008 / 3.1));
 }
+
+vec3 applyLightShafts(vec3 scene,vec3 origin,vec3 direction,vec3 sun,float maxDistance){return applyLightShaftsBudget(scene,origin,direction,sun,maxDistance,1.0);}

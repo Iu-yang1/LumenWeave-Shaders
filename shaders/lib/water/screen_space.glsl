@@ -72,12 +72,13 @@ vec3 physicalWater(vec3 tint, vec3 originalNormal, vec3 viewPosition, vec3 view,
         refractedUv = screen;
     }
     ivec2 samplePixel = depthPixelAtUv(depthtex1,refractedUv);
-    float sampledDepth = texelFetch(depthtex1,samplePixel,0).r;
-    vec3 refractedBackground = reconstructViewPosition(depthPixelUv(depthtex1,samplePixel),sampledDepth);
+    bool samePixel=all(equal(samplePixel,originalPixel));
+    float sampledDepth=samePixel?originalDepth:texelFetch(depthtex1,samplePixel,0).r;
+    vec3 refractedBackground=samePixel?background:reconstructViewPosition(depthPixelUv(depthtex1,samplePixel),sampledDepth);
     if (refractedBackground.z >= viewPosition.z) {
         refractedUv = screen;
         sampledDepth = originalDepth;
-        background = reconstructViewPosition(depthPixelUv(depthtex1,originalPixel),originalDepth);
+        // background still contains the original depth reconstruction.
     } else {
         background = refractedBackground;
     }

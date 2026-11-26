@@ -10,6 +10,17 @@ vec4 celestialVolumeTransfer(vec3 direction,float distanceToSurface) {
     return transfer;
 }
 #ifdef LW_VOLUME_SPATIAL_READER
+vec4 celestialVolumeFallback(vec3 direction,float distanceToSurface){
+#if APPROX_REUSE == 1
+    vec3 sun=sunDirection();
+    vec3 origin=vec3(cameraPositionInt)+cameraPositionFract;
+    vec4 transfer=cloudVolumeTransferBudget(origin,direction,sun,distanceToSurface,0.5);
+    transfer.rgb+=applyLightShaftsBudget(vec3(0.0),origin,direction,sun,distanceToSurface,0.5);
+    return transfer;
+#else
+    return celestialVolumeTransfer(direction,distanceToSurface);
+#endif
+}
 uniform sampler2D colortex9;
 #ifdef LW_AO_SPATIAL
 uniform sampler2D colortex3;
@@ -44,10 +55,14 @@ vec4 upsampleCelestialVolume(vec2 uv,vec3 direction,float distanceToSurface) {
         total+=texelFetch(colortex9,p,0)*weight;
         coverage+=weight;
     }
-    if(coverage<=0.003) return celestialVolumeTransfer(direction,distanceToSurface);
+    if(coverage<=0.003) return celestialVolumeFallback(direction,distanceToSurface);
     vec4 filtered=total/coverage;
+#if APPROX_REUSE == 1
+    float confidence=smoothstep(0.003,0.012,coverage);
+#else
     float confidence=smoothstep(0.003,0.035,coverage);
+#endif
     if(confidence>=0.999) return filtered;
-    return mix(celestialVolumeTransfer(direction,distanceToSurface),filtered,confidence);
+    return mix(celestialVolumeFallback(direction,distanceToSurface),filtered,confidence);
 }
 #endif

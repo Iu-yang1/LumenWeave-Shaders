@@ -28,7 +28,13 @@ float spatialGroundTruthOcclusion(vec2 uv,vec3 position,vec3 normal,vec3 normalV
     }
     if(coverage<=0.003) return groundTruthOcclusion(uv,position,normalView);
     float filtered=total/coverage;
+#if APPROX_REUSE == 1
+    // Geometry ownership already passed. Only genuinely weak donors or
+    // the near transition need a second expensive horizon integration.
+    float confidence=smoothstep(0.003,0.012,coverage)*smoothstep(4.0,6.0,depth);
+#else
     float confidence=smoothstep(0.003,0.035,coverage)*smoothstep(4.0,6.0,depth);
+#endif
     if(confidence>=0.999) return filtered;
     return mix(groundTruthOcclusion(uv,position,normalView),filtered,confidence);
 }
