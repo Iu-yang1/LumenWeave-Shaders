@@ -75,7 +75,8 @@ vec4 temporalCelestialVolume(ivec2 p,ivec2 size,vec3 direction,float depth,bool 
     // Avoid full atlas traffic during translation/slow frames. Explicitly
     // invalidate the tag, including underwater frames, to prevent stale reuse.
     if(stable) {
-        imageStore(lwVolumeHistory,volumeHistoryPixel(p,size,0,parity),cloud);
+        // A negative freshness tag forbids reading reused cloud RGB next frame.
+        if(!reuseCloud) imageStore(lwVolumeHistory,volumeHistoryPixel(p,size,0,parity),cloud);
         imageStore(lwVolumeHistory,volumeHistoryPixel(p,size,1,parity),vec4(shaft,windTime));
     }
     imageStore(lwVolumeHistory,volumeHistoryPixel(p,size,2,parity),

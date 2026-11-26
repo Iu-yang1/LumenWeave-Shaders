@@ -439,6 +439,8 @@ def main():
         profiles["ultra-no-spatial"] = {**profiles["profile.Ultra"], "SCREEN_GI_SPATIAL": "false"}
         profiles["ultra-dynamic-projection"] = {**profiles["profile.Ultra"], "PROJECTION_JITTER": "2"}
         profiles["ultra-legacy-voxel"] = {**profiles["profile.Ultra"], "VOXEL_FUSION": "0"}
+        profiles["water-phase-experiment"] = {**profiles["profile.High"], "WATER_PHASE_LUT": "1"}
+        profiles["sky-original-grid"] = {**profiles["profile.Ultra"], "SKY_ENV_REUSE": "0", "BRDF_REUSE": "0"}
         profiles["cloud-cache-off"] = {**profiles["profile.Ultra"], "CLOUD_DENSITY_CACHE": "0", "CLOUD_OPTICAL_CACHE": "0"}
         profiles["medium-volume-no-gi"] = {**profiles["profile.Medium"], "VOLUME_EFFECTS": "true"}
         profiles["legacy-atmo-and-voxel"] = {**profiles["profile.Ultra"], "ATMO_PREBAKED": "0", "VOXEL_FUSION": "0"}
@@ -501,7 +503,7 @@ def main():
         )
         compile_pack(args.compiler, PREVIEW, {"world-voxels-fallback": voxel_profiles["world-voxels"]})
         volume_entries=[p for p in PREVIEW.rglob("*") if p.suffix in STAGES and p.stem in ("deferred","deferred1","composite","composite_a","composite_b","setup","setup1","setup3","setup4","begin1","begin2","begin3","begin4","begin5")]
-        compile_pack(args.compiler, PREVIEW, {"medium-volume-no-gi":profiles["medium-volume-no-gi"],"atmosphere-original":profiles["atmosphere-original"],"legacy-atmo-and-voxel":profiles["legacy-atmo-and-voxel"]},sources=volume_entries,environment=VOXEL_FEATURES)
+        compile_pack(args.compiler, PREVIEW, {"medium-volume-no-gi":profiles["medium-volume-no-gi"],"atmosphere-original":profiles["atmosphere-original"],"cloud-cache-off":profiles["cloud-cache-off"],"sky-original-grid":profiles["sky-original-grid"],"legacy-atmo-and-voxel":profiles["legacy-atmo-and-voxel"]},sources=volume_entries,environment=VOXEL_FEATURES)
         compile_pack(args.compiler, PREVIEW, {"extreme-volume-hardware":profiles["profile.Extreme"]},sources=volume_entries,
             environment=(*VOXEL_FEATURES,"DISTANT_HORIZONS","IRIS_FEATURE_SEPARATE_HARDWARE_SAMPLERS"))
         compile_pack(args.compiler, PREVIEW, {"modern-compaction": profiles["profile.Ultra"]},

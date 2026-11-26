@@ -1,6 +1,8 @@
 #if WATER_PHASE_LUT == 1
 uniform sampler2D lwWaterPhase;
 float waterPhaseCos(float phase) {
+    // Preserve native argument reduction for distant world coordinates.
+    if(abs(phase)>2048.0) return cos(phase);
     return textureLod(lwWaterPhase,vec2((fract(phase/6.2831853)*256.0+0.5)/257.0,0.5),0.0).r;
 }
 #else

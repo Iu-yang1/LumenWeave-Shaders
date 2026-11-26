@@ -18,7 +18,7 @@ class PrebakedAssetsTests(unittest.TestCase):
             for key in ("SCENE_BUDGET","CLOUD_NOISE_MODE","CLOUD_ADAPTIVE",
                         "CLOUD_EMPTY_SKIP","SHAFT_ADAPTIVE","CLOUD_LIGHT_REUSE",
                         "VOLUME_TEMPORAL","LOCAL_SCATTER_ADAPTIVE","ATMO_PREBAKED",
-                        "ATMO_UPDATE_MODE","AO_RECONSTRUCTION","HDR_REUSE","END_NEBULA_ASSET"):
+                        "ATMO_UPDATE_MODE","AO_RECONSTRUCTION","HDR_REUSE","END_NEBULA_ASSET","CLOUD_DENSITY_CACHE","CLOUD_OPTICAL_CACHE","SKY_ENV_REUSE","BRDF_REUSE"):
                 self.assertEqual(options[key],"1",key)
         for name in ("Natural","Potato","Low","Medium","High","Standard"):
             self.assertEqual(profiles[f"profile.{name}"]["VOLUME_EFFECTS"],"false")
