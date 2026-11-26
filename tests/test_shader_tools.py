@@ -14,6 +14,26 @@ class ShaderToolsTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "four explicit"):
             check_iris_directives("const vec4 colortex4ClearColor = vec4(0.0);", "composite")
 
+    def test_iris_compute_directive_rejects_scalar_splat_and_expressions(self):
+        for source in (
+            "const ivec3 workGroups=ivec3(1);",
+            "const ivec3 workGroups=ivec3(1, 1);",
+            "const ivec3 workGroups=ivec3(1+1, 1, 1);",
+            "const ivec3 workGroups=ivec3(1, 0, 1);",
+        ):
+            with self.subTest(source=source), self.assertRaisesRegex(ValueError, "three explicit"):
+                check_iris_directives(source, "setup4.csh")
+        with self.assertRaisesRegex(ValueError, "two explicit"):
+            check_iris_directives("const vec2 workGroupsRender=vec2(0.5);", "composite_b.csh")
+        check_iris_directives("const ivec3 workGroups=ivec3(1, 1, 1);", "setup4.csh")
+        check_iris_directives("const vec2 workGroupsRender=vec2(0.5, 0.5);", "composite_b.csh")
+
+    def test_all_compute_entries_are_iris_parseable(self):
+        # Run in fast packaging CI as well as the full GLSL matrix.
+        for entry in sorted(PREVIEW.rglob("*.csh")):
+            with self.subTest(entry=entry.relative_to(PREVIEW)):
+                check_iris_directives(expand(PREVIEW, entry), entry)
+
     def test_water_uses_a_geometry_stage_sampler(self):
         with self.assertRaisesRegex(ValueError, "cannot bind colortex3"):
             check_iris_directives("uniform sampler2D colortex3;", "gbuffers_water.fsh")

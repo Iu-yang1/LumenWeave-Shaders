@@ -1,6 +1,7 @@
 #include "/lib/quality.glsl"
 layout(local_size_x=1) in;
-const ivec3 workGroups=ivec3(1);
+// Iris parses the constructor text, not GLSL scalar splatting.
+const ivec3 workGroups = ivec3(1, 1, 1);
 #ifdef LW_CLOUD_CACHE_ACTIVE
 uniform ivec3 cameraPositionInt;
 uniform vec3 cameraPositionFract;

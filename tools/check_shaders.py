@@ -86,6 +86,25 @@ def expand(root, path, ancestry=()):
 
 
 def check_iris_directives(text, path):
+    # Iris ComputeDirectiveParser splits constructor arguments by comma and
+    # indexes each component, even after logging a wrong argument count.
+    # GLSL scalar splats and constant expressions compile but can crash Iris.
+    for name, constructor, value in re.findall(
+        r"(?m)^\s*const\s+(?:ivec3|vec2)\s+(workGroups(?:Render)?)\s*=\s*(\w+)\s*\(([^;]*)\)\s*;",
+        text,
+    ):
+        parts = [part.strip() for part in value.split(",")]
+        if name == "workGroups":
+            if constructor != "ivec3" or len(parts) != 3 or any(
+                not re.fullmatch(r"[0-9]+", part) or int(part) <= 0 for part in parts
+            ):
+                raise ValueError(f"Iris requires three explicit positive integer workGroups components: {path}")
+        elif constructor != "vec2" or len(parts) != 2 or any(
+            not re.fullmatch(r"(?:[0-9]+(?:\.[0-9]*)?|\.[0-9]+)", part) or float(part) <= 0
+            for part in parts
+        ):
+            raise ValueError(f"Iris requires two explicit positive numeric workGroupsRender components: {path}")
+
     for arguments in IRIS_CLEAR_COLOR.findall(text):
         if len(arguments.split(",")) != 4:
             raise ValueError(f"Iris 1.8.8 requires four explicit clear-color components: {path}")
