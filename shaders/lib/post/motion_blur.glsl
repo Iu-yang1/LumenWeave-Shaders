@@ -4,9 +4,9 @@
 #include "/lib/post/motion_state.glsl"
 #include "/lib/temporal/jitter.glsl"
 uniform mat4 gbufferModelViewInverse;
-vec3 lwMotionBlur(sampler2D source,vec2 texCoord,vec3 center,bool active) {
+vec3 lwMotionBlur(sampler2D source,vec2 texCoord,vec3 center,bool moving) {
     // Vertex-stage uniform check avoids per-pixel reprojection while still.
-    if(!active) return center;
+    if(!moving) return center;
     vec3 cameraDelta=vec3(cameraPositionInt-previousCameraPositionInt)+cameraPositionFract-previousCameraPositionFract;
     if (dot(cameraDelta, cameraDelta) > 16.0) {
         return center;

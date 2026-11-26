@@ -41,7 +41,7 @@ class DeepPipelineTests(unittest.TestCase):
         self.assertIn('#define LW_MOTION_SOURCE colortex4',motion)
         self.assertIn('lwMotionActive!=0',motion)
         shared_motion=(ROOT/'shaders/lib/post/motion_blur.glsl').read_text()
-        self.assertIn('if(!active) return center',shared_motion)
+        self.assertIn('if(!moving) return center',shared_motion)
         self.assertIn('outputColor.a=1.0',motion)
         v=(ROOT/'shaders/programs/shared/prepare5.csh.glsl').read_text()
         self.assertIn('(tileMask&16u)==0u',v)
