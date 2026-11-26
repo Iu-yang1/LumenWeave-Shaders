@@ -28,6 +28,10 @@ vec3 integrateLocalScatter(vec3 direction, float surfaceDistance) {
     cell += delta * 0.5;
 #ifdef LW_VOXEL_INCREMENTAL_ACTIVE
     vec3 cacheOrigin = vec3(voxelCacheOrigin());
+    ivec3 lastTile=ivec3(-1);
+    bool tileLit=true;
+    bvec3 moving=greaterThan(abs(direction),vec3(0.000001));
+    vec3 inverseDirection=1.0/mix(vec3(1.0),direction,moving);
 #endif
     vec3 result = vec3(0.0);
     int i = 0;
@@ -35,15 +39,19 @@ vec3 integrateLocalScatter(vec3 direction, float surfaceDistance) {
         float travel = (float(i) + 0.5) * stepSize;
 #ifdef LW_VOXEL_INCREMENTAL_ACTIVE
         ivec3 tile = clamp(ivec3(floor(cell/4.0)),ivec3(0),ivec3(LW_GRID_SIZE/4-1));
-        if (texelFetch(lwVoxelDirtySampler,tile+ivec3(32,0,0),0).r == 0u) {
+        if(any(notEqual(tile,lastTile))) {
+            tileLit=(texelFetch(lwVoxelDirtySampler,tile+ivec3(96,0,0),0).r&4u)!=0u;
+            lastTile=tile;
+        }
+        if (!tileLit) {
             vec3 low = vec3(tile)*4.0;
             vec3 boundary = mix(low,low+4.0,greaterThan(direction,vec3(0.0)));
-            vec3 exitDistance = (boundary-cell)/mix(vec3(1.0),direction,greaterThan(abs(direction),vec3(0.000001)));
-            exitDistance = mix(vec3(1e6),exitDistance,greaterThan(abs(direction),vec3(0.000001)));
+            vec3 exitDistance = (boundary-cell)*inverseDirection;
+            exitDistance = mix(vec3(1e6),exitDistance,moving);
             float exitTravel = min(exitDistance.x,min(exitDistance.y,exitDistance.z));
             // Skip only sample centres strictly inside the proven-black tile.
             int skip = clamp(int(ceil(max(exitTravel-0.001,0.0)/stepSize)),1,steps-i);
-            transmission *= exp(-extinction*stepSize*float(skip));
+            transmission *= skip==1 ? segmentTransmission : exp(-extinction*stepSize*float(skip));
             cell += delta*float(skip);
             i += skip;
             continue;

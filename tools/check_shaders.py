@@ -165,7 +165,7 @@ def preview_profiles(root, config_root=None):
 
 def preprocess_properties(compiler, path, defines):
     rows = {}
-    values = {"MC_VERSION": "12101", **(defines if isinstance(defines, dict) else dict.fromkeys(defines, "1"))}
+    values = {"MC_VERSION": "12101", "HIZ_MODE": "1", **(defines if isinstance(defines, dict) else dict.fromkeys(defines, "1"))}
     source = ["#version 330", *(f"#define {name} {value}" for name, value in values.items())]
     for index, line in enumerate(read_source(path).splitlines()):
         directive = line.strip()
@@ -469,6 +469,8 @@ def main():
         compile_pack(args.compiler, PREVIEW, {"world-voxels-fallback": voxel_profiles["world-voxels"]})
         compile_pack(args.compiler, PREVIEW, {"modern-compaction": profiles["profile.Ultra"]},
             environment=(*VOXEL_FEATURES,"IRIS_FEATURE_SSBO","LW_TEST_MODERN_IRIS"))
+        compile_pack(args.compiler, PREVIEW, {"full-hiz": {**profiles["profile.Ultra"], "HIZ_MODE": "2"}},
+            environment=VOXEL_FEATURES)
         compile_pack(args.compiler, PREVIEW, {"legacy-1.20": profiles["profile.High"]},
             environment=("LW_TEST_LEGACY_IRIS",))
 

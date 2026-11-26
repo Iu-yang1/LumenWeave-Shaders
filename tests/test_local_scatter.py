@@ -80,7 +80,7 @@ class LocalScatterTests(unittest.TestCase):
         self.assertIn("-position.z >= 52.0 || AO_STRENGTH == 0.0", ao)
         prop = (ROOT / "lib/voxel/propagate.glsl").read_text()
         self.assertIn("stencilIndex(local+LW_VOXEL_DIRECTIONS[stepIndex])", prop)
-        self.assertIn("voxelTileNeedsUpdate(1)", prop)
+        self.assertIn("voxelTileMask(tile)", prop)
         shadow = (ROOT / "programs/shared/shadow.vsh.glsl").read_text()
         self.assertLess(shadow.index("injectTerrainVoxel(position.xyz)"), shadow.index("gl_Position = vec4(2.0"))
         self.assertLess(shadow.index("gl_Position = vec4(2.0"), shadow.index("vegetationDisplacement("))

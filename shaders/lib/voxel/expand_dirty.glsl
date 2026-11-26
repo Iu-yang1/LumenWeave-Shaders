@@ -18,11 +18,19 @@ void main(){
         if(other[LW_DIRTY_AXIS]<0 || other[LW_DIRTY_AXIS]>=limit) continue;
         uint value=imageLoad(lwVoxelDirtyTiles,other+ivec3(32*LW_DIRTY_AXIS,0,0)).r;
 #if LW_DIRTY_AXIS == 0
-        value=(value&1u)*3u;
+        value=(value&1u)*3u | (value&4u);
 #endif
-        mask|=value & (abs(d)<=1 ? 3u : 2u);
-        if(mask==3u) break;
+        mask|=value & (abs(d)<=1 ? 7u : 6u);
+#ifdef VOLUME_EFFECTS
+        if(mask==7u) break;
+#else
+        if((mask&3u)==3u) break;
+#endif
     }
+#if LW_DIRTY_AXIS == 2
+    // Wall classification belongs to the original local tile, not its halo.
+    mask|=imageLoad(lwVoxelDirtyTiles,tile).r&8u;
+#endif
     imageStore(lwVoxelDirtyTiles,tile+ivec3(32*(LW_DIRTY_AXIS+1),0,0),uvec4(mask));
 }
 #else

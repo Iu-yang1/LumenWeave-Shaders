@@ -15,7 +15,6 @@ layout(rgba16f) writeonly uniform image3D LW_VOXEL_WRITE;
 // 4^3 interior + six 4x4 faces. Corners/edges of the halo are
 // never sampled by the six-neighbour stencil.
 shared vec4 lwStencil[160];
-shared uint lwOpenMask[2];
 
 ivec3 stencilCell(int index) {
     if (index < 64) return ivec3(index%4,(index/4)%4,index/16);
@@ -36,35 +35,33 @@ int stencilIndex(ivec3 p) {
 }
 
 void main() {
-#if defined(LW_VOXEL_INCREMENTAL_ACTIVE) && !defined(LW_GPU_COMPACTION)
-    if (!voxelTileNeedsUpdate(1)) {
-        return;
-    }
-#endif
 #ifdef LW_GPU_COMPACTION
-    ivec3 cell=activeTile(1)*4+ivec3(gl_LocalInvocationID);
+    ivec3 tile=activeTile(1);
 #else
-    ivec3 cell = ivec3(gl_GlobalInvocationID);
+    ivec3 tile=ivec3(gl_WorkGroupID);
 #endif
+#ifdef LW_VOXEL_INCREMENTAL_ACTIVE
+    uint tileMask=voxelTileMask(tile);
+    if((tileMask&1u)==0u) return;
+    bool useShared=(tileMask&8u)==0u;
+#else
+    // Full rebuild has no cached wall classification.
+    bool useShared=false;
+#endif
+    ivec3 cell=tile*4+ivec3(gl_LocalInvocationID);
     ivec3 local = ivec3(gl_LocalInvocationID);
     ivec3 base = cell-local;
 #ifdef LW_VOXEL_INCREMENTAL_ACTIVE
     ivec3 origin = voxelCacheOrigin();
-    ivec3 storageCell = voxelWrap(cell+origin);
+    ivec3 storageCell = voxelWrapNear(cell+origin);
 #else
     ivec3 storageCell = cell;
 #endif
     uint seed = imageLoad(lwVoxelOccupancy, cell).r;
 
-    // Dense open tiles benefit from cooperative halo reads; solid/sparse
-    // tiles keep the direct stencil instead of loading an unused halo.
-    if (gl_LocalInvocationIndex < 2u) lwOpenMask[gl_LocalInvocationIndex] = 0u;
-    barrier();
-    if (seed < LW_VOXEL_WALL)
-        atomicOr(lwOpenMask[gl_LocalInvocationIndex/32u],1u << (gl_LocalInvocationIndex%32u));
-    barrier();
-    int openCount = bitCount(lwOpenMask[0]) + bitCount(lwOpenMask[1]);
-    if (openCount < 32) {
+    // Reuse classification from the seed pass rather than doing 64
+    // contended atomics and two extra barriers per propagation stage.
+    if (!useShared) {
         if (seed >= LW_VOXEL_WALL) {
             imageStore(LW_VOXEL_WRITE,storageCell,vec4(0.0));
             return;
@@ -75,7 +72,7 @@ void main() {
             ivec3 neighbor=cell+LW_VOXEL_DIRECTIONS[stepIndex];
             if (withinVoxelGrid(neighbor)) {
 #ifdef LW_VOXEL_INCREMENTAL_ACTIVE
-                incoming=max(incoming,imageLoad(LW_VOXEL_READ,voxelWrap(neighbor+origin)));
+                incoming=max(incoming,imageLoad(LW_VOXEL_READ,voxelWrapNear(neighbor+origin)));
 #else
                 incoming=max(incoming,imageLoad(LW_VOXEL_READ,neighbor));
 #endif
@@ -91,7 +88,7 @@ void main() {
         vec4 light = vec4(0.0);
         if (withinVoxelGrid(sampleCell)) {
 #ifdef LW_VOXEL_INCREMENTAL_ACTIVE
-            light = imageLoad(LW_VOXEL_READ,voxelWrap(sampleCell+origin));
+            light = imageLoad(LW_VOXEL_READ,voxelWrapNear(sampleCell+origin));
 #else
             light = imageLoad(LW_VOXEL_READ,sampleCell);
 #endif

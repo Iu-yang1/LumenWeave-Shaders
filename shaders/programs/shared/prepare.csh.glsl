@@ -46,10 +46,16 @@ void main() {
         imageStore(lwVoxelStage0,cacheCell,vec4(source,float(any(greaterThan(source,vec3(0.0))))));
         imageStore(lwVoxelPrevSeed,cacheCell,uvec4(seed));
     }
-    if (seedChanged || lostNeighbor) atomicOr(lwGroupDirty,1u);
+    uint flags=(seedChanged || lostNeighbor) ? 1u : 0u;
+#ifdef VOLUME_EFFECTS
+    // Any emitting seed can reach at most four cells in the four stencil passes.
+    if(seed>0u && seed<LW_VOXEL_WALL) flags|=4u;
+#endif
+    if(seed>=LW_VOXEL_WALL) flags|=8u;
+    if(flags!=0u) atomicOr(lwGroupDirty,flags);
     barrier();
     if(gl_LocalInvocationIndex==0u && lwGroupDirty!=0u) {
-        imageStore(lwVoxelDirtyTiles,ivec3(gl_WorkGroupID),uvec4(1u));
+        imageStore(lwVoxelDirtyTiles,ivec3(gl_WorkGroupID),uvec4(lwGroupDirty));
     }
 #else
     vec3 source=seed < LW_VOXEL_WALL ? voxelSeedEmission(seed) : vec3(0.0);
