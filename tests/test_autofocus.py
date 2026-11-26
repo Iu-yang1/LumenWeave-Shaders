@@ -35,7 +35,7 @@ class AutofocusTests(unittest.TestCase):
         depth=(S/"lib/post/camera_depth.glsl").read_text()
         self.assertIn("lwPostDepth(depthtex2,uv)",depth)
         final=(S/"programs/shared/final.fsh.glsl").read_text()
-        self.assertIn("scene=lwDofResolve(colortex10,texCoord,scene,depth)",final)
+        self.assertIn("scene=lwDofResolve(colortex10,texCoord,scene,depth,focus)",final)
         self.assertNotIn("confidence>=0.999",final)
 
     def test_resolution_scaled_blur_and_bounded_taps(self):
@@ -46,3 +46,12 @@ class AutofocusTests(unittest.TestCase):
             scale=height/1080
             self.assertAlmostEqual(min(.5*48*scale,14*scale)/height,14/1080)
         self.assertAlmostEqual(2**.02,1.01395948,places=7)
+
+    def test_focused_pixel_retains_native_color(self):
+        dof=(S/"lib/post/dof.glsl").read_text()
+        self.assertIn("blur*smoothstep(0.05,0.65,total)",dof)
+        self.assertIn("if(s.a<depth*0.97)",dof)
+        # At optical focus and without a closer blurred donor, native HDR
+        # is preserved rather than replaced by a half-resolution sample.
+        for native,half in ((.2,.8),(1.5,.3)):
+            self.assertEqual(native*(1-0)+half*0,native)

@@ -52,10 +52,10 @@ void main() {
 #if DOF_MODE != 0
     float depth=lwDofDepth(texCoord);
     if(depth>0.0) {
-#ifdef LW_DOF_HALF
-        scene=lwDofResolve(colortex10,texCoord,scene,depth);
-#else
         float focus=lwFocusDepth();
+#ifdef LW_DOF_HALF
+        scene=lwDofResolve(colortex10,texCoord,scene,depth,focus);
+#else
         scene=lwDofGather(LW_POST_SOURCE,texCoord,scene,depth,lwCoC(depth,focus),focus);
 #endif
     }

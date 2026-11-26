@@ -87,17 +87,29 @@ vec3 lwDofGather(sampler2D source,vec2 uv,vec3 center,float depth,float coc,floa
 }
 // Four depth-compatible half-resolution donors. Never trigger an entire
 // full-resolution disk gather at a depth discontinuity.
-vec3 lwDofResolve(sampler2D blurred,vec2 uv,vec3 center,float depth){
+vec3 lwDofResolve(sampler2D blurred,vec2 uv,vec3 center,float depth,float focus){
     ivec2 size=textureSize(blurred,0);
     vec2 pos=uv*vec2(size)-0.5;
     ivec2 base=ivec2(floor(pos));vec2 f=fract(pos);
-    vec3 sum=vec3(0.0);float total=0.0;
+    vec3 sum=vec3(0.0),nearSum=vec3(0.0);
+    float total=0.0,nearTotal=0.0;
     for(int y=0;y<2;++y)for(int x=0;x<2;++x){
         vec4 s=texelFetch(blurred,clamp(base+ivec2(x,y),ivec2(0),size-1),0);
         if(s.a<=0.0) continue;
         vec2 w=mix(1.0-f,f,vec2(x,y));
         float weight=w.x*w.y*(1.0-smoothstep(0.035,0.18,abs(s.a-depth)/max(depth,0.5)));
         sum+=s.rgb*weight;total+=weight;
+        // Closer defocused donors may cover a sharp background at a silhouette.
+        // A distant donor must never contaminate a sharp foreground.
+        if(s.a<depth*0.97){
+            vec2 outputSize=vec2(size)*2.0;
+            float distancePixels=length((vec2(base+ivec2(x,y))+0.5-pos-0.5)*outputSize/vec2(size));
+            float coverage=smoothstep(distancePixels,distancePixels+2.0,-lwCoC(s.a,focus));
+            float nearWeight=w.x*w.y*coverage;
+            nearSum+=s.rgb*nearWeight;nearTotal+=nearWeight;
+        }
     }
-    return mix(center,sum/max(total,0.0001),smoothstep(0.05,0.65,total));
+    float blur=smoothstep(0.15,1.5,abs(lwCoC(depth,focus)));
+    vec3 result=mix(center,sum/max(total,0.0001),blur*smoothstep(0.05,0.65,total));
+    return mix(result,nearSum/max(nearTotal,0.0001),clamp(nearTotal,0.0,1.0));
 }
