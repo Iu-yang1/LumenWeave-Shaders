@@ -6,7 +6,7 @@ struct ScreenBounce {
     float blockConfidence;
 };
 
-ScreenBounce screenBounceRay(vec3 origin, vec3 direction, mat3 toView, vec3 sun) {
+ScreenBounce screenBounceRay(vec3 origin, vec3 direction, mat3 toView, vec3 sun, vec3 direct) {
     float travel = 0.16;
     ivec2 resolution = textureSize(depthtex0, 0);
 #if defined(LW_HIZ_ACTIVE) && HIZ_MODE == 2
@@ -90,7 +90,6 @@ ScreenBounce screenBounceRay(vec3 origin, vec3 direction, mat3 toView, vec3 sun)
 #endif
                 vec3 diffuse = albedo * (1.0 - source.metallic) * (1.0 - source.f0);
                 vec3 light = sun.y >= 0.0 ? sun : -sun;
-                vec3 direct = celestialIrradiance(sun);
                 float daylightWeight = max(dot(hitNormal, light), 0.0) * smoothstep(0.56, 1.0, geometry.w);
                 daylightWeight *= smoothstep(0.0, 0.18, abs(sun.y)) * mix(1.0, 0.19, rainStrength);
 #if defined(SCENE_SHADOWS) || defined(LW_VOXEL_DIFFUSE_ACTIVE)
@@ -100,7 +99,7 @@ ScreenBounce screenBounceRay(vec3 origin, vec3 direction, mat3 toView, vec3 sun)
                 if (hasSkylight && daylightWeight > 0.0) {
 #ifdef ADAPTIVE_SHADING
                     if(daylightWeight>0.025)
-                        daylightWeight*=mix(1.0,sceneShadow(worldPosition,hitNormal,light),
+                        daylightWeight*=mix(1.0,sceneShadow(worldPosition,hitNormal,light,false),
                             smoothstep(0.025,0.10,daylightWeight));
 #else
                     daylightWeight *= sceneShadow(worldPosition, hitNormal, light);
@@ -143,11 +142,12 @@ ScreenBounce screenDiffuseBounce(vec3 viewPosition, vec3 normal, vec3 sun) {
     // Far GI is already fading to zero at 30 blocks. Two opposed rays
     // retain the average energy while near surfaces keep the four-ray basis.
     int rayCount=-viewPosition.z>22.0 ? 2 : 4;
-    int stride=4/rayCount;
+    int stride=rayCount==4 ? 1 : 2;
+    vec3 direct=celestialIrradiance(sun);
     for (int ray = 0; ray < rayCount; ++ray) {
         float angle = (float(ray*stride) + 0.5) * (LW_PI * 0.5);
         vec3 direction = normalize(normal + tangent * cos(angle) + bitangent * sin(angle));
-        ScreenBounce hit = screenBounceRay(origin, toView * direction, toView, sun);
+        ScreenBounce hit = screenBounceRay(origin, toView * direction, toView, sun, direct);
         bounce.sky += hit.sky;
         bounce.block += hit.block;
         bounce.blockConfidence += hit.blockConfidence;

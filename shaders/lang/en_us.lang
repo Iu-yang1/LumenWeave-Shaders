@@ -147,3 +147,9 @@ option.TEMPORAL_REUSE=Static temporal reuse
 option.TEMPORAL_REUSE.comment=Alternate indirect-light refresh for stable views with geometry validation.
 option.ADAPTIVE_SHADOWS=Adaptive shadow filtering
 option.ADAPTIVE_SHADOWS.comment=Full near-field samples, fewer distant blocker and filter taps.
+
+option.GI_REUSE_MODE=Indirect lighting reuse scope
+option.GI_REUSE_MODE.comment=Auto reuses half-resolution GI in Nether and End only, avoiding additional history copies in Overworld. All dimensions is available for A/B comparison.
+value.GI_REUSE_MODE.0=Off
+value.GI_REUSE_MODE.1=Auto
+value.GI_REUSE_MODE.2=All dimensions

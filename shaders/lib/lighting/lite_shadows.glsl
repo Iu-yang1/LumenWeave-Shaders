@@ -52,8 +52,10 @@ float softShadow(vec3 receiver, float viewDistance) {
     if(viewDistance>28.0) blockerTaps=min(4,SHADOW_FILTER_TAPS);
     if(viewDistance>48.0) filterTaps=min(4,SHADOW_FILTER_TAPS);
 #endif
-    for (int index = 0; index < blockerTaps; ++index) {
-        int tap=index*SHADOW_FILTER_TAPS/blockerTaps;
+    int blockerStride=blockerTaps==SHADOW_FILTER_TAPS ? 1 : 2;
+    for (int index = 0; index < SHADOW_FILTER_TAPS; ++index) {
+        if(index>=blockerTaps) break;
+        int tap=index*blockerStride;
         float depth = shadowDepth(receiver.xy + taps[tap] * texel * 3.5, resolution);
         if (depth < receiver.z) {
             sum += depth;
@@ -69,15 +71,17 @@ float softShadow(vec3 receiver, float viewDistance) {
 #ifdef ADAPTIVE_SHADOWS
     if(viewDistance>28.0 && radius<=1.5) filterTaps=min(4,filterTaps);
 #endif
-    for (int index = 0; index < filterTaps; ++index) {
-        int tap=index*SHADOW_FILTER_TAPS/filterTaps;
+    int filterStride=filterTaps==SHADOW_FILTER_TAPS ? 1 : 2;
+    for (int index = 0; index < SHADOW_FILTER_TAPS; ++index) {
+        if(index>=filterTaps) break;
+        int tap=index*filterStride;
         samples += filteredShadow(receiver.xy + taps[tap] * texel * radius, receiver.z, resolution);
     }
     return samples / float(filterTaps + 1);
 }
 #endif
 
-float sceneShadow(vec3 position, vec3 normal, vec3 light) {
+float sceneShadow(vec3 position, vec3 normal, vec3 light, bool detailed) {
     vec3 shadowLight = normalize(worldDirection(shadowLightPosition));
     if (dot(shadowLight, light) < 0.9 || dot(normal, light) <= 0.0) {
         return 1.0;
@@ -94,11 +98,16 @@ float sceneShadow(vec3 position, vec3 normal, vec3 light) {
     }
     samplePosition.z -= clamp(0.16 / float(shadowMapResolution), 0.00004, 0.00020);
 #ifdef SOFT_SHADOWS
-    float visibility = softShadow(samplePosition,length(position));
+    float visibility = detailed ? softShadow(samplePosition,length(position))
+        : filteredShadow(samplePosition.xy,samplePosition.z,textureSize(shadowtex0,0));
 #else
     float visibility = texture(shadowtex0, samplePosition);
 #endif
     return mix(visibility, 1.0, smoothstep(0.39, 0.49, range));
+}
+
+float sceneShadow(vec3 position, vec3 normal, vec3 light) {
+    return sceneShadow(position,normal,light,true);
 }
 
 float volumeShadow(vec3 position) {

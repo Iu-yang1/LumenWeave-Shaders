@@ -15,6 +15,7 @@
 #define HIZ_MODE 1 // [0 1 2]
 #define ADAPTIVE_SHADING
 #define TEMPORAL_REUSE
+#define GI_REUSE_MODE 1 // [0 1 2]
 #ifdef TEMPORAL_REUSE
 #define LW_TEMPORAL_REUSE
 #endif

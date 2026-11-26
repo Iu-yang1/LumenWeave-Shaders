@@ -105,6 +105,15 @@ vec3 skyRadiance(vec3 direction, vec3 sun) {
         vec3 zenith = vec3(0.0009,0.00055,0.0030);
         return mix(horizon,zenith,smoothstep(0.0,0.85,abs(direction.y)));
     }
+#ifdef LW_ATMOSPHERE_LUT_ACTIVE
+    // In daylight the physical LUT has unit blend weight. Do not calculate
+    // analytic Rayleigh/twilight terms which would be discarded.
+    if(sun.y>=0.05) {
+        vec2 uv=atmoViewUV(direction,sun);
+        vec3 physical=texture(lwAtmoSky,atmoTexelUV(uv,textureSize(lwAtmoSky,0))).rgb*(5.4*SUNLIGHT_STRENGTH);
+        return mix(physical,mix(vec3(0.024),vec3(0.45,0.51,0.57),daylight(sun)),rainStrength*0.83);
+    }
+#endif
     float height = max(direction.y, 0.0);
     float cosine = max(dot(direction, sun), 0.0);
     float twilight = 1.0 - smoothstep(0.06, 0.36, abs(sun.y));

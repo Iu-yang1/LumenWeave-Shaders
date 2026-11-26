@@ -26,12 +26,14 @@ uniform mat4 gbufferProjection;
 
 #include "/lib/lighting/screen_gi.glsl"
 #if defined(LW_TEMPORAL_REUSE) && defined(SCREEN_GI_HISTORY) && defined(LW_TAA_ACTIVE) && !defined(LW_DYNAMIC_JITTER)
+#if GI_REUSE_MODE == 2 || (GI_REUSE_MODE == 1 && (defined(LW_DIMENSION_NETHER) || defined(LW_DIMENSION_END)))
 #define LW_GI_REUSE
 #include "/lib/temporal/reproject.glsl"
 uniform sampler2D colortex9;
 uniform sampler2D colortex7;
 #ifdef LW_VOXEL_DIFFUSE_ACTIVE
 uniform sampler2D colortex10;
+#endif
 #endif
 #endif
 

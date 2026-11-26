@@ -147,3 +147,9 @@ option.TEMPORAL_REUSE=静态时域复用
 option.TEMPORAL_REUSE.comment=静态视角下交替刷新间接光，保留几何验证。
 option.ADAPTIVE_SHADOWS=自适应阴影滤波
 option.ADAPTIVE_SHADOWS.comment=近处完整采样，远处减少阴影搜索与滤波次数。
+
+option.GI_REUSE_MODE=间接光历史复用范围
+option.GI_REUSE_MODE.comment=自动模式仅在地狱与末地隔帧刷新，主世界避免额外历史复制。所有维度模式可用于性能对照。
+value.GI_REUSE_MODE.0=关闭
+value.GI_REUSE_MODE.1=自动
+value.GI_REUSE_MODE.2=所有维度
