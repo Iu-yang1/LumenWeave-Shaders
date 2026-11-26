@@ -9,7 +9,7 @@ from itertools import product
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
-from package import P0_CONFIG, P0_SHARED, PREVIEW, PROBE
+from package import P0_CONFIG, P0_SHARED, PREVIEW, PROBE, TAAU_PROBE
 from compatibility import DIMENSION_DEFINES
 
 STAGES = {".vsh": ".vert", ".fsh": ".frag", ".csh": ".comp"}
@@ -583,6 +583,7 @@ def main():
         )
         properties(PROBE / "shaders.properties")
         compile_pack(args.compiler, PROBE, {"voxel-probe": {}})
+        compile_pack(args.compiler,TAAU_PROBE,{f"taau-{scale}":{"TAAU_SCALE":scale} for scale in ("0.5","0.67","0.75","0.85","1.0")})
         for source in sorted((PREVIEW.parent / "experiments" / "voxel_compaction").glob("*.comp")):
             result = subprocess.run([args.compiler, "-S", "comp", str(source)], capture_output=True, text=True)
             if result.returncode:

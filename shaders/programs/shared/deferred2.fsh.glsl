@@ -30,6 +30,9 @@ const vec4 colortex15ClearColor = vec4(0.0, 0.0, 0.0, 0.0);
 #include "/lib/reflection/material_history.glsl"
 #endif
 #ifdef LW_SSR_HALF
+/*
+const int colortex9Format = RGBA16F;
+*/
 uniform sampler2D colortex9;
 // The prepass owns the transient GI attachment only after deferred1 consumed it.
 bool reconstructRoughReflection(vec2 uv,vec3 viewPosition,vec3 normal,vec4 metadata,out vec4 result) {

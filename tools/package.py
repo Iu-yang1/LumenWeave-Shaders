@@ -11,6 +11,7 @@ from zipfile import ZIP_DEFLATED, ZipFile, ZipInfo
 ROOT = Path(__file__).resolve().parents[1]
 PREVIEW = ROOT / "shaders"
 PROBE = ROOT / "experiments" / "voxel" / "shaders"
+TAAU_PROBE = ROOT / "experiments" / "taau" / "shaders"
 P0_CONFIG = ROOT / "experiments" / "p0" / "shaders"
 P0_SHARED = ("final.vsh", "final.fsh", "lib/soft_color.glsl")
 NOTICES = ("LICENSE", "COPYING", "THIRD_PARTY_NOTICES.md")
@@ -101,6 +102,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     variant = parser.add_mutually_exclusive_group()
     variant.add_argument("--voxel-probe", action="store_true")
+    variant.add_argument("--taau-probe", action="store_true")
     variant.add_argument("--p0", action="store_true")
     variant.add_argument("--compatibility", choices=tuple(TARGETS))
     variant.add_argument("--all-versions", action="store_true")
@@ -112,6 +114,9 @@ def main():
         name = "LumenWeave-Shaders-P0"
         members = shader_members(P0_CONFIG)
         members.update({f"shaders/{path}": member_bytes(PREVIEW / path) for path in P0_SHARED})
+    elif args.taau_probe:
+        name = "LumenWeave-TAAU-Experimental-Probe"
+        members = shader_members(TAAU_PROBE)
     elif args.voxel_probe:
         name = "LumenWeave-Voxel-Probe"
         members = shader_members(PROBE)

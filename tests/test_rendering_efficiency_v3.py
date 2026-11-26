@@ -82,3 +82,16 @@ class RenderingEfficiencyTests(unittest.TestCase):
         self.assertIn("if(skipTile)",source)
         self.assertIn("previous.w==frameCounter-1 && all(equal(cameraPositionInt,previous.xyz))",source)
         self.assertIn("imageLoad(lwVoxelFirst,tileMeta).r==0.0",source)
+
+    def test_taau_grid_contract(self):
+        for width,height in ((1920,1080),(1919,1079),(3840,2160)):
+            for scale in (.5,.67,.75,.85,1.):
+                for size in (width,height):
+                    render=int(size*scale)
+                    s=render/size
+                    for u in (.0,.25,.5,.999):
+                        clip=2*u-1
+                        self.assertAlmostEqual((s*clip+s-1)*.5+.5,u*s)
+                    for pixel in (0,render-1):
+                        uv=(pixel+.5)/render
+                        self.assertAlmostEqual(uv*s*size-.5,pixel)
