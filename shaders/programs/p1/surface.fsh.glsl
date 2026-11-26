@@ -170,7 +170,17 @@ void main() {
         }
 #endif
         // Replace the prior specular fallback, never attenuate emitted radiance.
-        lit = max(lit - fallback.rgb + reflectedRadiance * min(fresnel,0.42),vec3(0.0));
+        // Molten rock is not a clear water mirror. Keep a warm, bounded
+        // reflected component and keep emission separate from reflection.
+        vec3 lavaTint=mix(vec3(1.0,0.48,0.15),radiance/max(max(radiance.r,max(radiance.g,radiance.b)),0.001),0.35);
+        vec3 reflection=reflectedRadiance*lavaTint*min(fresnel,0.18);
+        float emissionPeak=max(material.emission.r,max(material.emission.g,material.emission.b));
+        float reflectionPeak=max(reflection.r,max(reflection.g,reflection.b));
+        reflection*=min(1.0,(0.12+0.22*emissionPeak)/max(reflectionPeak,0.001));
+        vec3 nonEmissive=max(lit - fallback.rgb-material.emission,vec3(0.0));
+        // Suppress the broad white diffuse/direct response of molten pixels,
+        // but leave dark crust detail and the HDR emission intact.
+        lit=material.emission+nonEmissive*lavaTint*0.65+reflection;
         gl_FragData[0] = vec4(applySceneFog(lit,lavaPosition),1.0);
         return;
     }

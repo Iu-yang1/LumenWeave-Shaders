@@ -177,3 +177,10 @@ option.AO_RECONSTRUCTION=Ambient occlusion computation
 option.AO_RECONSTRUCTION.comment=Adaptive shares the Overworld half-resolution GI pass, with full GTAO near the eye and at geometry mismatches. Dynamic projection retains the original path.
 value.AO_RECONSTRUCTION.0=Full resolution
 value.AO_RECONSTRUCTION.1=Adaptive
+
+option.SHADOW_HYBRID=Hybrid hardware shadow filtering
+option.SHADOW_HYBRID.comment=Uses GPU comparison sampling when supported; sloped receivers retain software plane correction.
+value.SHADOW_HYBRID.0=Software
+value.SHADOW_HYBRID.1=Auto hybrid
+option.GLOW_SOFTNESS=Local glow softness
+option.GLOW_SOFTNESS.comment=Smoothly compresses dense local scattering to avoid a flat veil; 0 restores linear scattering.

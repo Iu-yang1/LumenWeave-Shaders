@@ -471,6 +471,7 @@ def main():
         compile_pack(args.compiler, PREVIEW, {"world-voxels-fallback": voxel_profiles["world-voxels"]})
         compile_pack(args.compiler, PREVIEW, {"modern-compaction": profiles["profile.Ultra"]},
             environment=(*VOXEL_FEATURES,"IRIS_FEATURE_SSBO","LW_TEST_MODERN_IRIS"))
+        compile_pack(args.compiler, PREVIEW, {"hybrid-shadow": profiles["profile.High"], "hybrid-hard": profiles["profile.Medium"]}, environment=("IRIS_FEATURE_SEPARATE_HARDWARE_SAMPLERS",))
         compile_pack(args.compiler, PREVIEW, {"full-hiz": {**profiles["profile.Ultra"], "HIZ_MODE": "2"}},
             environment=VOXEL_FEATURES)
         compile_pack(args.compiler, PREVIEW, {"adaptive-off": {**profiles["profile.Ultra"], "ADAPTIVE_SHADING": "false", "TEMPORAL_REUSE": "false", "ADAPTIVE_SHADOWS": "false"}},

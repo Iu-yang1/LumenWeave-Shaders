@@ -7,12 +7,22 @@ const int shadowMapResolution = 1024;
 #else
 const int shadowMapResolution = 512;
 #endif
+#ifdef IRIS_FEATURE_SEPARATE_HARDWARE_SAMPLERS
+const bool shadowHardwareFiltering = true;
+uniform sampler2DShadow shadowtex0HW;
+#define LW_SHADOW_COMPARE shadowtex0HW
+#ifdef SOFT_SHADOWS
+uniform sampler2D shadowtex0;
+#endif
+#else
 #ifdef SOFT_SHADOWS
 const bool shadowHardwareFiltering = false;
 uniform sampler2D shadowtex0;
 #else
 const bool shadowHardwareFiltering = true;
 uniform sampler2DShadow shadowtex0;
+#define LW_SHADOW_COMPARE shadowtex0
+#endif
 #endif
 
 uniform mat4 shadowModelView;
@@ -41,6 +51,15 @@ float compareShadowTexel(vec3 receiver,vec2 gradient,ivec2 pixel,ivec2 resolutio
 }
 
 float filteredReceiverShadow(vec2 uv,vec3 receiver,vec2 gradient,ivec2 resolution) {
+#if SHADOW_HYBRID == 1 && defined(IRIS_FEATURE_SEPARATE_HARDWARE_SAMPLERS)
+    // Hardware PCF has one reference depth for its four texels. Use it
+    // only where the plane variation is small compared with residual bias.
+    vec2 slope=abs(gradient)/vec2(resolution);
+    if(slope.x+slope.y<=0.00002) {
+        float reference=receiver.z+dot(gradient,uv-receiver.xy);
+        return texture(shadowtex0HW,vec3(uv,reference));
+    }
+#endif
     vec2 position=uv*vec2(resolution)-0.5;
     ivec2 base=ivec2(floor(position));
     vec2 fraction=fract(position);
@@ -53,7 +72,11 @@ float filteredReceiverShadow(vec2 uv,vec3 receiver,vec2 gradient,ivec2 resolutio
 
 // Volume samples have no receiver surface; retain the ordinary depth comparison.
 float filteredShadow(vec2 uv,float receiverDepth,ivec2 resolution) {
+    #if SHADOW_HYBRID == 1 && defined(IRIS_FEATURE_SEPARATE_HARDWARE_SAMPLERS)
+    return texture(shadowtex0HW,vec3(uv,receiverDepth));
+#else
     return filteredReceiverShadow(uv,vec3(uv,receiverDepth),vec2(0.0),resolution);
+#endif
 }
 
 float softShadow(vec3 receiver,vec2 gradient,float viewDistance) {
@@ -129,7 +152,7 @@ float sceneShadow(vec3 position, vec3 normal, vec3 light, bool detailed) {
     float visibility = detailed ? softShadow(samplePosition,gradient,length(position))
         : filteredReceiverShadow(samplePosition.xy,samplePosition,gradient,textureSize(shadowtex0,0));
 #else
-    float visibility = texture(shadowtex0, samplePosition);
+    float visibility = texture(LW_SHADOW_COMPARE, samplePosition);
 #endif
     return mix(visibility, 1.0, smoothstep(0.39, 0.49, range));
 }
@@ -150,7 +173,7 @@ float volumeShadow(vec3 position) {
 #ifdef SOFT_SHADOWS
     float visibility = filteredShadow(receiver.xy, receiver.z, textureSize(shadowtex0, 0));
 #else
-    float visibility = texture(shadowtex0, receiver);
+    float visibility = texture(LW_SHADOW_COMPARE, receiver);
 #endif
     return mix(visibility, 1.0, smoothstep(0.39, 0.49, range));
 }

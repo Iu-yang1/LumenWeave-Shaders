@@ -24,7 +24,12 @@ vec3 displayColor(vec3 radiance, float exposure) {
     vec3 color = exposed / (1.0 + brightness);
     float peak = max(color.r, max(color.g, color.b));
     if (peak > 1.0) {
-        color = mix(vec3(mapped), color, (1.0 - mapped) / (peak - mapped));
+        vec3 neutralFit=mix(vec3(mapped),color,(1.0-mapped)/(peak-mapped));
+        // Preserve the hue of highly chromatic HDR emitters rather than
+        // pushing orange/red highlights toward white as luminance rises.
+        float saturation=(peak-min(color.r,min(color.g,color.b)))/peak;
+        float hueWeight=smoothstep(0.25,0.75,saturation);
+        color=mix(neutralFit,color/peak,hueWeight);
     }
     return encodeSrgb(clamp(color, 0.0, 1.0));
 }

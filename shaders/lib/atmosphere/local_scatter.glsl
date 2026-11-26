@@ -76,5 +76,8 @@ vec3 integrateLocalScatter(vec3 direction, float surfaceDistance) {
         cell += delta;
         ++i;
     }
-    return result;
+    // Smoothly compress only dense accumulated local scattering. This
+    // leaves weak distant halos linear, preserves hue and avoids a flat veil.
+    float peak=max(result.r,max(result.g,result.b));
+    return result/(1.0+GLOW_SOFTNESS*0.65*peak);
 }

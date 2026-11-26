@@ -14,7 +14,10 @@ vec3 bloomHighlight(vec2 uv,vec2 texel,float threshold) {
     // Hue-preserving HDR extraction, including saturated red/orange emitters.
     float brightness=max(luminance(sampleColor),0.50*max(sampleColor.r,max(sampleColor.g,sampleColor.b)));
     float contribution=smoothstep(threshold*0.6,threshold*1.4,brightness);
-    return sampleColor*contribution;
+    // Extract excess HDR energy, rather than blurring the entire bright
+    // surface. Soft threshold retains a continuous halo transition.
+    float excess=max(brightness-threshold*0.6,0.0);
+    return sampleColor*contribution*min(1.0,excess/max(brightness,0.0001));
 }
 void main() {
     vec2 texel=1.0/vec2(textureSize(colortex0,0));
