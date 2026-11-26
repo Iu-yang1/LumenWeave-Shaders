@@ -1,6 +1,7 @@
 #version 330 compatibility
 #include "/lib/quality.glsl"
 #include "/lib/color/scene.glsl"
+#include "/lib/post/exposure.glsl"
 #ifdef LW_TAA_DIRECT
 uniform sampler2D colortex4;
 #define LW_POST_SOURCE colortex4
@@ -27,7 +28,7 @@ vec3 bloomHighlight(vec2 uv,vec2 texel,float threshold) {
 }
 void main() {
     vec2 texel=1.0/vec2(textureSize(LW_POST_SOURCE,0));
-    float threshold=BLOOM_THRESHOLD*exp2(-float(EXPOSURE));
+    float threshold=BLOOM_THRESHOLD*exp2(-float(EXPOSURE)-lwExposureEV());
     vec3 result=vec3(0.0);
 #if BLOOM_FILTER == 2
     for(int y=-1;y<=1;++y) for(int x=-1;x<=1;++x)

@@ -3,6 +3,17 @@
 #include "/lib/color/scene.glsl"
 #include "/lib/quality.glsl"
 #include "/lib/post/display.glsl"
+#include "/lib/post/exposure.glsl"
+#if DOF_MODE != 0
+#include "/lib/post/dof.glsl"
+const float centerDepthHalflife = 6.0;
+#ifdef LW_DOF_HALF
+uniform sampler2D colortex10;
+#endif
+#endif
+#ifdef SOLAR_GLARE
+#include "/lib/post/solar_glare.glsl"
+#endif
 #ifdef BLOOM
 uniform sampler2D colortex11;
 #endif
@@ -30,13 +41,26 @@ in vec2 texCoord;
 layout(location = 0) out vec4 outputColor;
 
 void main() {
+    float exposure=float(EXPOSURE)+lwExposureEV();
     vec3 scene = texture(LW_POST_SOURCE, texCoord).rgb;
 #ifdef LW_FXAA_ACTIVE
-    scene = spatialAntialias(LW_POST_SOURCE, texCoord, scene, float(EXPOSURE));
+    scene = spatialAntialias(LW_POST_SOURCE, texCoord, scene, exposure);
 #endif
     if (IMAGE_SHARPENING > 0.0) {
         scene = sharpenScene(LW_POST_SOURCE, texCoord, scene);
     }
+#if DOF_MODE != 0
+    float depth=lwDofDepth(texCoord), coc=lwCoC(depth,lwFocusDepth());
+    if(abs(coc)>0.65) {
+#ifdef LW_DOF_HALF
+        vec4 blurred=texture(colortex10,texCoord);
+        float confidence=1.0-smoothstep(0.04,0.18,abs(blurred.a-depth)/max(depth,0.5));
+        scene=mix(scene,blurred.rgb,confidence*smoothstep(0.65,2.0,abs(coc)));
+#else
+        scene=lwDofGather(LW_POST_SOURCE,texCoord,scene,depth,coc);
+#endif
+    }
+#endif
 #ifdef BLOOM
 #if BLOOM_FILTER == 0
     // The quarter-resolution buffer already provides a four-pixel footprint.
@@ -65,6 +89,9 @@ void main() {
 #endif
     scene+=bloom*BLOOM_STRENGTH;
 #endif
+#ifdef SOLAR_GLARE
+    scene+=lwSolarGlare(texCoord,vec2(textureSize(LW_POST_SOURCE,0)));
+#endif
 #ifdef SHOW_COLOR_CHART
     if (texCoord.y >= 0.90) {
         const vec3 swatches[10] = vec3[10](
@@ -74,5 +101,5 @@ void main() {
         scene = swatches[clamp(int(texCoord.x * 10.0), 0, 9)];
     }
 #endif
-    outputColor = vec4(displayColor(gradeRadiance(scene), float(EXPOSURE)), 1.0);
+    outputColor = vec4(displayColor(gradeRadiance(scene), exposure), 1.0);
 }

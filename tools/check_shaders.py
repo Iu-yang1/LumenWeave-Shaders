@@ -458,6 +458,8 @@ def main():
         profiles["ultra-no-spatial"] = {**profiles["profile.Ultra"], "SCREEN_GI_SPATIAL": "false"}
         profiles["ultra-dynamic-projection"] = {**profiles["profile.Ultra"], "PROJECTION_JITTER": "2"}
         profiles["ultra-legacy-voxel"] = {**profiles["profile.Ultra"], "VOXEL_FUSION": "0"}
+        profiles["cinematic-auto"] = {**profiles["profile.High"], "DOF_MODE": "1", "LENS_GHOSTS": "true", "LENS_STAR": "true"}
+        profiles["cinematic-manual"] = {**profiles["profile.Ultra"], "DOF_MODE": "2", "SOLAR_GLARE": "true"}
         profiles["water-phase-experiment"] = {**profiles["profile.High"], "WATER_PHASE_LUT": "1"}
         profiles["sky-original-grid"] = {**profiles["profile.Ultra"], "SKY_ENV_REUSE": "0", "BRDF_REUSE": "0"}
         profiles["cloud-cache-off"] = {**profiles["profile.Ultra"], "CLOUD_DENSITY_CACHE": "0", "CLOUD_OPTICAL_CACHE": "0"}

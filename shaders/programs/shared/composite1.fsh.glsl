@@ -126,6 +126,9 @@ vec4 filteredHistory(vec2 uv, float expectedDepth, vec2 normal, bool water, bool
     return result;
 }
 
+#ifdef SMOOTH_LIGHTING
+uniform float frameTime;
+#endif
 vec3 temporalColor(vec3 current, vec3 viewPosition, vec2 normal, ivec2 pixel, mat4 previousProjection, bool water, bool distant) {
     vec2 previousUv;
     float expectedDepth;
@@ -160,7 +163,21 @@ vec3 temporalColor(vec3 current, vec3 viewPosition, vec2 normal, ivec2 pixel, ma
         // Nearby moving vegetation needs rejection; distant settled foliage benefits from history.
         weight *= mix(0.45,1.0,smoothstep(24.0,64.0,-viewPosition.z));
     }
-    return mix(current, clipped, weight);
+    vec3 resolved=mix(current,clipped,weight);
+#ifdef SMOOTH_LIGHTING
+    // History passed depth/normal/reprojection checks. Limit changes to
+    // illumination of matched terrain, without dragging old geometry or hue.
+    if(!water && !distant && motion<1.0 && !(materialId>=10030.0 && materialId<=10033.0)) {
+        const vec3 lumaWeights=vec3(0.2126,0.7152,0.0722);
+        float now=max(dot(current,lumaWeights),0.002);
+        float old=max(dot(historySample.rgb,lumaWeights),0.002);
+        float colorMatch=1.0-smoothstep(0.20,0.65,length(current/now-historySample.rgb/old));
+        float adapt=exp2(-clamp(frameTime,0.0,0.25)/(now>old?0.10:0.18));
+        float ratio=clamp(mix(now,old,adapt)/now,0.2,5.0);
+        resolved=mix(resolved,current*ratio,colorMatch*(1.0-smoothstep(0.1,1.0,motion))*smoothstep(0.02,0.12,abs(log2(old/now))));
+    }
+#endif
+    return resolved;
 }
 
 bool temporalGeometry(ivec2 pixel, vec2 uv, out vec3 viewPosition, out vec2 normal,

@@ -22,6 +22,16 @@
 #define RAIN_RIPPLES 1 // [0 1 2]
 #define WET_SURFACES
 #define PUDDLE_STRENGTH 0.65 // [0.0 0.25 0.5 0.65 0.8 1.0]
+#define AUTO_EXPOSURE
+#define EXPOSURE_ADAPTATION 0.65 // [0.25 0.5 0.65 0.8 1.0]
+#define SMOOTH_LIGHTING
+#define DOF_MODE 0 // [0 1 2 3]
+#define DOF_FOCUS 8.0 // [2.0 4.0 8.0 16.0 32.0 64.0]
+#define DOF_STRENGTH 0.5 // [0.25 0.5 0.75 1.0]
+#define SOLAR_GLARE
+#define GLARE_STRENGTH 0.25 // [0.1 0.25 0.5 0.75 1.0]
+//#define LENS_GHOSTS
+//#define LENS_STAR
 #define BRDF_REUSE 1 // [0 1]
 #define ATMO_PREBAKED 1 // [0 1]
 #define END_NEBULA_ASSET 1 // [0 1]
@@ -185,6 +195,15 @@
 #if HIZ_MODE > 0 && (defined(SCREEN_GI) || defined(LW_MATERIAL_SSR_ACTIVE) || (HIZ_MODE == 2 && defined(ADVANCED_WATER)))
 #define LW_HIZ_ACTIVE
 #endif
+#endif
+#ifdef AUTO_EXPOSURE
+#if defined(IRIS_FEATURE_CUSTOM_IMAGES) && defined(IRIS_FEATURE_COMPUTE_SHADERS) && !(defined(INCREMENTAL_VOXELS) && defined(VOXEL_LIGHTING) && defined(IRIS_FEATURE_BLOCK_EMISSION_ATTRIBUTE) && defined(IRIS_FEATURE_REVERSED_CULLING) && defined(PHYSICAL_ATMOSPHERE) && (VOXEL_FUSION != 1 || ATMO_PREBAKED != 1))
+#define LW_EXPOSURE_METER
+#endif
+#endif
+// colortex10 is transient except when the raw block GI trace is retained.
+#if DOF_MODE != 0 && !(defined(TEMPORAL_REUSE) && defined(SCREEN_GI) && defined(SCREEN_GI_SPATIAL) && defined(SCREEN_GI_HISTORY) && defined(VOXEL_GI) && defined(DEFERRED_LIGHTING) && AA_MODE >= 2 && PROJECTION_JITTER != 2 && defined(VOXEL_LIGHTING) && defined(IRIS_FEATURE_CUSTOM_IMAGES) && defined(IRIS_FEATURE_COMPUTE_SHADERS) && defined(IRIS_FEATURE_BLOCK_EMISSION_ATTRIBUTE) && defined(IRIS_FEATURE_REVERSED_CULLING) && (GI_REUSE_MODE == 2 || (GI_REUSE_MODE == 1 && (defined(LW_DIMENSION_NETHER) || defined(LW_DIMENSION_END)))))
+#define LW_DOF_HALF
 #endif
 #if defined(LW_VOXEL_INCREMENTAL_ACTIVE) && defined(IRIS_VERSION) && IRIS_VERSION >= 11107 && MC_VERSION >= 260100 && defined(IRIS_FEATURE_SSBO)
 #define LW_GPU_COMPACTION
