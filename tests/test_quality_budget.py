@@ -18,7 +18,7 @@ class QualityBudgetTests(unittest.TestCase):
             if tier in ("Ultra", "Extreme"):
                 size = int(options["VOXEL_GRID_SIZE"])
                 self.assertAlmostEqual(result["voxel_mib"], (38 * size ** 3 + 128 * 32 * 32 + 16) / MIB)
-                self.assertEqual(result["atmosphere_mib"], ATMO_BYTES / MIB)
+                self.assertEqual(result["atmosphere_mib"], (ATMO_BYTES + 16) / MIB)
                 self.assertEqual(result["hiz_mib"], 67 * 37 * 8 / MIB)
                 self.assertEqual(result["extra_color_single_mib"], 28 * 1920 * 1080 / MIB)
             else:

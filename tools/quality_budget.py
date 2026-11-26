@@ -23,7 +23,7 @@ def resource_budget(options, width, height):
     voxel_bytes = 20 * size ** 3 if enabled("VOXEL_LIGHTING") else 0
     if voxel_bytes and enabled("INCREMENTAL_VOXELS"):
         voxel_bytes += (18 if options.get("VOXEL_FUSION", "1") == "1" else 34) * size ** 3 + 128 * 32 * 32 + 16
-    atmo_bytes = ATMO_BYTES if enabled("PHYSICAL_ATMOSPHERE") else 0
+    atmo_bytes = (ATMO_BYTES+16*int(options.get("ATMO_UPDATE_MODE","1")=="1")) if enabled("PHYSICAL_ATMOSPHERE") else 0
     ssr = enabled("MATERIAL_SSR") and enabled("DEFERRED_LIGHTING") and enabled("ADVANCED_WATER") and not enabled("LITE_LIGHTING")
     taa = int(options["AA_MODE"]) >= 2 and enabled("DEFERRED_LIGHTING")
     jitter_mode = int(options.get("PROJECTION_JITTER", "0"))
@@ -37,7 +37,7 @@ def resource_budget(options, width, height):
     hiz_mode = int(options.get("HIZ_MODE", "1"))
     hiz_bytes = int(width*(.035 if hiz_mode == 1 else .30))*int(height*(.035 if hiz_mode == 1 else .35))*8 if hiz_mode > 0 and enabled("DEFERRED_LIGHTING") and (enabled("SCREEN_GI") or ssr or (hiz_mode == 2 and enabled("ADVANCED_WATER"))) else 0
     volume_noise=1024**2 if enabled("VOLUME_EFFECTS") and options.get("CLOUD_NOISE_MODE")=="1" else 0
-    volume_history=8*int(width*1.5)*height if enabled("VOLUME_EFFECTS") and enabled("SCREEN_GI") and enabled("SCREEN_GI_SPATIAL") and taa and jitter_mode==1 and options.get("VOLUME_RECONSTRUCTION")=="1" and options.get("VOLUME_TEMPORAL")=="1" and not (enabled("TEMPORAL_REUSE") and enabled("SCREEN_GI_HISTORY") and options.get("GI_REUSE_MODE")=="2") and not (voxel_bytes and enabled("INCREMENTAL_VOXELS") and options.get("VOXEL_FUSION")=="0") else 0
+    volume_history=8*int(width*1.5)*height if enabled("VOLUME_EFFECTS") and taa and jitter_mode==1 and options.get("VOLUME_RECONSTRUCTION")=="1" and options.get("VOLUME_TEMPORAL")=="1" and not (enabled("TEMPORAL_REUSE") and enabled("SCREEN_GI") and enabled("SCREEN_GI_SPATIAL") and enabled("SCREEN_GI_HISTORY") and options.get("GI_REUSE_MODE")=="2") and not (voxel_bytes and enabled("INCREMENTAL_VOXELS") and options.get("VOXEL_FUSION")=="0") else 0
     return {
         "cloud_noise_mib": volume_noise/MIB,
         "volume_history_mib": volume_history/MIB,

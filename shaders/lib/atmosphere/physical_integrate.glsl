@@ -24,7 +24,7 @@ void atmoIntegrateSegment(float radius,vec3 direction,vec3 sun,float startDistan
         vec3 source=solar*(rs*pr+ms*pm);
 #ifndef LW_ATMO_SINGLE_ONLY
         vec2 uv=vec2(atmoElevationUv(mu),atmoAltitudeUv(rr));
-        source+=texture(lwAtmoMulti,atmoTexelUV(uv,textureSize(lwAtmoMulti,0))).rgb*sigma;
+        source+=textureLod(lwAtmoMulti,atmoTexelUV(uv,textureSize(lwAtmoMulti,0)),0.0).rgb*sigma;
 #endif
         vec3 segment=exp(-ext*dt);
         vec3 integral=mix((1.0-segment)/max(ext,vec3(1e-8)),vec3(dt),lessThan(ext*dt,vec3(0.0001)));

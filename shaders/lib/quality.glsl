@@ -150,7 +150,7 @@
 
 // GI's half-size transient texture is free after deferred shading, provided
 // no cross-frame raw GI reuse is requested. No additional color attachment.
-#if VOLUME_RECONSTRUCTION == 1 && PROJECTION_JITTER == 1 && defined(VOLUME_EFFECTS) && defined(SCREEN_GI) && defined(SCREEN_GI_SPATIAL) && defined(DEFERRED_LIGHTING) && defined(IRIS_FEATURE_COMPUTE_SHADERS) && defined(IRIS_FEATURE_CUSTOM_IMAGES) && !(defined(TEMPORAL_REUSE) && GI_REUSE_MODE == 2 && defined(SCREEN_GI_HISTORY) && defined(LW_TAA_ACTIVE)) && !defined(LW_DIMENSION_END) && !defined(LW_DIMENSION_NETHER)
+#if VOLUME_RECONSTRUCTION == 1 && (PROJECTION_JITTER == 1 || AA_MODE < 2) && defined(VOLUME_EFFECTS) && defined(DEFERRED_LIGHTING) && defined(IRIS_FEATURE_COMPUTE_SHADERS) && defined(IRIS_FEATURE_CUSTOM_IMAGES) && !(defined(TEMPORAL_REUSE) && GI_REUSE_MODE == 2 && defined(SCREEN_GI) && defined(SCREEN_GI_SPATIAL) && defined(SCREEN_GI_HISTORY) && defined(LW_TAA_ACTIVE)) && !defined(LW_DIMENSION_END) && !defined(LW_DIMENSION_NETHER)
 #define LW_CELESTIAL_VOLUME_SPATIAL
 #endif
 #if defined(LW_CELESTIAL_VOLUME_SPATIAL) && defined(LW_TAA_ACTIVE) && VOLUME_TEMPORAL == 1 && (!defined(LW_VOXEL_INCREMENTAL_ACTIVE) || VOXEL_FUSION == 1)

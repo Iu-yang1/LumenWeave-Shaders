@@ -31,7 +31,7 @@ class VoxelGpuIncrementalTests(unittest.TestCase):
     def test_image_budget(self):
         props = (ROOT/"shaders.properties").read_text()
         self.assertEqual(len({line.split("=",1)[0].strip() for line in props.splitlines()
-                              if line.startswith("image.")}),17)
+                              if line.startswith("image.")}),18)
 
     def test_ring_cache_exact_scroll(self):
         import random

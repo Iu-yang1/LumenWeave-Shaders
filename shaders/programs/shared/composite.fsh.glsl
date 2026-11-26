@@ -16,6 +16,9 @@ layout(location = 0) out vec4 outputColor;
 #endif
 #include "/lib/atmosphere/volume.glsl"
 #ifdef LW_CELESTIAL_VOLUME_SPATIAL
+/*
+const int colortex9Format = RGBA16F;
+*/
 #define LW_VOLUME_SPATIAL_READER
 #include "/lib/atmosphere/volume_spatial.glsl"
 #endif
