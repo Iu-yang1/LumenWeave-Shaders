@@ -20,9 +20,8 @@ vec3 dimensionFog(vec3 lit, vec3 viewPosition, float distanceToEye) {
                                : mix(0.0035, 0.010, horizon);
     float opticalDepth = max(distanceToEye - 5.0, 0.0) * density;
     float transmission = exp(-opticalDepth);
-    vec3 biomeFog = decodeSrgb(fogColor);
-    vec3 haze = hasCeiling ? mix(biomeFog, vec3(0.14, 0.032, 0.012), 0.18)
-                          : mix(biomeFog, vec3(0.040, 0.023, 0.083), 0.55);
+    // Match the actual dimension sky at the far boundary.
+    vec3 haze = skyRadiance(direction, sunDirection());
     float eyeBlock = clamp(float(eyeBrightnessSmooth.x) / 240.0, 0.0, 1.0);
     if (hasCeiling) {
         haze += vec3(0.075, 0.026, 0.008) * eyeBlock * eyeBlock * exp(-distanceToEye * 0.035);
