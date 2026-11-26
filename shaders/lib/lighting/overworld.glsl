@@ -62,7 +62,11 @@ vec3 celestialIrradiance(vec3 sun) {
 vec3 skyRadiance(vec3 direction, vec3 sun) {
     if (!hasSkylight) {
         vec3 fog = decodeSrgb(fogColor);
-        return hasCeiling ? fog : mix(fog, vec3(0.004, 0.003, 0.012), max(direction.y, 0.0));
+        if (hasCeiling) {
+            return mix(fog, vec3(0.14, 0.032, 0.012), 0.18);
+        }
+        vec3 horizon = mix(fog, vec3(0.040, 0.023, 0.083), 0.55);
+        return mix(horizon, vec3(0.004, 0.003, 0.012), smoothstep(0.0, 0.85, direction.y));
     }
     float height = max(direction.y, 0.0);
     float cosine = max(dot(direction, sun), 0.0);
