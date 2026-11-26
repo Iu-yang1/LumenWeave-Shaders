@@ -14,6 +14,10 @@ uniform vec3 fogColor;
 #include "/lib/dimensions/overworld.glsl"
 #include "/lib/dimensions/nether.glsl"
 #include "/lib/dimensions/end.glsl"
+#ifdef LW_ATMOSPHERE_LUT_ACTIVE
+#include "/lib/atmosphere/physical_common.glsl"
+uniform sampler2D lwAtmoSky;
+#endif
 
 vec3 worldDirection(vec3 viewDirection) {
     return mat3(gbufferModelViewInverse) * viewDirection;
@@ -64,6 +68,11 @@ vec3 skyRadiance(vec3 direction, vec3 sun) {
         float band = 1.0 - smoothstep(0.0, 0.24, abs(dot(direction, normalize(vec3(0.36, 0.48, 0.80)))));
         color += vec3(0.010, 0.012, 0.022) * band * band * height * (1.0 - day);
     }
+#ifdef LW_ATMOSPHERE_LUT_ACTIVE
+    vec2 uv = atmoViewUV(direction, sun);
+    vec3 physical = texture(lwAtmoSky, atmoTexelUV(uv,textureSize(lwAtmoSky,0))).rgb * (5.4 * SUNLIGHT_STRENGTH);
+    color = mix(color, physical, smoothstep(-0.15,0.05,sun.y));
+#endif
     color = mix(color, mix(vec3(0.024), vec3(0.45, 0.51, 0.57), day), rainStrength * 0.83);
     return color;
 }

@@ -196,3 +196,6 @@ Actions 生成可安装 ZIP，运行时仍由 Iris 针对实际 GPU 编译。每
 - Validate normal Ultra/Extreme auto, explicit dynamic Ultra, and explicit fixed High in the compile matrix. Runtime acceptance: Ultra/Extreme auto, fullscreen and windowed, plus DH edges and stationary/moving camera. Keep research branch isolated until acceptance.
 
 - User confirmed both normal Ultra and Extreme presets work. PR #1 merged as ca7166c; CI passed. This research branch retains that accepted baseline.
+
+### P6 GPU atmosphere integration prototype
+- Opt-in PHYSICAL_ATMOSPHERE uses Iris custom images; static setup/setup1 transmittance and isotropic multiple-scattering closure, begin1/begin2 sky and RGB aerial volume. Static LUTs 128x32 and 32x16, dynamic sky 128x64, aerial 32x32x16 with separate spectral transmission and inscatter. No new image allocation when disabled. Direction-space parameterization avoids screen jitter. Clear atmosphere calibrated at 0.04 km/block; rain and night use approximate blending. Compute cost, loader setup ordering and visual calibration still require game readbacks. Hillaire 2020 and Iris documented compute ordering informed the independent implementation.

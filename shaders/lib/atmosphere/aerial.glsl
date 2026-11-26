@@ -6,6 +6,11 @@ uniform ivec3 cameraPositionInt;
 uniform vec3 cameraPositionFract;
 #endif
 
+#ifdef LW_ATMOSPHERE_LUT_ACTIVE
+uniform sampler3D lwAtmoScatter;
+uniform sampler3D lwAtmoThrough;
+#endif
+
 // Scene-scale exponential atmosphere. Rayleigh and aerosol optical depths are separate.
 float aerialColumn(float distanceToEye, float startHeight, float endHeight, float scaleHeight) {
     float h0 = clamp((startHeight - 63.0) / scaleHeight, -0.7, 5.0);
@@ -30,6 +35,18 @@ vec3 applyAerialPerspective(vec3 scene, vec3 viewPosition, float boundaryFade) {
     vec3 direction = displacement / max(distanceToEye, 0.0001);
     vec3 sun = sunDirection();
     vec3 sky = skyRadiance(direction, sun);
+#ifdef LW_ATMOSPHERE_LUT_ACTIVE
+    // Aerial tables store independent RGB transmission and inscatter.
+    if (sun.y > 0.05 && rainStrength < 0.999) {
+        vec3 uv = vec3(atmoViewUV(direction,sun),atmoDistanceUV(max(distanceToEye-8.0,0.0)*ATMO_KM_PER_BLOCK*AERIAL_DENSITY));
+        vec3 through = texture(lwAtmoThrough,atmoTexelUVW(uv,textureSize(lwAtmoThrough,0))).rgb;
+        vec3 scatter = texture(lwAtmoScatter,atmoTexelUVW(uv,textureSize(lwAtmoScatter,0))).rgb * (5.4 * SUNLIGHT_STRENGTH);
+        vec3 physical = mix(scene*through+scatter,sky,boundaryFade);
+        // Wet weather is a separate empirical layer until weather-keyed LUTs are implemented.
+        float wet = rainStrength*(1.0-exp(-distanceToEye*0.0042*AERIAL_DENSITY));
+        return mix(physical,sky,wet);
+    }
+#endif
     float day = daylight(sun);
     float cosine = clamp(dot(direction, sun), -1.0, 1.0);
     float rayleighPhase = 0.75 * (1.0 + cosine * cosine);

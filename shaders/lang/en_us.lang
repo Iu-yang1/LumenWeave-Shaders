@@ -126,3 +126,5 @@ option.PROJECTION_JITTER.comment=Auto uses fixed pixel centers with advanced lig
 value.PROJECTION_JITTER.0=Auto (recommended)
 value.PROJECTION_JITTER.1=Fixed pixel centers
 value.PROJECTION_JITTER.2=Dynamic subpixel sampling
+option.PHYSICAL_ATMOSPHERE=Experimental physical atmosphere LUTs
+option.PHYSICAL_ATMOSPHERE.comment=GPU spherical atmosphere with spectral transmission, multiple scattering, sky and aerial perspective. Uses a clear-air base with approximate rain blending.

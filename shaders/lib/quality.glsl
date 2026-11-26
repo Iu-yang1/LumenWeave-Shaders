@@ -9,6 +9,7 @@
 #define ADVANCED_WATER
 #define AA_MODE 2 // [0 1 2 3]
 #define PROJECTION_JITTER 0 // [0 1 2]
+//#define PHYSICAL_ATMOSPHERE
 //#define MATERIAL_SSR
 //#define DH_SHADOWS
 //#define VOLUME_EFFECTS
@@ -54,6 +55,12 @@
 #define SHADOW_FILTER_TAPS 8 // [4 8]
 #define AO_SLICES 3 // [2 3 4]
 #define AO_STRENGTH 1.0 // [0.0 0.5 0.75 1.0 1.25]
+
+#ifdef PHYSICAL_ATMOSPHERE
+#if defined(IRIS_FEATURE_CUSTOM_IMAGES) && defined(IRIS_FEATURE_COMPUTE_SHADERS)
+#define LW_ATMOSPHERE_LUT_ACTIVE
+#endif
+#endif
 
 #ifdef DH_SHADOWS
 #define LW_DH_SHADOWS_REQUESTED
