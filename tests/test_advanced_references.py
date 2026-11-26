@@ -85,7 +85,9 @@ class IncrementalVoxelTests(unittest.TestCase):
 class AdvancedShaderContracts(unittest.TestCase):
     def test_ssr_replaces_environment(self):
         source = (ROOT/"shaders/programs/shared/deferred2.fsh.glsl").read_text()
-        self.assertIn("(hit.rgb - fallback) * metadata.rgb",source)
+        self.assertIn("filtered*metadata.rgb-fallback.rgb",source)
+        self.assertIn("temporalReflectionCorrection",source)
+        self.assertIn("LW_REFLECTION_DH_DEPTH dhDepthTex0",source)
         self.assertIn("LW_REFLECTION_DEPTH depthtex0",source)
 
     def test_dh_shadows_opt_in(self):

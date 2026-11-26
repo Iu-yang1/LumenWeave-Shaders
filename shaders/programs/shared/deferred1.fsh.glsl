@@ -26,7 +26,8 @@ const vec4 colortex6ClearColor = vec4(0.0, 0.0, 0.0, 0.0);
 layout(location = 3) out vec4 opaqueScene;
 #ifdef LW_MATERIAL_SSR_ACTIVE
 layout(location = 4) out vec4 specularMetadata;
-/* RENDERTARGETS: 0,6,7,8,12 */
+layout(location = 5) out vec4 specularEnvironment;
+/* RENDERTARGETS: 0,6,7,8,12,13 */
 #else
 /* RENDERTARGETS: 0,6,7,8 */
 #endif
@@ -41,7 +42,8 @@ const int colortex8Format = RGBA16F;
 layout(location = 1) out vec4 opaqueScene;
 #ifdef LW_MATERIAL_SSR_ACTIVE
 layout(location = 2) out vec4 specularMetadata;
-/* RENDERTARGETS: 0,8,12 */
+layout(location = 3) out vec4 specularEnvironment;
+/* RENDERTARGETS: 0,8,12,13 */
 #else
 /* RENDERTARGETS: 0,8 */
 #endif
@@ -56,6 +58,7 @@ const int colortex8Format = RGBA16F;
 #ifdef LW_MATERIAL_SSR_ACTIVE
 /*
 const int colortex12Format = RGBA16F;
+const int colortex13Format = RGBA16F;
 */
 #endif
 
@@ -133,6 +136,7 @@ void main() {
 #endif
 #ifdef LW_MATERIAL_SSR_ACTIVE
     specularMetadata = vec4(0.0);
+    specularEnvironment = vec4(0.0);
 #endif
     if (depth >= 1.0 || abs(depth - materialDepth.x) > 0.00000012) {
         writeScene(scene);
@@ -156,7 +160,7 @@ void main() {
 #endif
     vec3 sun = sunDirection();
 #ifdef LW_MATERIAL_SSR_ACTIVE
-    vec3 lit = surfaceRadiance(scene.rgb, material, normal, eyeDirection, sun, geometry.zw, viewPosition, specularMetadata);
+    vec3 lit = surfaceRadiance(scene.rgb, material, normal, eyeDirection, sun, geometry.zw, viewPosition, specularMetadata, specularEnvironment);
 #else
     vec3 lit = surfaceRadiance(scene.rgb, material, normal, eyeDirection, sun, geometry.zw, viewPosition);
 #endif

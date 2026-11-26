@@ -8,8 +8,9 @@
 #include "/lib/lighting/lite_shadows.glsl"
 #endif
 
-vec3 surfaceRadiance(vec3 albedo, Material material, vec3 normal, vec3 view, vec3 sun, vec2 lightLevels, vec3 viewPosition, out vec4 specularMetadata) {
+vec3 surfaceRadiance(vec3 albedo, Material material, vec3 normal, vec3 view, vec3 sun, vec2 lightLevels, vec3 viewPosition, out vec4 specularMetadata, out vec4 specularEnvironment) {
     specularMetadata = vec4(0.0);
+    specularEnvironment = vec4(0.0);
     vec3 f0 = material.f0;
     float skyAccess = smoothstep(0.56, 1.0, lightLevels.y);
     vec3 light = sun.y >= 0.0 ? sun : -sun;
@@ -37,6 +38,7 @@ vec3 surfaceRadiance(vec3 albedo, Material material, vec3 normal, vec3 view, vec
     vec3 diffuse = albedo * (1.0 - material.metallic) * (1.0 - f0);
     vec3 ambient = (skyAmbient + blockAmbient) * material.occlusion;
     vec3 indirect = diffuse * ambient;
+    vec3 environmentContribution = vec3(0.0);
 #ifdef LITE_LIGHTING
     indirect += f0 * mix(0.27, 0.50, material.roughness) * ambient;
 #else
@@ -49,11 +51,21 @@ vec3 surfaceRadiance(vec3 albedo, Material material, vec3 normal, vec3 view, vec
         vec3 specularWeight = fresnel * (lightLevels.y * lightLevels.y)
             * material.occlusion * smoothstep(-0.12, 0.08, reflected.y)
             * mix(0.55, 1.0, shadow);
-        indirect += environment * specularWeight;
-        specularMetadata = vec4(specularWeight, shadow);
+        environmentContribution = environment * specularWeight;
+        indirect += environmentContribution;
     } else {
-        indirect += f0 * mix(0.27, 0.50, material.roughness) * ambient;
+        environmentContribution = f0 * mix(0.27, 0.50, material.roughness) * ambient;
+        indirect += environmentContribution;
     }
+#ifdef LW_MATERIAL_SSR_ACTIVE
+    // The screen ray has its own visibility; do not attenuate it by sky access.
+    // Store the exact existing fallback separately, including indoor materials.
+    if (material.roughness < 0.65) {
+        vec3 reflectance = fresnelSchlick(clamp(dot(normal,view),0.0,1.0),f0) * material.occlusion;
+        specularMetadata = vec4(reflectance,material.roughness);
+        specularEnvironment = vec4(environmentContribution,1.0);
+    }
+#endif
 #endif
     if (skyAccess * visibility * normalLight * shadow <= 0.0) {
         return indirect + material.emission;
@@ -67,6 +79,6 @@ vec3 surfaceRadiance(vec3 albedo, Material material, vec3 normal, vec3 view, vec
 }
 
 vec3 surfaceRadiance(vec3 albedo, Material material, vec3 normal, vec3 view, vec3 sun, vec2 lightLevels, vec3 viewPosition) {
-    vec4 unusedMetadata;
-    return surfaceRadiance(albedo, material, normal, view, sun, lightLevels, viewPosition, unusedMetadata);
+    vec4 unusedMetadata, unusedEnvironment;
+    return surfaceRadiance(albedo, material, normal, view, sun, lightLevels, viewPosition, unusedMetadata, unusedEnvironment);
 }
