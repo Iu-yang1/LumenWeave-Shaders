@@ -13,5 +13,8 @@
 
 #if defined(LW_VOXEL_ACTIVE) && defined(VOLUME_EFFECTS)
 #define LW_LOCAL_SCATTER_ACTIVE
+#if !defined(LW_DYNAMIC_JITTER)
+#define LW_SCATTER_UPSAMPLE_ACTIVE
+#endif
 #endif
 #endif
