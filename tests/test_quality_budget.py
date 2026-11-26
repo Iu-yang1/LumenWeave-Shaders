@@ -1,0 +1,36 @@
+import sys
+import unittest
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "tools"))
+
+from check_shaders import preview_profiles
+from package import PREVIEW
+from quality_budget import ATMO_BYTES, MIB, TIERS, resource_budget
+
+
+class QualityBudgetTests(unittest.TestCase):
+    def test_budget_by_tier(self):
+        profiles = preview_profiles(PREVIEW)
+        for tier in TIERS:
+            options = profiles[f"profile.{tier}"]
+            result = resource_budget(options, 1920, 1080)
+            if tier in ("Ultra", "Extreme"):
+                size = int(options["VOXEL_GRID_SIZE"])
+                self.assertAlmostEqual(result["voxel_mib"], (56 * size ** 3 + 4 * 32 ** 3 + 16) / MIB)
+                self.assertEqual(result["atmosphere_mib"], ATMO_BYTES / MIB)
+                self.assertEqual(result["extra_color_single_mib"], 40 * 1920 * 1080 / MIB)
+            else:
+                self.assertTrue(all(value == 0 for value in result.values()))
+
+    def test_fixed_mode_removes_dynamic_owner_payload(self):
+        options = preview_profiles(PREVIEW)["profile.Ultra"]
+        dynamic = resource_budget(options, 1920, 1080)
+        fixed = resource_budget({**options, "PROJECTION_JITTER": "1"}, 1920, 1080)
+        self.assertAlmostEqual(dynamic["extra_color_single_mib"] - fixed["extra_color_single_mib"], 8 * 1920 * 1080 / MIB)
+        self.assertEqual(dynamic["voxel_mib"], fixed["voxel_mib"])
+
+    def test_invalid_resolution(self):
+        options = preview_profiles(PREVIEW)["profile.Ultra"]
+        with self.assertRaises(ValueError):
+            resource_budget(options, 0, 1080)
