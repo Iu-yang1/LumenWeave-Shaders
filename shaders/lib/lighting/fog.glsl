@@ -11,6 +11,32 @@ uniform ivec2 eyeBrightnessSmooth;
 #include "/lib/lighting/dh_fog.glsl"
 #endif
 
+// Independent analytic participating-medium approximation: no history,
+// ray marching, animated noise or additional fullscreen pass.
+vec3 dimensionFog(vec3 lit, vec3 viewPosition, float distanceToEye) {
+    vec3 direction = worldDirection(viewPosition) / max(distanceToEye, 0.001);
+    float horizon = 1.0 - smoothstep(0.05, 0.70, abs(direction.y));
+    float density = hasCeiling ? mix(0.012, 0.027, horizon)
+                               : mix(0.0035, 0.010, horizon);
+    float opticalDepth = max(distanceToEye - 5.0, 0.0) * density;
+    float transmission = exp(-opticalDepth);
+    vec3 biomeFog = decodeSrgb(fogColor);
+    vec3 haze = hasCeiling ? mix(biomeFog, vec3(0.14, 0.032, 0.012), 0.18)
+                          : mix(biomeFog, vec3(0.040, 0.023, 0.083), 0.55);
+    float eyeBlock = clamp(float(eyeBrightnessSmooth.x) / 240.0, 0.0, 1.0);
+    if (hasCeiling) {
+        haze += vec3(0.075, 0.026, 0.008) * eyeBlock * eyeBlock * exp(-distanceToEye * 0.035);
+    }
+    float shapedDistance = fogShape == 1
+        ? max(length(viewPosition.xz), abs(viewPosition.y)) : distanceToEye;
+    float boundary = smoothstep(fogStart, max(fogEnd, fogStart + 0.001), shapedDistance);
+#ifdef DISTANT_HORIZONS
+    if (!hasCeiling) boundary = distantHaze(distanceToEye);
+#endif
+    transmission *= 1.0 - boundary;
+    return lit * transmission + haze * (1.0 - transmission);
+}
+
 vec3 applySceneFog(vec3 lit, vec3 viewPosition) {
     float distanceToEye = length(viewPosition);
     if (isEyeInWater == 1) {
@@ -35,12 +61,9 @@ vec3 applySceneFog(vec3 lit, vec3 viewPosition) {
 #endif
         return applyAerialPerspective(lit, viewPosition, boundary);
     }
-#ifdef DISTANT_HORIZONS
-    if (isEyeInWater == 0 && !hasCeiling) {
-        vec3 direction = normalize(worldDirection(viewPosition));
-        return mix(lit, skyRadiance(direction, sunDirection()), distantHaze(distanceToEye));
+    if (isEyeInWater == 0 && !hasSkylight) {
+        return dimensionFog(lit, viewPosition, distanceToEye);
     }
-#endif
     if (fogShape == 1) {
         distanceToEye = max(length(viewPosition.xz), abs(viewPosition.y));
     }
