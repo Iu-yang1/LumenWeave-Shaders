@@ -264,10 +264,19 @@ def check_modern_properties(compiler, path):
     config=preprocess_properties(compiler,path,flags)
     if len([k for k in config if k.startswith("image.")])!=14 or "image.lwVolumeHistory" not in config:
         raise ValueError("Volume history allocation must fit fused image budget")
-    for overrides in ({"VOXEL_FUSION":"0"},{"GI_REUSE_MODE":"2"},{"PROJECTION_JITTER":"2"},{"VOLUME_TEMPORAL":"0"}):
+    for overrides,count,history,cache in (
+        ({"VOXEL_FUSION":"0"},16,True,True),
+        ({"ATMO_PREBAKED":"0"},16,True,True),
+        ({"VOXEL_FUSION":"0","ATMO_PREBAKED":"0"},16,False,False),
+        ({"GI_REUSE_MODE":"2"},13,False,True),
+        ({"PROJECTION_JITTER":"2"},13,False,True),
+        ({"VOLUME_TEMPORAL":"0"},13,False,True),
+    ):
         config=preprocess_properties(compiler,path,{**flags,**overrides})
-        if "image.lwVolumeHistory" in config:
-            raise ValueError("Volume history gate violated")
+        if (len([k for k in config if k.startswith("image.")])!=count or
+            ("image.lwVolumeHistory" in config)!=history or
+            ("image.lwAtmoState" in config)!=cache):
+            raise ValueError(f"Volume/atmosphere image budget violated: {overrides}")
     print("Modern/legacy compute and volume history capability matrix: OK")
 
 
@@ -431,6 +440,8 @@ def main():
         profiles["ultra-dynamic-projection"] = {**profiles["profile.Ultra"], "PROJECTION_JITTER": "2"}
         profiles["ultra-legacy-voxel"] = {**profiles["profile.Ultra"], "VOXEL_FUSION": "0"}
         profiles["medium-volume-no-gi"] = {**profiles["profile.Medium"], "VOLUME_EFFECTS": "true"}
+        profiles["legacy-atmo-and-voxel"] = {**profiles["profile.Ultra"], "ATMO_PREBAKED": "0", "VOXEL_FUSION": "0"}
+        profiles["end-procedural"] = {**profiles["profile.Natural"], "END_NEBULA_ASSET": "0"}
         profiles["atmosphere-original"] = {**profiles["profile.Ultra"], "ATMO_PREBAKED": "0", "ATMO_UPDATE_MODE": "0"}
         profiles["volume-history-off"] = {**profiles["profile.Ultra"], "VOLUME_TEMPORAL": "0", "LOCAL_SCATTER_ADAPTIVE": "0"}
         profiles["legacy-volume-budget"] = {**profiles["profile.Ultra"], "SCENE_BUDGET": "0", "CLOUD_NOISE_MODE": "0", "CLOUD_ADAPTIVE": "0", "CLOUD_EMPTY_SKIP": "0", "SHAFT_ADAPTIVE": "0", "CLOUD_LIGHT_REUSE": "0"}
@@ -489,7 +500,7 @@ def main():
         )
         compile_pack(args.compiler, PREVIEW, {"world-voxels-fallback": voxel_profiles["world-voxels"]})
         volume_entries=[p for p in PREVIEW.rglob("*") if p.suffix in STAGES and p.stem in ("deferred","deferred1","composite","composite_a","composite_b","setup","setup1","setup3","begin1","begin2","begin3")]
-        compile_pack(args.compiler, PREVIEW, {"medium-volume-no-gi":profiles["medium-volume-no-gi"],"atmosphere-original":profiles["atmosphere-original"]},sources=volume_entries,environment=VOXEL_FEATURES)
+        compile_pack(args.compiler, PREVIEW, {"medium-volume-no-gi":profiles["medium-volume-no-gi"],"atmosphere-original":profiles["atmosphere-original"],"legacy-atmo-and-voxel":profiles["legacy-atmo-and-voxel"]},sources=volume_entries,environment=VOXEL_FEATURES)
         compile_pack(args.compiler, PREVIEW, {"extreme-volume-hardware":profiles["profile.Extreme"]},sources=volume_entries,
             environment=(*VOXEL_FEATURES,"DISTANT_HORIZONS","IRIS_FEATURE_SEPARATE_HARDWARE_SAMPLERS"))
         compile_pack(args.compiler, PREVIEW, {"modern-compaction": profiles["profile.Ultra"]},

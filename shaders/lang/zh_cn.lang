@@ -242,7 +242,7 @@ option.CLOUD_LIGHT_REUSE.comment=远处密度稳定时最多复用一次邻近�
 option.SHAFT_ADAPTIVE.comment=低贡献区域减少采样，遮挡变化处细分。
 
 option.VOLUME_TEMPORAL=体积云与光束历史复用
-option.VOLUME_TEMPORAL.comment=稳定视角交替刷新云层；光束始终计算当前遮挡，仅在结果匹配时轻度平滑。动态投影和旧四通道体素路径自动回退。
+option.VOLUME_TEMPORAL.comment=稳定视角交替刷新云层；光束始终计算当前遮挡，仅在结果匹配时轻度平滑。动态投影或自定义图像资源已满时自动回退。
 value.VOLUME_TEMPORAL.0=关闭
 value.VOLUME_TEMPORAL.1=稳定视角
 option.LOCAL_SCATTER_ADAPTIVE=局部散射自适应积分
@@ -256,7 +256,7 @@ option.ATMO_PREBAKED.comment=读取离线生成的透射率和多重散射表，
 value.ATMO_PREBAKED.0=实时初始化
 value.ATMO_PREBAKED.1=预计算
 option.ATMO_UPDATE_MODE=大气查找表更新
-option.ATMO_UPDATE_MODE.comment=相机高度、太阳高度或最大时间间隔变化时刷新天空及空中透视表；夜间无贡献时跳过。
+option.ATMO_UPDATE_MODE.comment=相机高度、太阳高度或最大时间间隔变化时刷新天空及空中透视表；夜间无贡献时跳过；自定义图像资源已满时回退每帧。
 value.ATMO_UPDATE_MODE.0=每帧
 value.ATMO_UPDATE_MODE.1=按变化更新
 

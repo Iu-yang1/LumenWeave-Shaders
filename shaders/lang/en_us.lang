@@ -242,7 +242,7 @@ option.CLOUD_LIGHT_REUSE.comment=Reuses at most one adjacent lighting query on s
 option.SHAFT_ADAPTIVE.comment=Reduces low-contribution steps and refines visibility transitions.
 
 option.VOLUME_TEMPORAL=Cloud and shaft history
-option.VOLUME_TEMPORAL.comment=Alternates cloud refresh in stable views; shafts always sample current occlusion and smooth only close matches. Falls back for dynamic projection and the legacy four-pass voxel path.
+option.VOLUME_TEMPORAL.comment=Alternates cloud refresh in stable views; shafts always sample current occlusion and smooth only close matches. Falls back for dynamic projection or a full custom-image budget.
 value.VOLUME_TEMPORAL.0=Off
 value.VOLUME_TEMPORAL.1=Stable views
 option.LOCAL_SCATTER_ADAPTIVE=Adaptive local scattering
@@ -256,7 +256,7 @@ option.ATMO_PREBAKED.comment=Loads offline transmittance and multiple scattering
 value.ATMO_PREBAKED.0=GPU setup
 value.ATMO_PREBAKED.1=Precomputed
 option.ATMO_UPDATE_MODE=Atmosphere table updates
-option.ATMO_UPDATE_MODE.comment=Refresh sky and aerial tables after altitude, sun elevation or maximum age changes; skip zero-contribution night work.
+option.ATMO_UPDATE_MODE.comment=Refresh sky and aerial tables after altitude, sun elevation or maximum age changes; skip zero-contribution night work; falls back to every frame when custom-image slots are full.
 value.ATMO_UPDATE_MODE.0=Every frame
 value.ATMO_UPDATE_MODE.1=Change-driven
 

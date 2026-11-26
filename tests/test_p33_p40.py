@@ -120,7 +120,8 @@ class VolumePipelineTests(unittest.TestCase):
         budget=resource_budget(options,1920,1080)
         self.assertEqual(budget["cloud_noise_mib"],1)
         self.assertAlmostEqual(budget["volume_history_mib"],8*2880*1080/MIB)
-        self.assertEqual(resource_budget({**options,"VOXEL_FUSION":"0"},1920,1080)["volume_history_mib"],0)
+        self.assertGreater(resource_budget({**options,"VOXEL_FUSION":"0"},1920,1080)["volume_history_mib"],0)
+        self.assertEqual(resource_budget({**options,"VOXEL_FUSION":"0","ATMO_PREBAKED":"0"},1920,1080)["volume_history_mib"],0)
         self.assertEqual(resource_budget({**options,"VOLUME_TEMPORAL":"0"},1920,1080)["volume_history_mib"],0)
         self.assertEqual(resource_budget({**options,"PROJECTION_JITTER":"2"},1920,1080)["volume_history_mib"],0)
 

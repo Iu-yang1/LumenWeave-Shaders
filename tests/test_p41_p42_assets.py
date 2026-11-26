@@ -108,3 +108,13 @@ class PrebakedAssetsTests(unittest.TestCase):
         self.assertEqual(data[0],data[255])
         self.assertEqual(data[0],data[-1])
         self.assertEqual(data[0],data[-256])
+
+    def test_prebake_releases_legacy_image_budget(self):
+        from quality_budget import resource_budget,ATMO_BYTES,MIB
+        options=preview_profiles(S)["profile.Extreme"]
+        base=resource_budget({**options,"VOXEL_FUSION":"0"},1920,1080)
+        legacy=resource_budget({**options,"VOXEL_FUSION":"0","ATMO_PREBAKED":"0"},1920,1080)
+        self.assertGreater(base["volume_history_mib"],0)
+        self.assertEqual(legacy["volume_history_mib"],0)
+        self.assertEqual(legacy["atmosphere_mib"],ATMO_BYTES/MIB)
+        self.assertIn("LW_IMAGE_BUDGET_FULL",(S/"lib/quality.glsl").read_text())

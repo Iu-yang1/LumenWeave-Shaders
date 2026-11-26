@@ -106,10 +106,15 @@
 #endif
 #endif
 
+// The legacy four-stage voxel cache plus runtime static atmosphere tables
+// already occupies the loader's 16 custom-image slots.
+#if defined(LW_VOXEL_INCREMENTAL_ACTIVE) && VOXEL_FUSION != 1 && defined(PHYSICAL_ATMOSPHERE) && ATMO_PREBAKED != 1
+#define LW_IMAGE_BUDGET_FULL
+#endif
 #ifdef PHYSICAL_ATMOSPHERE
 #if defined(IRIS_FEATURE_CUSTOM_IMAGES) && defined(IRIS_FEATURE_COMPUTE_SHADERS)
 #define LW_ATMOSPHERE_LUT_ACTIVE
-#if ATMO_UPDATE_MODE == 1 && !defined(LW_DIMENSION_NETHER) && !defined(LW_DIMENSION_END)
+#if ATMO_UPDATE_MODE == 1 && !defined(LW_IMAGE_BUDGET_FULL) && !defined(LW_DIMENSION_NETHER) && !defined(LW_DIMENSION_END)
 #define LW_ATMO_CACHE_ACTIVE
 #endif
 #endif
@@ -154,7 +159,7 @@
 #if VOLUME_RECONSTRUCTION == 1 && (PROJECTION_JITTER == 1 || AA_MODE < 2) && defined(VOLUME_EFFECTS) && defined(DEFERRED_LIGHTING) && defined(IRIS_FEATURE_COMPUTE_SHADERS) && defined(IRIS_FEATURE_CUSTOM_IMAGES) && !(defined(TEMPORAL_REUSE) && GI_REUSE_MODE == 2 && defined(SCREEN_GI) && defined(SCREEN_GI_SPATIAL) && defined(SCREEN_GI_HISTORY) && defined(LW_TAA_ACTIVE)) && !defined(LW_DIMENSION_END) && !defined(LW_DIMENSION_NETHER)
 #define LW_CELESTIAL_VOLUME_SPATIAL
 #endif
-#if defined(LW_CELESTIAL_VOLUME_SPATIAL) && defined(LW_TAA_ACTIVE) && VOLUME_TEMPORAL == 1 && (!defined(LW_VOXEL_INCREMENTAL_ACTIVE) || VOXEL_FUSION == 1)
+#if defined(LW_CELESTIAL_VOLUME_SPATIAL) && defined(LW_TAA_ACTIVE) && VOLUME_TEMPORAL == 1 && !defined(LW_IMAGE_BUDGET_FULL)
 #define LW_VOLUME_TEMPORAL_ACTIVE
 #endif
 #if HDR_REUSE == 1 && defined(LW_TAA_ACTIVE) && !defined(MOTION_BLUR)
