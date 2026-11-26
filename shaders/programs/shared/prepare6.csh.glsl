@@ -15,8 +15,7 @@ uniform int frameCounter;
 uniform float frameTime;
 shared ivec4 previous;
 shared ivec3 origin;
-shared uint occupied;
-shared uint transitioning;
+shared uint historyFlags[64];
 shared uint previousSupport;
 shared bool skipTile;
 shared ivec3 tileMeta;
@@ -52,8 +51,6 @@ void main(){
     if(gl_LocalInvocationIndex==0u){
         previous=imageLoad(lwVoxelMeta,ivec2(0));
         origin=voxelCacheOrigin();
-        occupied=0u;
-        transitioning=0u;
         tileMeta=historyTileMeta(tile,frameCounter&1);
 #ifdef LW_GPU_COMPACTION
         skipTile=false;
@@ -90,9 +87,9 @@ void main(){
     if(wall) value=vec4(0.0);
     bool pending;
     value=settleHistory(value,target,old,wall,pending);
-    if(pending) atomicOr(transitioning,1u);
+    uint flags=pending?4u:0u;
     if(!valid || any(notEqual(value,old))) imageStore(lwVoxelFirst,historyCell,value);
-    if(hasHistorySupport(target) || hasHistorySupport(value)) atomicOr(occupied,1u);
+    if(hasHistorySupport(target) || hasHistorySupport(value)) flags|=1u;
 #ifdef LW_VOXEL_DIFFUSE_SMOOTH
     // Raw diffuse propagation remains independent. A separate world-space
     // history follows its own irradiance, including hue changes and removals.
@@ -103,14 +100,26 @@ void main(){
     if(wall) diffuseValue=vec4(0.0);
     bool diffusePending;
     diffuseValue=settleHistory(diffuseValue,diffuseTarget,diffuseOld,wall,diffusePending);
-    if(diffusePending) atomicOr(transitioning,2u);
+    if(diffusePending) flags|=8u;
     if(!valid || any(notEqual(diffuseValue,diffuseOld))) imageStore(lwVoxelSecond,historyCell,diffuseValue);
     // Union support ensures the tile cannot be skipped while diffuse tails remain.
-    if(hasHistorySupport(diffuseTarget) || hasHistorySupport(diffuseValue)) atomicOr(occupied,2u);
+    if(hasHistorySupport(diffuseTarget) || hasHistorySupport(diffuseValue)) flags|=2u;
 #endif
+    // Four state bits per lane. Reduce in two stages instead of up to
+    // four contended atomics per voxel on densely lit, changing tiles.
+    uint lane=gl_LocalInvocationIndex;
+    historyFlags[lane]=flags;
     barrier();
-    // The original dirty seed slab is no longer needed by propagation.
-    if(gl_LocalInvocationIndex==0u) {
+    if(lane<8u){
+        uint mask=0u;
+        for(uint i=0u;i<8u;++i) mask|=historyFlags[lane*8u+i];
+        historyFlags[lane*8u]=mask;
+    }
+    barrier();
+    if(lane==0u){
+        uint combined=0u;
+        for(int i=0;i<8;++i) combined|=historyFlags[i*8];
+        uint occupied=combined&3u,transitioning=(combined>>2u)&3u;
         imageStore(lwVoxelDirtyTiles,tile,uvec4(occupied));
         imageStore(lwVoxelFirst,tileMeta,vec4(float(occupied),float(transitioning),0.0,0.0));
     }
