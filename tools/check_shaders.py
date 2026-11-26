@@ -186,7 +186,7 @@ def preview_profiles(root, config_root=None):
 
 def preprocess_properties(compiler, path, defines):
     rows = {}
-    values = {"MC_VERSION": "12101", "HIZ_MODE": "1", "AO_RECONSTRUCTION": "1", "PROJECTION_JITTER": "0", "VOXEL_FUSION": "1", "ATMO_PREBAKED": "1", "ATMO_UPDATE_MODE": "1", "CLOUD_DENSITY_CACHE": "1", "CLOUD_NOISE_MODE": "1", "VOLUME_RECONSTRUCTION": "1", "GI_REUSE_MODE": "1", "AA_MODE": "2", "SCENE_TAAU_SCALE": "100", "GEOMETRY_TAAU_SCALE": "100", "RAIN_GEOMETRY":"1", "VOXEL_DIFFUSE_SMOOTHING":"1", "RAIN_RISE_TIME":"20.0", "RAIN_FALL_TIME":"40.0", **(defines if isinstance(defines, dict) else dict.fromkeys(defines, "1"))}
+    values = {"MC_VERSION": "12101", "HIZ_MODE": "1", "AO_RECONSTRUCTION": "1", "PROJECTION_JITTER": "0", "VOXEL_FUSION": "1", "ATMO_PREBAKED": "1", "ATMO_UPDATE_MODE": "1", "CLOUD_DENSITY_CACHE": "1", "CLOUD_NOISE_MODE": "1", "VOLUME_RECONSTRUCTION": "1", "GI_REUSE_MODE": "1", "AA_MODE": "2", "SCENE_TAAU_SCALE": "100", "GEOMETRY_TAAU_SCALE": "100", "DOF_FILTER":"0", "RAIN_GEOMETRY":"1", "VOXEL_DIFFUSE_SMOOTHING":"1", "RAIN_RISE_TIME":"20.0", "RAIN_FALL_TIME":"40.0", **(defines if isinstance(defines, dict) else dict.fromkeys(defines, "1"))}
     source = ["#version 330", *(f"#define {name} {value}" for name, value in values.items())]
     for index, line in enumerate(read_source(path).splitlines()):
         directive = line.strip()
@@ -319,6 +319,9 @@ def check_modern_properties(compiler, path):
         if expected and config["image.lwExposureState"].split()[-2:]!=["2","1"]:
             raise ValueError("Camera state atlas size incorrect")
         focus_only=preprocess_properties(compiler,path,{**flags,"DOF_MODE":"1",**overrides})
+        separated=preprocess_properties(compiler,path,{**flags,"DOF_MODE":"1","DOF_FILTER":"2",**overrides})
+        if (separated.get("program.world0/composite6.enabled")!="false")!=half:
+            raise ValueError(f"Separable DOF overlaps persistent GI: {overrides}")
         if ("image.lwExposureState" in focus_only)!=expected:
             raise ValueError("Autofocus must not require auto exposure")
         if (config.get("program.world0/composite5.enabled")!="false")!=half:
@@ -550,11 +553,12 @@ def main():
         profiles = preview_profiles(PREVIEW)
         if args.v4_focused:
             check_modern_properties(args.compiler, PREVIEW / "shaders.properties")
-            names = {"prepare_d","prepare_e","prepare5","prepare6","prepare6_a","prepare7","prepare8","deferred","deferred_a","deferred1","deferred2","deferred2_a","composite","composite_a","composite_b","composite1","composite2","composite3","composite4","composite5","final","gbuffers_terrain","gbuffers_water","gbuffers_weather","dh_terrain","dh_water"}
+            names = {"prepare_d","prepare_e","prepare5","prepare6","prepare6_a","prepare7","prepare8","deferred","deferred_a","deferred1","deferred2","deferred2_a","composite","composite_a","composite_b","composite1","composite2","composite3","composite4","composite5","composite6","final","gbuffers_terrain","gbuffers_water","gbuffers_weather","dh_terrain","dh_water"}
             sources = [p for p in PREVIEW.rglob("*") if p.suffix in STAGES and p.stem in names]
             variants = {
                 "v5-geometry-dynamic": {**profiles["profile.Extreme"],"GEOMETRY_TAAU_SCALE":"75","PROJECTION_JITTER":"2"},
-                "camera-mipmap": {**profiles["profile.Ultra"],"DOF_MODE":"1","DOF_MIPMAP":"1"},
+                "camera-mipmap": {**profiles["profile.Ultra"],"DOF_MODE":"1","DOF_FILTER":"1"},
+                "camera-separable": {**profiles["profile.Ultra"],"DOF_MODE":"1","DOF_FILTER":"2"},
                 "reference-reuse": {**profiles["profile.Extreme"],"APPROX_REUSE":"0"},
                 "camera-focus-only": {**profiles["profile.Ultra"],"AUTO_EXPOSURE":"false","DOF_MODE":"1","DOF_QUALITY":"0"},
                 "camera-focus-cinematic": {**profiles["profile.Extreme"],"DOF_MODE":"3","DOF_QUALITY":"2"},
@@ -571,6 +575,8 @@ def main():
                 "v4-taau-history": {**profiles["profile.Extreme"], "GEOMETRY_TAAU_SCALE":"100", "SCENE_TAAU_SCALE":"50", "GI_REUSE_MODE":"2", "DOF_MODE":"3"},
             }
             compile_matrix(args.compiler, PREVIEW, variants, sources=sources, environment=(*VOXEL_FEATURES,"DISTANT_HORIZONS","MC_TEXTURE_FORMAT_LAB_PBR_1_3"))
+            compact=[p for p in sources if p.stem.startswith("prepare")]
+            compile_matrix(args.compiler, PREVIEW, {"modern-ultra-history":profiles["profile.Ultra"],"modern-extreme-history":profiles["profile.Extreme"]}, sources=compact, environment=(*VOXEL_FEATURES,"IRIS_FEATURE_SSBO","LW_TEST_MODERN_IRIS"))
             compile_matrix(args.compiler, PREVIEW, {"v4-fallback":profiles["profile.High"]}, sources=sources)
             compile_matrix(args.compiler,TAAU_PROBE,{f"taau-{scale}":{"TAAU_SCALE":scale} for scale in ("0.5","0.67","0.75","0.85","1.0")})
             print("Focused V4 capability and shader matrix: OK")

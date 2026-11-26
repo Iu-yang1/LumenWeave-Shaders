@@ -90,7 +90,9 @@ class VolumePipelineTests(unittest.TestCase):
         self.assertIn("valid && priorFresh",source)
         self.assertIn("reuseCloud ? -tag : tag",source)
         self.assertIn("shaft=applyLightShafts",source)
-        self.assertIn("stable ? (reuseCloud ? -tag : tag) : 0.0",source)
+        self.assertIn("historyAllowed ? (reuseCloud ? -tag : tag) : 0.0",source)
+        self.assertIn("bool historyAllowed=stable || translated",source)
+        self.assertIn("if(stable && valid",source)
 
     def test_segmented_scattering_homogeneous_exact(self):
         for end in (25,30,40,50,63):

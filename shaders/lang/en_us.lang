@@ -347,5 +347,8 @@ option.DOF_AF_AREA.comment=Size of the reticle-centered robust depth metering re
 option.APPROX_REUSE=Adaptive approximate reconstruction
 option.APPROX_REUSE.comment=Use bounded history and reduced ray fallback in compatible regions. Off restores reference reconstruction.
 
-option.DOF_MIPMAP=Experimental mip-assisted DoF
-option.DOF_MIPMAP.comment=Large blur on depth-compatible surfaces uses symmetric mip samples. Requires the half-resolution DoF path. Mip generation may offset savings.
+option.DOF_FILTER=Depth of field filter
+option.DOF_FILTER.comment=Disk is the reference. Mip-assisted and separable are experimental half-resolution paths; compare GPU cost and edges before selecting.
+value.DOF_FILTER.0=Disk
+value.DOF_FILTER.1=Mip-assisted
+value.DOF_FILTER.2=Separable

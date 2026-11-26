@@ -132,3 +132,47 @@ vec3 lwDofResolve(sampler2D blurred,vec2 uv,vec3 center,float depth,float focus)
     vec3 result=mix(center,sum/max(total,0.0001),blur*smoothstep(0.05,0.65,total));
     return mix(result,nearSum/max(nearTotal,0.0001),clamp(nearTotal,0.0,1.0));
 }
+
+#if DOF_FILTER == 2 && defined(LW_DOF_HALF)
+// Variable-radius separable approximation. The vertical pass gets color and
+// depth from the same half-res texel, without reconstructing native depth.
+vec3 lwDofAxisGather(sampler2D source,vec2 uv,vec4 center,float focus,vec2 axis,bool vertical){
+    float depth=center.a;
+    if(depth<=0.0) return center.rgb;
+    ivec2 size=textureSize(source,0);
+    vec2 pixel=1.0/max(vec2(viewWidth,viewHeight),vec2(1.0));
+    float coc=lwCoC(depth,focus);
+    float radius=max(abs(coc),4.0*viewHeight/1080.0);
+    float blur=smoothstep(0.15,1.5,abs(coc));
+#if DOF_QUALITY == 0
+    const int pairs=1;
+#elif DOF_QUALITY == 1
+    const int pairs=2;
+#else
+    const int pairs=3;
+#endif
+    vec3 sum=center.rgb,nearSum=vec3(0.0);
+    float total=1.0,nearTotal=0.0;
+    for(int i=-pairs;i<=pairs;++i){
+        if(i==0)continue;
+        float t=float(i)/float(pairs);
+        vec2 q=clamp(uv+axis*pixel*(radius*t),pixel*0.5,1.0-pixel*0.5);
+        vec4 donor;
+        if(vertical) {
+            ivec2 p=clamp(ivec2(q*vec2(size)),ivec2(0),size-1);
+            donor=texelFetch(source,p,0);
+        } else donor=vec4(texture(source,q).rgb,lwDofDepth(q));
+        if(donor.a<=0.0)continue;
+        float weight=1.0/(1.0+4.0*t*t);
+        float compatibility=1.0-smoothstep(0.04,0.23,abs(donor.a-depth)/max(depth,0.5));
+        float farWeight=weight*compatibility*blur;
+        sum+=donor.rgb*farWeight;total+=farWeight;
+        if(donor.a<depth*0.97){
+            float distancePixels=abs(radius*t);
+            float cover=weight*smoothstep(max(distancePixels-1.0,0.0),distancePixels+1.0,-lwCoC(donor.a,focus));
+            nearSum+=donor.rgb*cover;nearTotal+=cover;
+        }
+    }
+    return mix(sum/total,nearSum/max(nearTotal,0.0001),clamp(nearTotal/float(pairs),0.0,1.0));
+}
+#endif

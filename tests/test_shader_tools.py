@@ -83,7 +83,7 @@ class ShaderToolsTests(unittest.TestCase):
                 "SMOOTH_LIGHTING": "false", "SOLAR_GLARE": "false", "GLARE_STRENGTH": "0.25",
                 "GEOMETRY_TAAU_SCALE":"100","SCENE_TAAU_SCALE":"100","SSR_HALF_RES":"1",
                 "RAIN_GEOMETRY":"1","VOXEL_DIFFUSE_SMOOTHING":"1","DIRECT_RISE_HALF":"0.10","DIRECT_FALL_HALF":"0.18",
-                "DIFFUSE_RISE_HALF":"0.16","DIFFUSE_FALL_HALF":"0.28","RAIN_RISE_TIME":"20.0","RAIN_FALL_TIME":"40.0",
+                "DIFFUSE_RISE_HALF":"0.16","DIFFUSE_FALL_HALF":"0.28","RAIN_RISE_TIME":"20.0","RAIN_FALL_TIME":"40.0","APPROX_REUSE":"0",
             },
         )
         self.assertEqual(profiles["profile.LowExposure"]["EXPOSURE"], "-1")
@@ -129,7 +129,7 @@ class ShaderToolsTests(unittest.TestCase):
 
     def test_personal_effects_are_independent_of_quality_profiles(self):
         for profile in preview_profiles(PREVIEW).values():
-            self.assertFalse({"MOTION_BLUR", "WAVING_LEAVES", "WAVING_GRASS", "DOF_MODE", "DOF_FOCUS", "DOF_STRENGTH", "DOF_AF_SPEED", "DOF_AF_AREA", "DOF_QUALITY", "DOF_MIPMAP", "LENS_GHOSTS", "LENS_STAR"} & profile.keys())
+            self.assertFalse({"MOTION_BLUR", "WAVING_LEAVES", "WAVING_GRASS", "DOF_MODE", "DOF_FOCUS", "DOF_STRENGTH", "DOF_AF_SPEED", "DOF_AF_AREA", "DOF_QUALITY", "DOF_FILTER", "LENS_GHOSTS", "LENS_STAR"} & profile.keys())
 
     def test_compile_matrix_shards_cover_each_link_once(self):
         programs = [PREVIEW / dim / name for dim in DIMENSIONS

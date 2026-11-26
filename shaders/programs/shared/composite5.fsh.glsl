@@ -14,7 +14,7 @@ layout(location=0) out vec4 outputColor;
 /*
 const int colortex10Format = RGBA16F;
 */
-#if DOF_MIPMAP == 1
+#if DOF_FILTER == 1
 #define LW_DOF_MIP_ASSIST
 #ifdef LW_TAA_DIRECT
 const bool colortex4MipmapEnabled = true;
@@ -27,7 +27,11 @@ void main(){
     float focus=lwFocusDepth();
     float d=lwDofDepth(texCoord), coc=lwCoC(d,focus);
     vec3 center=texture(LW_DOF_SOURCE,texCoord).rgb;
+#if DOF_FILTER == 2
+    outputColor=vec4(lwDofAxisGather(LW_DOF_SOURCE,texCoord,vec4(center,d),focus,vec2(1,0),false),d);
+#else
     outputColor=vec4(lwDofGather(LW_DOF_SOURCE,texCoord,center,d,coc,focus),d);
+#endif
 }
 #else
 /* RENDERTARGETS: 0 */

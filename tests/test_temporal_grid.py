@@ -47,7 +47,8 @@ class StableGridTests(unittest.TestCase):
         self.assertIn("reprojectStableTerrain(viewPosition", taa)
         self.assertIn("stableUv + jitterOffset(frameCounter)", taa)
         self.assertIn("vec4(normal, vec2(size))", taa)
-        self.assertIn("metadata.zw - vec2(size)", taa)
+        self.assertIn("metadata.zw-historySize", taa)
+        self.assertIn("vec2 historySize=vec2(lwRasterExtent(size))",taa)
 
     def test_gi_continuous_fallback(self):
         source = (SHADERS / "lib/lighting/screen_gi_spatial.glsl").read_text()
