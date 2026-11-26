@@ -11,12 +11,14 @@ layout(r16ui) uniform uimage3D lwVoxelPrevSeed;
 layout(r8ui) coherent uniform uimage3D lwVoxelDirtyTiles;
 layout(rgba32i) readonly uniform iimage2D lwVoxelMeta;
 #include "/lib/voxel/cache_coordinates.glsl"
+#include "/lib/voxel/occupancy_tiles.glsl"
 uniform int frameCounter;
 shared ivec4 lwPreviousMeta;
 shared ivec3 lwCacheOrigin;
 shared ivec3 lwMovement;
 shared bool lwFullRebuild;
 shared bool lwStationary;
+shared bool lwEmptyTile;
 shared uint lwGroupFlags[64];
 #else
 layout(rgba16f) writeonly uniform image3D lwVoxelFirst;
@@ -24,7 +26,6 @@ layout(rgba16f) writeonly uniform image3D lwVoxelFirst;
 
 void main() {
     ivec3 cell = ivec3(gl_GlobalInvocationID);
-    uint seed = imageLoad(lwVoxelOccupancy, cell).r;
 #ifdef LW_VOXEL_INCREMENTAL_ACTIVE
     if(gl_LocalInvocationIndex==0u) {
         lwPreviousMeta=imageLoad(lwVoxelMeta,ivec2(0));
@@ -32,8 +33,17 @@ void main() {
         lwMovement=cameraPositionInt-lwPreviousMeta.xyz;
         lwFullRebuild=lwPreviousMeta.w != frameCounter - 1;
         lwStationary=all(equal(lwMovement,ivec3(0)));
+        // Only consecutive stationary frames with two empty observations can skip.
+        lwEmptyTile = !lwFullRebuild && lwStationary &&
+            imageLoad(lwVoxelOccupancy, lwOccupancyTileAddress(ivec3(gl_WorkGroupID))).r == 0u;
     }
     barrier();
+    if (lwEmptyTile) {
+        if (gl_LocalInvocationIndex == 0u)
+            imageStore(lwVoxelDirtyTiles, ivec3(gl_WorkGroupID), uvec4(0u));
+        return;
+    }
+    uint seed = imageLoad(lwVoxelOccupancy, cell).r;
     ivec3 movement=lwMovement;
     ivec3 previousLocal = cell + movement;
     ivec3 cacheCell = voxelWrapNear(cell+lwCacheOrigin);
@@ -75,6 +85,7 @@ void main() {
         imageStore(lwVoxelDirtyTiles,ivec3(gl_WorkGroupID),uvec4(mask));
     }
 #else
+    uint seed = imageLoad(lwVoxelOccupancy, cell).r;
     vec3 source=seed < LW_VOXEL_WALL ? voxelSeedEmission(seed) : vec3(0.0);
     imageStore(lwVoxelFirst, cell, vec4(source,float(any(greaterThan(source,vec3(0.0))))));
 #endif

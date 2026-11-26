@@ -46,11 +46,12 @@ void main() {
     if(!hizAtlasFits(resolution,imageSize(lwHiZImage)) ||
        any(greaterThanEqual(tile,hizLevelSize(resolution,64)))) return;
     ivec2 base=tile*64+ivec2(gl_LocalInvocationID.xy);
+    bool fullTile=all(lessThanEqual((tile+ivec2(1))*64,resolution));
     vec2 range=vec2(1,0);
     // Contiguous lanes access contiguous depth texels at every iteration.
     for(int y=0;y<8;++y) for(int x=0;x<8;++x) {
         ivec2 p=base+ivec2(x,y)*8;
-        if(all(lessThan(p,resolution))) {
+        if(fullTile || all(lessThan(p,resolution))) {
             float depth=texelFetch(depthtex0,p,0).r;
             range=mergeRange(range,vec2(depth));
         }
@@ -78,10 +79,11 @@ void main() {
     ivec2 group=ivec2(gl_WorkGroupID.xy);
     ivec2 lane=ivec2(gl_LocalInvocationID.xy);
     ivec2 base=group*16+lane*2;
+    bool fullTile=all(lessThanEqual((group+ivec2(1))*16,resolution));
     vec2 range=vec2(1,0);
     for(int y=0;y<2;++y) for(int x=0;x<2;++x) {
         ivec2 p=base+ivec2(x,y);
-        if(all(lessThan(p,resolution))) {
+        if(fullTile || all(lessThan(p,resolution))) {
             float a=texelFetch(depthtex0,p,0).r;
             range=mergeRange(range,vec2(a));
         }

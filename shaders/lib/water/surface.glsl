@@ -24,7 +24,7 @@ vec3 waveNormal(vec3 normal, vec3 position, float skyAccess) {
     float rain=rainStrength*skyAccess*float(hasSkylight);
     slope *= mix(1.0,1.35,rain);
 #if RAIN_RIPPLES > 0
-    if(rain>0.001) slope+=rainRippleSlope(position.xz,frameTimeCounter,max(length(footprintX),length(footprintY)))*rain;
+    if(rain>0.001) slope+=rainRippleSlope(position.xz,frameTimeCounter,sqrt(max(dot(footprintX,footprintX),dot(footprintY,footprintY))))*rain;
 #endif
     slope*=smoothstep(0.65,0.95,abs(normal.y));
     return normalize(normal - vec3(slope.x, 0.0, slope.y) * sign(normal.y));

@@ -75,12 +75,13 @@ int hizTrace(sampler2D depthBuffer,mat4 projection,mat4 inverseProjection,
            any(greaterThanEqual(pixelPosition,vec2(resolution)))) return 0;
         ivec2 pixel=ivec2(floor(pixelPosition));
         bool skipped=false;
+        float startDepth=hizProjectedDepth(p);
         for(int scale=64;scale>=4;scale/=4) {
             ivec2 tile=pixel/scale;
             vec2 bounds=texelFetch(lwHiZ,tile+hizAtlasOffset(resolution,scale),0).rg;
             if(dhFallback && bounds.y>=1.0) continue;
             float end=hizTileExit(c,d,tile,scale,resolution,velocity,t,limit);
-            float rayDepth=max(hizProjectedDepth(p),hizProjectedDepth(c+d*end));
+            float rayDepth=max(startDepth,hizProjectedDepth(c+d*end));
             if(bounds.x>=1.0 || rayDepth+0.0000002<bounds.x) {
                 frontSeen=true;t=end;skipped=true;break;
             }

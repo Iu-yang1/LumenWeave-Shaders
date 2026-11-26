@@ -42,23 +42,25 @@ vec2 waterWaveSlope(vec2 position, vec2 footprintX, vec2 footprintY, float time,
     for (int wave = 0; wave < analyticWaves; ++wave) {
         vec2 waveVector=waveVectors[wave];
         float frequency=frequencies[wave];
-        float phase = dot(position, waveVector) - frequency * time * WATER_WAVE_SPEED + float(wave) * 2.3999632;
         vec2 coverage = vec2(dot(footprintX, waveVector), dot(footprintY, waveVector));
         float temporalCoverage = frequency * elapsed * WATER_WAVE_SPEED;
         float variance = dot(coverage, coverage) + temporalCoverage * temporalCoverage;
 #ifdef LITE_LIGHTING
+        if (variance >= 1000.0) continue;
         float resolved = 1.0 / (1.0 + 0.5 * variance);
 #else
+        if (variance >= 12.5) continue;
         float resolved = exp(-0.5 * variance);
 #endif
         // Fade unresolved waves smoothly before evaluating their trigonometry.
         float coverageWeight = smoothstep(0.002, 0.012, resolved);
         if (coverageWeight > 0.0) {
+            float phase = dot(position, waveVector) - frequency * time * WATER_WAVE_SPEED + float(wave) * 2.3999632;
             slope += directions[wave] * (steepness[wave] * waterPhaseCos(phase) * resolved * coverageWeight);
         }
     }
 #if WATER_HYBRID_WAVES == 1
-    float footprint=max(length(footprintX),length(footprintY));
+    float footprint=sqrt(max(dot(footprintX,footprintX),dot(footprintY,footprintY)));
     if(WATER_WAVE_DETAIL>=4 && footprint<1.2) {
         vec2 uv=position*0.032+time*WATER_WAVE_SPEED*vec2(0.013,-0.008);
         vec2 fine=lwWaterSlopeTexture(uv,footprint*0.032);
