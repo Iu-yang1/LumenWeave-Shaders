@@ -17,6 +17,7 @@
 //#define MATERIAL_SSR
 #define HIZ_MODE 1 // [0 1 2]
 #define ADAPTIVE_SHADING
+#define APPROX_REUSE 1 // [0 1]
 #define SCENE_BUDGET 1 // [0 1]
 #define SKY_ENV_REUSE 1 // [0 1]
 #define WATER_PHASE_LUT 0 // [0 1]

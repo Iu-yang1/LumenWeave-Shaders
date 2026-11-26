@@ -88,58 +88,61 @@ vec3 clipHistory(ivec2 pixel, vec3 history) {
 #endif
 }
 
-vec4 filteredHistory(vec2 uv, float expectedDepth, vec2 normal, bool water, bool distant, bool sky) {
-    ivec2 size = textureSize(colortex4, 0);
-    vec2 position = uv * vec2(size) - 0.5;
-    ivec2 base = ivec2(floor(position));
-    vec2 fraction = fract(position);
-    vec4 result = vec4(0.0);
-    vec3 currentNormal = decodeNormal(normal);
-    float normalThreshold = water ? 0.86 : mix(0.86, 0.25, smoothstep(32.0, 128.0, expectedDepth));
-    for (int row = 0; row < 2; ++row) {
-        for (int column = 0; column < 2; ++column) {
-            ivec2 samplePixel = base + ivec2(column, row);
-            if (any(lessThan(samplePixel, ivec2(0))) || any(greaterThanEqual(samplePixel, size))) {
-                continue;
-            }
-            vec4 history = texelFetch(colortex4, samplePixel, 0);
-            vec4 metadata = texelFetch(colortex5, samplePixel, 0);
+bool historyCompatible(vec4 history,vec4 metadata,vec2 historySize,float expectedDepth,vec3 currentNormal,float normalThreshold,bool water,bool distant,bool sky){
 #if defined(LW_STABLE_DYNAMIC) || defined(LW_SCENE_TAAU) || defined(LW_GEOMETRY_TAAU)
+    if(any(greaterThan(abs(abs(metadata.zw)-historySize),vec2(1.0))) ||
+        (metadata.w<0.0)!=sky || (metadata.z<0.0)!=distant) return false;
+    if(sky) return true;
+#else
+    if(any(greaterThan(abs(metadata.zw-historySize),vec2(1.0)))) return false;
+#endif
+    return (history.a<0.0)==water && matchesHistoryDepth(abs(history.a),expectedDepth) &&
+        dot(currentNormal,decodeNormal(metadata.xy))>=normalThreshold;
+}
+vec4 filteredHistory(vec2 uv,float expectedDepth,vec2 normal,bool water,bool distant,bool sky,vec3 current,bool fast,out bool closeHistory){
+    ivec2 size=textureSize(colortex4,0);
+    vec2 position=uv*vec2(size)-0.5;
+    ivec2 base=ivec2(floor(position));
+    vec2 fraction=fract(position);
+    vec3 currentNormal=decodeNormal(normal);
+    float normalThreshold=water?0.86:mix(0.86,0.25,smoothstep(32.0,128.0,expectedDepth));
 #ifdef LW_GEOMETRY_TAAU
-            vec2 historySize=vec2(lwRasterExtent(size));
+    vec2 historySize=vec2(lwRasterExtent(size));
 #elif defined(LW_SCENE_TAAU)
-            vec2 historySize=vec2(lwSceneRenderSize(size));
+    vec2 historySize=vec2(lwSceneRenderSize(size));
 #else
-            vec2 historySize=vec2(size);
+    vec2 historySize=vec2(size);
 #endif
-            // Width sign encodes the DH projection, height sign encodes sky.
-            if (any(greaterThan(abs(abs(metadata.zw)-historySize),vec2(1.0))) ||
-                    (metadata.w<0.0)!=sky || (metadata.z<0.0)!=distant) {
-                continue;
-            }
-            if (!sky && ((history.a<0.0)!=water || !matchesHistoryDepth(abs(history.a),expectedDepth)
-                    || dot(currentNormal,decodeNormal(metadata.xy))<normalThreshold)) {
-                continue;
-            }
-#else
-            if ((history.a < 0.0) != water || !matchesHistoryDepth(abs(history.a), expectedDepth)) {
-                continue;
-            }
-            // Half-float stores common display dimensions exactly. Allow one pixel
-            // for rounding odd widths above 2048; reject resized/stale history.
-            if (any(greaterThan(abs(metadata.zw - vec2(size)), vec2(1.0)))
-                    || dot(currentNormal, decodeNormal(metadata.xy)) < normalThreshold) {
-                continue;
-            }
-#endif
-            vec2 weights = mix(1.0 - fraction, fraction, vec2(column, row));
-            float weight = weights.x * weights.y;
-            result += vec4(history.rgb, 1.0) * weight;
+    closeHistory=false;
+    ivec2 nearest=clamp(ivec2(floor(position+0.5)),ivec2(0),size-1);
+    vec4 nearestHistory=vec4(0.0),nearestMeta=vec4(0.0);
+    bool cached=false;
+#if APPROX_REUSE == 1 && defined(LW_GEOMETRY_TAAU)
+    if(fast && !water && !distant && !sky){
+        nearestHistory=texelFetch(colortex4,nearest,0);
+        nearestMeta=texelFetch(colortex5,nearest,0);
+        cached=true;
+        if(historyCompatible(nearestHistory,nearestMeta,historySize,expectedDepth,currentNormal,0.96,water,distant,sky) &&
+           all(lessThanEqual(abs(nearestHistory.rgb-current),vec3(0.001)+abs(current)*0.008))){
+            closeHistory=true;
+            return vec4(nearestHistory.rgb,1.0);
         }
     }
-    if (result.a > 0.0) {
-        result.rgb /= result.a;
+#endif
+    vec4 result=vec4(0.0);
+    for(int row=0;row<2;++row)for(int column=0;column<2;++column){
+        ivec2 samplePixel=base+ivec2(column,row);
+        if(any(lessThan(samplePixel,ivec2(0))) || any(greaterThanEqual(samplePixel,size))) continue;
+        vec2 weights=mix(1.0-fraction,fraction,vec2(column,row));
+        float weight=weights.x*weights.y;
+        if(weight<=0.00001) continue;
+        bool useCached=cached && all(equal(samplePixel,nearest));
+        vec4 history=useCached?nearestHistory:texelFetch(colortex4,samplePixel,0);
+        vec4 metadata=useCached?nearestMeta:texelFetch(colortex5,samplePixel,0);
+        if(!historyCompatible(history,metadata,historySize,expectedDepth,currentNormal,normalThreshold,water,distant,sky)) continue;
+        result+=vec4(history.rgb,1.0)*weight;
     }
+    if(result.a>0.0) result.rgb/=result.a;
     return result;
 }
 
@@ -165,7 +168,7 @@ vec3 temporalColor(vec3 current, vec3 viewPosition, vec2 normal, ivec2 pixel, ma
         }
     }
 #endif
-#ifdef LW_GEOMETRY_TAAU
+#if defined(LW_GEOMETRY_TAAU) && APPROX_REUSE == 0
     // Native output history is not indexed by the reduced geometry pixel.
     // Only reuse the exact output pixel for stationary, matching geometry
     // and color. Disagreement still goes through bilateral history/clipping.
@@ -181,12 +184,13 @@ vec3 temporalColor(vec3 current, vec3 viewPosition, vec2 normal, ivec2 pixel, ma
             return mix(current,history.rgb,0.92);
     }
 #endif
-    vec4 historySample = filteredHistory(previousUv, expectedDepth, normal, water, distant, false);
+    float motion = length((previousUv - texCoord) * size);
+    bool closeHistory;
+    vec4 historySample = filteredHistory(previousUv, expectedDepth, normal, water, distant, false,current,motion<4.0,closeHistory);
     if (historySample.a <= 0.0) {
         return current;
     }
-    vec3 clipped = clipHistory(pixel, historySample.rgb);
-    float motion = length((previousUv - texCoord) * size);
+    vec3 clipped = closeHistory ? historySample.rgb : clipHistory(pixel, historySample.rgb);
     float stationaryWeight = mix(0.92, 0.97, smoothstep(32.0, 128.0, -viewPosition.z));
     float weight = water ? mix(0.78, 0.55, smoothstep(2.0, 20.0, motion))
         : mix(stationaryWeight, 0.72, smoothstep(2.0, 20.0, motion));
@@ -287,7 +291,8 @@ vec3 temporalSky(vec3 current,vec2 uv,ivec2 pixel) {
     if(previousClip.w<=0.0) return current;
     vec2 previousUv = previousClip.xy/previousClip.w*0.5+0.5;
     if(any(lessThanEqual(previousUv,vec2(0.0))) || any(greaterThanEqual(previousUv,vec2(1.0)))) return current;
-    vec4 history = filteredHistory(previousUv,0.0,vec2(0.0),false,false,true);
+    bool closeHistory;
+    vec4 history = filteredHistory(previousUv,0.0,vec2(0.0),false,false,true,current,false,closeHistory);
     if(history.a<=0.0) return current;
     float motion=length((previousUv-uv)*vec2(textureSize(colortex4,0)));
     return mix(current,clipHistory(pixel,history.rgb),0.85*history.a*(1.0-smoothstep(2.0,24.0,motion)));

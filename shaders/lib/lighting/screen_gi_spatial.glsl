@@ -44,6 +44,12 @@ ScreenBounce spatialScreenBounce(vec3 viewPosition, vec3 normal, vec3 sun, vec2 
 #endif
         }
     }
+#if APPROX_REUSE == 1
+    // Reuse only depth/normal-compatible donors. A genuine disocclusion
+    // uses two opposed rays rather than four full retraces.
+    if(coverage>0.003) return ScreenBounce(bounce.sky/coverage,bounce.block/coverage,bounce.blockConfidence/coverage);
+    return screenDiffuseBounceBudget(viewPosition,normal,sun,2);
+#else
     // Compatible donors are normalized even if only one contributes.
     // Preserve an exact near-field fallback only for true disocclusions.
     if (coverage <= 0.003) {
@@ -58,4 +64,5 @@ ScreenBounce spatialScreenBounce(vec3 viewPosition, vec3 normal, vec3 sun, vec2 
         filtered.blockConfidence = mix(full.blockConfidence, filtered.blockConfidence, confidence);
     }
     return filtered;
+#endif
 }

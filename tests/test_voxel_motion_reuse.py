@@ -68,5 +68,5 @@ class MotionReuseTests(unittest.TestCase):
         self.assertIn("hasHistorySupport(target)",stage)
 
     def test_ssr_rejects_before_material_work(self):
-        source=(S/"lib/reflection/material_trace.glsl").read_text().split("vec4 traceMaterialCorrection",1)[1]
+        source=(S/"lib/reflection/material_trace.glsl").read_text().split("vec4 traceMaterialCorrectionBudget",1)[1]
         self.assertLess(source.index("smoothness<=0.001"),source.index("vanillaMaterial"))

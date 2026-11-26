@@ -60,7 +60,11 @@ bool reconstructRoughReflection(vec2 uv,vec3 viewPosition,vec3 normal,vec4 metad
         weight*=1.0-smoothstep(tolerance*0.35,tolerance,abs(distance+viewPosition.z));
         total+=texelFetch(colortex9,p,0)*weight;weightSum+=weight;
     }
+ #if APPROX_REUSE == 1
+    if(weightSum<0.01) return false;
+#else
     if(weightSum<0.20) return false;
+#endif
     result=total/weightSum;
     return true;
 }
@@ -91,9 +95,18 @@ void main() {
     if(contribution<=0.001 || MATERIAL_REFLECTION_STEPS==0) return;
     vec4 sampleResult;
 #ifdef LW_SSR_HALF
-    if(!reconstructRoughReflection(texCoord,viewPosition,normal,metadata,sampleResult))
-#endif
+    if(!reconstructRoughReflection(texCoord,viewPosition,normal,metadata,sampleResult)) {
+#if APPROX_REUSE == 1
+        // Rough fallback retains a short ray; mirrors keep full tracing.
+        int budget=metadata.a>=0.28?max(4,MATERIAL_REFLECTION_STEPS/2):MATERIAL_REFLECTION_STEPS;
+        sampleResult=traceMaterialCorrectionBudget(pixel,viewPosition,normal,geometry,materialDepth,metadata,budget);
+#else
         sampleResult=traceMaterialCorrection(pixel,viewPosition,normal,geometry,materialDepth,metadata);
+#endif
+    }
+#else
+    sampleResult=traceMaterialCorrection(pixel,viewPosition,normal,geometry,materialDepth,metadata);
+#endif
     vec3 correction=sampleResult.rgb;
 #ifdef LW_TAA_ACTIVE
     correction=temporalReflectionCorrection(correction,sampleResult.a,viewPosition,normal,texCoord);

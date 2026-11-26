@@ -67,7 +67,7 @@ float materialReflectionContribution(vec3 viewPosition,vec4 metadata) {
     return 1.0;
 #endif
 }
-vec4 traceMaterialCorrection(ivec2 pixel,vec3 viewPosition,vec3 normal,vec4 geometry,vec4 materialDepth,vec4 metadata) {
+vec4 traceMaterialCorrectionBudget(ivec2 pixel,vec3 viewPosition,vec3 normal,vec4 geometry,vec4 materialDepth,vec4 metadata,int stepBudget) {
     float roughness=metadata.a;
     float smoothness=1.0-smoothstep(0.18,0.65,roughness);
     if(smoothness<=0.001 || MATERIAL_REFLECTION_STEPS == 0) return vec4(0.0);
@@ -86,7 +86,7 @@ vec4 traceMaterialCorrection(ivec2 pixel,vec3 viewPosition,vec3 normal,vec4 geom
     traceNormal=wetRippleNormal(normal,geometry.zw,viewPosition,material);
 #endif
     vec3 reflected=reflect(-eye,traceNormal);
-    int steps=MATERIAL_REFLECTION_STEPS;
+    int steps=min(MATERIAL_REFLECTION_STEPS,stepBudget);
 #ifdef ADAPTIVE_SHADING
     // Projected footprint of a one-block feature: retain more taps at high
     // display resolution / narrow FOV where the same distance is more visible.
@@ -106,3 +106,5 @@ vec4 traceMaterialCorrection(ivec2 pixel,vec3 viewPosition,vec3 normal,vec4 geom
     }
     return vec4(correction,hit.a);
 }
+
+vec4 traceMaterialCorrection(ivec2 pixel,vec3 viewPosition,vec3 normal,vec4 geometry,vec4 materialDepth,vec4 metadata){return traceMaterialCorrectionBudget(pixel,viewPosition,normal,geometry,materialDepth,metadata,MATERIAL_REFLECTION_STEPS);}

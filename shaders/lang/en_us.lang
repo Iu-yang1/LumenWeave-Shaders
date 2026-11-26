@@ -343,3 +343,6 @@ value.DOF_QUALITY.1=Balanced
 value.DOF_QUALITY.2=Cinematic
 option.DOF_AF_SPEED.comment=Optical focus changes smoothly; larger values slow focus pulls.
 option.DOF_AF_AREA.comment=Size of the reticle-centered robust depth metering region.
+
+option.APPROX_REUSE=Adaptive approximate reconstruction
+option.APPROX_REUSE.comment=Use bounded history and reduced ray fallback in compatible regions. Off restores reference reconstruction.
