@@ -144,9 +144,10 @@ ScreenBounce screenDiffuseBounce(vec3 viewPosition, vec3 normal, vec3 sun) {
     int rayCount=-viewPosition.z>22.0 ? 2 : 4;
     int stride=rayCount==4 ? 1 : 2;
     vec3 direct=celestialIrradiance(sun);
+    const vec2 rayBasis[4]=vec2[4](vec2(1,1),vec2(-1,1),vec2(-1,-1),vec2(1,-1));
     for (int ray = 0; ray < rayCount; ++ray) {
-        float angle = (float(ray*stride) + 0.5) * (LW_PI * 0.5);
-        vec3 direction = normalize(normal + tangent * cos(angle) + bitangent * sin(angle));
+        vec2 basis=rayBasis[ray*stride]*0.7071067812;
+        vec3 direction=normalize(normal+tangent*basis.x+bitangent*basis.y);
         ScreenBounce hit = screenBounceRay(origin, toView * direction, toView, sun, direct);
         bounce.sky += hit.sky;
         bounce.block += hit.block;

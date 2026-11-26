@@ -95,3 +95,30 @@ class ShadowAoTests(unittest.TestCase):
         irrad=(ROOT/"lib/voxel/irradiance.glsl").read_text()
         self.assertIn("tile+ivec3(96,0,0)",irrad)
         self.assertIn("return sampleWrappedVoxel(field,sampleCell)",irrad)
+
+    def test_cloud_octave_rejection_exact(self):
+        rng=random.Random(272)
+        def smooth(a,b,x):
+            t=max(0.,min(1.,(x-a)/(b-a)))
+            return t*t*(3-2*t)
+        for _ in range(10000):
+            a,b,c,rain=(rng.random() for _ in range(4))
+            threshold=.48-.14*rain
+            shape=.65*a
+            old=smooth(threshold,.78,shape+.25*b+.10*c)
+            if shape+.35<=threshold:
+                new=0.
+            elif shape+.25*b+.10<=threshold:
+                new=0.
+            else:
+                new=smooth(threshold,.78,shape+.25*b+.10*c)
+            self.assertAlmostEqual(old,new,places=14)
+
+    def test_unoccluded_arc_identity(self):
+        def arc(h,g):
+            b=min(h,max(g+math.pi*.5,0))
+            return .25*(math.cos(g)-math.cos(2*b-g)+2*b*math.sin(g))
+        for i in range(1001):
+            g=-math.pi/2+math.pi*i/1000
+            self.assertAlmostEqual(arc(math.pi,g)+arc(math.pi,-g),
+                                   math.cos(g)+g*math.sin(g),places=12)

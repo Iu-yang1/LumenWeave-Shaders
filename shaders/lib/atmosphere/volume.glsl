@@ -28,8 +28,15 @@ float cloudDensity(vec3 position) {
     float layer = smoothstep(0.0, 0.24, height) * (1.0 - smoothstep(0.55, 1.0, height));
     if (layer <= 0.0) return 0.0;
     vec2 uv = (position.xz + frameTimeCounter * vec2(1.1, 0.40)) * 0.017;
-    float shape = 0.65 * cloudNoise(uv) + 0.25 * cloudNoise(uv * 2.07) + 0.10 * cloudNoise(uv * 5.0);
-    return layer * smoothstep(mix(0.48, 0.34, rainStrength), 0.78, shape);
+    float threshold=mix(0.48,0.34,rainStrength);
+    // Noise is in [0,1]. The unfinished octave sum has a known upper
+    // bound, so empty cloud regions can skip finer noise exactly.
+    float shape=0.65*cloudNoise(uv);
+    if(shape+0.35<=threshold) return 0.0;
+    shape+=0.25*cloudNoise(uv*2.07);
+    if(shape+0.10<=threshold) return 0.0;
+    shape+=0.10*cloudNoise(uv*5.0);
+    return layer*smoothstep(threshold,0.78,shape);
 }
 
 vec3 applyCloudVolume(vec3 scene, vec3 origin, vec3 direction, vec3 sun, float maxDistance) {
@@ -42,7 +49,7 @@ vec3 applyCloudVolume(vec3 scene, vec3 origin, vec3 direction, vec3 sun, float m
     vec2 distances = (vec2(156.0, 174.0) - origin.y) / direction.y;
     float start = max(min(distances.x, distances.y), 0.0);
     float end = min(max(distances.x, distances.y), min(maxDistance, 640.0));
-    if (end <= start) {
+    if (end <= start || start >= 630.0) {
         return scene;
     }
     float span=end-start;
@@ -61,9 +68,12 @@ vec3 applyCloudVolume(vec3 scene, vec3 origin, vec3 direction, vec3 sun, float m
             continue;
         }
         float opacity = 1.0 - exp(-density * stepSize * 0.15);
-        float light = exp(-2.6 * cloudDensity(point + sun * 6.0));
-        vec3 dayCloud = vec3(0.41, 0.48, 0.58) + tint * light * 0.58;
-        vec3 radiance = mix(vec3(0.044, 0.052, 0.074), dayCloud, day);
+        vec3 radiance=vec3(0.044,0.052,0.074);
+        if(day>0.0) {
+            float light=exp(-2.6*cloudDensity(point+sun*6.0));
+            vec3 dayCloud=vec3(0.41,0.48,0.58)+tint*light*0.58;
+            radiance=mix(radiance,dayCloud,day);
+        }
         radiance *= 1.0 - rainStrength * 0.28;
         scattering += radiance * transmission * opacity;
         transmission *= 1.0 - opacity;

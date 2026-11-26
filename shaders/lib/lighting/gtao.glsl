@@ -66,7 +66,8 @@ float groundTruthOcclusion(vec2 uv, vec3 position, vec3 normal) {
         float positive = acos(horizonCosine(uv, stepUv, position, observer, normal));
         float negative = acos(horizonCosine(uv, -stepUv, position, observer, normal));
         visible += weight * (visibleArc(positive, gamma) + visibleArc(negative, -gamma));
-        unoccluded += weight * (visibleArc(LW_PI, gamma) + visibleArc(LW_PI, -gamma));
+        // Analytic sum of the two unobstructed arcs, for |gamma|<=pi/2.
+        unoccluded += weight * (cos(gamma) + gamma*sin(gamma));
     }
     float visibility = clamp(visible / max(unoccluded, 0.0001), 0.0, 1.0);
     visibility = 1.0 - clamp((1.0 - visibility) * AO_STRENGTH, 0.0, 1.0);
