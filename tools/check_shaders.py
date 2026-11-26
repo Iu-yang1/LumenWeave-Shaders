@@ -547,10 +547,10 @@ def main():
                 "v5-geometry-wet-no-smooth": {**profiles["profile.Ultra"],"SMOOTH_LIGHTING":"false"},
                 "v5-geometry-wet-off": {**profiles["profile.Ultra"],"RAIN_GEOMETRY":"0"},
                 "v5-geometry-no-diffuse-history": {**profiles["profile.Extreme"],"VOXEL_DIFFUSE_SMOOTHING":"0"},
-                "v4-taau-diffuse": {**profiles["profile.Extreme"], "SCENE_TAAU_SCALE":"75", "DOF_MODE":"1"},
-                "v4-taau-wet-no-smooth": {**profiles["profile.Ultra"], "SCENE_TAAU_SCALE":"67", "SMOOTH_LIGHTING":"false"},
-                "v4-taau-dynamic": {**profiles["profile.High"], "SCENE_TAAU_SCALE":"85", "PROJECTION_JITTER":"2", "MOTION_BLUR":"true"},
-                "v4-taau-history": {**profiles["profile.Extreme"], "SCENE_TAAU_SCALE":"50", "GI_REUSE_MODE":"2", "DOF_MODE":"3"},
+                "v4-taau-diffuse": {**profiles["profile.Extreme"], "GEOMETRY_TAAU_SCALE":"100", "SCENE_TAAU_SCALE":"75", "DOF_MODE":"1"},
+                "v4-taau-wet-no-smooth": {**profiles["profile.Ultra"], "GEOMETRY_TAAU_SCALE":"100", "SCENE_TAAU_SCALE":"67", "SMOOTH_LIGHTING":"false"},
+                "v4-taau-dynamic": {**profiles["profile.High"], "GEOMETRY_TAAU_SCALE":"100", "SCENE_TAAU_SCALE":"85", "PROJECTION_JITTER":"2", "MOTION_BLUR":"true"},
+                "v4-taau-history": {**profiles["profile.Extreme"], "GEOMETRY_TAAU_SCALE":"100", "SCENE_TAAU_SCALE":"50", "GI_REUSE_MODE":"2", "DOF_MODE":"3"},
             }
             compile_matrix(args.compiler, PREVIEW, variants, sources=sources, environment=(*VOXEL_FEATURES,"DISTANT_HORIZONS","MC_TEXTURE_FORMAT_LAB_PBR_1_3"))
             compile_matrix(args.compiler, PREVIEW, {"v4-fallback":profiles["profile.High"]}, sources=sources)
@@ -607,7 +607,7 @@ def main():
         }
         compile_matrix(args.compiler, PREVIEW, profiles)
         scene_entries=[p for p in PREVIEW.rglob("*") if p.suffix in STAGES and p.stem in ("composite","composite1","composite2","composite3","composite4","composite5","final")]
-        compile_matrix(args.compiler,PREVIEW,{"scene-taau-ultra":{**profiles["profile.Ultra"],"SCENE_TAAU_SCALE":"75"},"scene-taau-extreme":{**profiles["profile.Extreme"],"SCENE_TAAU_SCALE":"50","DOF_MODE":"1"},"scene-taau-dynamic":{**profiles["profile.High"],"SCENE_TAAU_SCALE":"67","PROJECTION_JITTER":"2","MOTION_BLUR":"true"}},sources=scene_entries,environment=(*VOXEL_FEATURES,"DISTANT_HORIZONS"))
+        compile_matrix(args.compiler,PREVIEW,{"scene-taau-ultra":{**profiles["profile.Ultra"],"GEOMETRY_TAAU_SCALE":"100", "SCENE_TAAU_SCALE":"75"},"scene-taau-extreme":{**profiles["profile.Extreme"],"GEOMETRY_TAAU_SCALE":"100", "SCENE_TAAU_SCALE":"50","DOF_MODE":"1"},"scene-taau-dynamic":{**profiles["profile.High"],"GEOMETRY_TAAU_SCALE":"100", "SCENE_TAAU_SCALE":"67","PROJECTION_JITTER":"2","MOTION_BLUR":"true"}},sources=scene_entries,environment=(*VOXEL_FEATURES,"DISTANT_HORIZONS"))
         camera_entries=[p for p in PREVIEW.rglob("*") if p.suffix in STAGES and p.stem in ("final","composite3","composite4","composite5","deferred2","deferred2_a","prepare6","prepare6_a","prepare8")]
         compile_matrix(args.compiler,PREVIEW,{"camera-ultra":{**profiles["profile.Ultra"],"DOF_MODE":"1"},"camera-extreme-history":{**profiles["profile.Extreme"],"DOF_MODE":"3","GI_REUSE_MODE":"2"}},sources=camera_entries,environment=(*VOXEL_FEATURES,"DISTANT_HORIZONS","MC_TEXTURE_FORMAT_LAB_PBR_1_3"))
         compile_matrix(
