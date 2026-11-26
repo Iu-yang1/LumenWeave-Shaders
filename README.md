@@ -50,4 +50,4 @@ LumenWeave 是面向 Minecraft Java Edition 的 Iris / OpenGL 光影包,追求�
 | 超高 Ultra | 大气,体积效果,SSGI,SSR,彩色体素光照 | 2048 软阴影 / TAA |
 | 极致 Extreme | 最大默认覆盖范围与体素漫反射 | 4096 软阴影 / TAA |
 
-Ultra / Extreme 分别默认使用 96³ / 128³ 体素网格.自然,自然低曝光,自然高曝光是无场景阴影的色彩对照预设；
+Ultra / Extreme 分别默认使用 96³ / 128³ 体素网格.自然,自然低曝光,自然高曝光是无场景阴影的色彩对照预设；Standard 用于对照基础延迟光照与水面效果.
