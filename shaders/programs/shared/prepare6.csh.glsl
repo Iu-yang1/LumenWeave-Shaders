@@ -21,12 +21,10 @@ shared uint previousSupport;
 shared bool skipTile;
 shared ivec3 tileMeta;
 // Two disjoint parity banks; no workgroup may read a bank being written.
-ivec3 historyTileMeta(ivec3 tile,int parity){
-    int side=LW_GRID_SIZE/4;
-    int index=tile.x+side*(tile.y+side*tile.z);
-    return ivec3(index%LW_GRID_SIZE,(index/LW_GRID_SIZE)%LW_GRID_SIZE,2*LW_GRID_SIZE+2*parity+index/(LW_GRID_SIZE*LW_GRID_SIZE));
-}
-vec2 priorTileState(ivec3 tile,int parity){return imageLoad(lwVoxelFirst,historyTileMeta(tile,parity)).rg;}
+#include "/lib/voxel/history_tiles.glsl"
+#ifdef LW_GPU_COMPACTION
+#include "/lib/voxel/active_tiles.glsl"
+#endif
 bool hasHistorySupport(vec4 v){return any(greaterThan(v,vec4(0.0)));}
 shared vec2 directDecay;
 #ifdef LW_VOXEL_DIFFUSE_SMOOTH
@@ -46,43 +44,23 @@ vec4 settleHistory(vec4 value,vec4 target,vec4 old,bool wall,out bool pending){
     return quantized;
 }
 void main(){
+#ifdef LW_GPU_COMPACTION
+    ivec3 tile=activeTile(3);
+#else
+    ivec3 tile=ivec3(gl_WorkGroupID);
+#endif
     if(gl_LocalInvocationIndex==0u){
         previous=imageLoad(lwVoxelMeta,ivec2(0));
         origin=voxelCacheOrigin();
         occupied=0u;
         transitioning=0u;
-        ivec3 tile=ivec3(gl_WorkGroupID);
-        int parity=frameCounter&1;
-        tileMeta=historyTileMeta(tile,parity);
-        ivec3 movement=cameraPositionInt-previous.xyz;
-        bool fresh=previous.w==frameCounter-1;
-        ivec3 lo=tile*4+movement,hi=lo+ivec3(3);
+        tileMeta=historyTileMeta(tile,frameCounter&1);
+#ifdef LW_GPU_COMPACTION
         skipTile=false;
-        previousSupport=0u;
+#else
         uint mask=imageLoad(lwVoxelDirtyTiles,tile+ivec3(96,0,0)).r;
-        // Entering cells or dirty targets must be processed. A retained
-        // tile may overlap 1..8 old tiles when the camera crosses a block.
-        if(fresh && (mask&3u)==0u && withinVoxelGrid(lo) && withinVoxelGrid(hi)){
-            ivec3 first=lo/4,last=hi/4;
-            vec2 prior=priorTileState(first,1-parity);
-            if(all(equal(first,last))){
-                // Exact tile mapping: reuse settled support even when lit.
-                previousSupport=uint(prior.r);
-                skipTile=prior.g==0.0;
-            }else if(prior.r==0.0 && prior.g==0.0){
-                // Misaligned tiles can only reuse proven empty history.
-                // Do not spread conservative lit flags on repeated movement.
-                skipTile=true;
-                for(int z=first.z;z<=last.z && skipTile;++z)
-                    for(int y=first.y;y<=last.y && skipTile;++y)
-                        for(int x=first.x;x<=last.x && skipTile;++x){
-                            ivec3 p=ivec3(x,y,z);
-                            if(all(equal(p,first))) continue;
-                            vec2 state=priorTileState(p,1-parity);
-                            skipTile=state.r==0.0 && state.g==0.0;
-                        }
-            }
-        }
+        skipTile=historyTileReusable(tile,previous,mask,previousSupport);
+#endif
         if(!skipTile){
             float dt=clamp(frameTime,0.0,0.25);
             directDecay=exp2(-dt/vec2(DIRECT_RISE_HALF,DIRECT_FALL_HALF));
@@ -94,12 +72,11 @@ void main(){
     barrier();
     if(skipTile) {
         if(gl_LocalInvocationIndex==0u){
-            imageStore(lwVoxelDirtyTiles,ivec3(gl_WorkGroupID),uvec4(previousSupport));
-            imageStore(lwVoxelFirst,tileMeta,vec4(float(previousSupport),0.0,0.0,0.0));
+            retainHistoryTile(tile,previousSupport);
         }
         return;
     }
-    ivec3 local=ivec3(gl_GlobalInvocationID);
+    ivec3 local=tile*4+ivec3(gl_LocalInvocationID);
     ivec3 cell=voxelWrapNear(local+origin);
     ivec3 historyCell=cell+ivec3(0,0,LW_GRID_SIZE);
     ivec3 previousLocal=local+cameraPositionInt-previous.xyz;
@@ -134,7 +111,7 @@ void main(){
     barrier();
     // The original dirty seed slab is no longer needed by propagation.
     if(gl_LocalInvocationIndex==0u) {
-        imageStore(lwVoxelDirtyTiles,ivec3(gl_WorkGroupID),uvec4(occupied));
+        imageStore(lwVoxelDirtyTiles,tile,uvec4(occupied));
         imageStore(lwVoxelFirst,tileMeta,vec4(float(occupied),float(transitioning),0.0,0.0));
     }
 }

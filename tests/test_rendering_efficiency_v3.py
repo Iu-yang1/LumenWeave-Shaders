@@ -83,11 +83,11 @@ class RenderingEfficiencyTests(unittest.TestCase):
             self.assertTrue(all(2*n<=p[2]<2*n+4 for bank in banks for p in bank))
         source=(S/"programs/shared/prepare6.csh.glsl").read_text()
         self.assertIn("if(skipTile)",source)
-        self.assertIn("bool fresh=previous.w==frameCounter-1",source)
-        self.assertIn("withinVoxelGrid(lo) && withinVoxelGrid(hi)",source)
-        self.assertIn("(mask&3u)==0u",source)
-        self.assertIn("skipTile=prior.g==0.0",source)
-        self.assertIn("uvec4(previousSupport)",source)
+        self.assertIn("bool fresh=previous.w==frameCounter-1",(S/"lib/voxel/history_tiles.glsl").read_text())
+        self.assertIn("!withinVoxelGrid(lo) || !withinVoxelGrid(hi)",(S/"lib/voxel/history_tiles.glsl").read_text())
+        self.assertIn("(mask&3u)!=0u",(S/"lib/voxel/history_tiles.glsl").read_text())
+        self.assertIn("return prior.g==0.0",(S/"lib/voxel/history_tiles.glsl").read_text())
+        self.assertIn("retainHistoryTile(tile,previousSupport)",source)
 
     def test_taau_grid_contract(self):
         for width,height in ((1920,1080),(1919,1079),(3840,2160)):
@@ -214,7 +214,7 @@ class RenderingEfficiencyTests(unittest.TestCase):
         self.assertIn("float(transitioning)",stage)
         self.assertIn("atomicOr(transitioning,2u)",stage)
         self.assertIn("packHalf2x16",stage)
-        self.assertIn("uvec4(previousSupport)",stage)
+        self.assertIn("retainHistoryTile(tile,previousSupport)",stage)
         for changed in (0,1,2,3):
             for pending in (0,1,2,3):
                 for stationary in (False,True):

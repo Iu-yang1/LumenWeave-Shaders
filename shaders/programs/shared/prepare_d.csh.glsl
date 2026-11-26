@@ -7,6 +7,7 @@ const ivec3 workGroups=ivec3(1,1,1);
 void main() {
     count1=0u; y1=1u; z1=1u; pad1=0u;
     count2=0u; y2=1u; z2=1u; pad2=0u;
+    count3=0u; y3=1u; z3=1u; pad3=0u;
 }
 #else
 void main(){}

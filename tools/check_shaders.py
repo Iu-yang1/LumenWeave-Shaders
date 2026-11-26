@@ -272,6 +272,11 @@ def check_modern_properties(compiler, path):
         config = preprocess_properties(compiler, path, flags)
         if ("indirect.prepare1" in config) != indirect or ("bufferObject.0" in config) != indirect:
             raise ValueError(f"Incorrect indirect dispatch capability gate: {minecraft}/{iris}/{ssbo}")
+        smooth=preprocess_properties(compiler,path,{**flags,"SMOOTH_LIGHTING":"1"})
+        if ("indirect.prepare6" in smooth)!=indirect:
+            raise ValueError("History compaction capability gate differs from propagation")
+        if indirect and smooth.get("bufferObject.0")!="393264":
+            raise ValueError("Three indirect lists require three 16-byte headers and 3*32768 uints")
         if config.get("allowConcurrentCompute") != "false":
             raise ValueError("Dependent compute dispatch must be serial")
         if config.get("program.world1/begin1.enabled") != "false":
@@ -545,7 +550,7 @@ def main():
         profiles = preview_profiles(PREVIEW)
         if args.v4_focused:
             check_modern_properties(args.compiler, PREVIEW / "shaders.properties")
-            names = {"prepare5","prepare6","prepare6_a","prepare7","prepare8","deferred","deferred_a","deferred1","deferred2","deferred2_a","composite","composite_a","composite_b","composite1","composite2","composite3","composite4","composite5","final","gbuffers_terrain","gbuffers_water","gbuffers_weather","dh_terrain","dh_water"}
+            names = {"prepare_d","prepare_e","prepare5","prepare6","prepare6_a","prepare7","prepare8","deferred","deferred_a","deferred1","deferred2","deferred2_a","composite","composite_a","composite_b","composite1","composite2","composite3","composite4","composite5","final","gbuffers_terrain","gbuffers_water","gbuffers_weather","dh_terrain","dh_water"}
             sources = [p for p in PREVIEW.rglob("*") if p.suffix in STAGES and p.stem in names]
             variants = {
                 "v5-geometry-dynamic": {**profiles["profile.Extreme"],"GEOMETRY_TAAU_SCALE":"75","PROJECTION_JITTER":"2"},

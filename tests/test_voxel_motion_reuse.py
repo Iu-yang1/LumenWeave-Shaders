@@ -63,8 +63,8 @@ class MotionReuseTests(unittest.TestCase):
         self.assertIn("readHistory",src)
         self.assertIn("readTarget",src)
         stage=(S/"programs/shared/prepare6.csh.glsl").read_text()
-        self.assertIn("historyTileMeta(tile,parity)",stage)
-        self.assertIn("priorTileState(first,1-parity)",stage)
+        self.assertIn("historyTileMeta(tile,frameCounter&1)",stage)
+        self.assertIn("priorTileState(first,1-parity)",(S/"lib/voxel/history_tiles.glsl").read_text())
         self.assertIn("hasHistorySupport(target)",stage)
 
     def test_ssr_rejects_before_material_work(self):
