@@ -407,6 +407,7 @@ def main():
         voxel_profiles = {
             "world-voxels": {**profiles["profile.Standard"], "VOXEL_LIGHTING": "true"},
             "world-voxels-no-shadow-filter": {**profiles["profile.Natural"], "VOXEL_LIGHTING": "true"},
+            "world-local-scatter-full-rebuild": {**profiles["profile.High"], "VOXEL_LIGHTING": "true", "VOLUME_EFFECTS": "true", "INCREMENTAL_VOXELS": "false"},
         }
         compile_pack(args.compiler, PREVIEW, voxel_profiles, environment=VOXEL_FEATURES)
         compile_pack(
