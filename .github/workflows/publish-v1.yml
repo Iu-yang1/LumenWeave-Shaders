@@ -1,0 +1,122 @@
+name: Publish v1.0.0
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: publish-v1
+  cancel-in-progress: false
+jobs:
+  validate:
+    if: github.ref == 'refs/heads/main' && (github.event_name == 'workflow_dispatch' || startsWith(github.event.head_commit.message, 'Release v1.0.0:'))
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+        with:
+          python-version: '3.12'
+      - name: Full GLSL and unit regression
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes --no-install-recommends glslang-tools
+          python tools/check_shaders.py
+          python -m unittest discover -s tests -v
+      - name: Code quality
+        uses: scanaislop/aislop@34f42cbbaa346da8bd361add68e1d06d7e007182
+        with:
+          version: '0.19.1'
+          format: human
+      - name: Build all packages
+        run: |
+          python tools/package.py
+          python tools/package.py --p0
+          python tools/package.py --voxel-probe
+          python tools/package.py --all-versions
+          cd dist
+          sha256sum --check -- *.sha256
+          for pack in *.zip; do python -m zipfile --test "$pack"; done
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: release-v1
+          path: |
+            dist/LumenWeave-Shaders-MC-*.zip
+            dist/LumenWeave-Shaders-MC-*.zip.sha256
+            dist/LumenWeave-Shaders-All-Versions.zip
+            dist/LumenWeave-Shaders-All-Versions.zip.sha256
+          if-no-files-found: error
+  publish:
+    needs: validate
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          fetch-depth: 0
+      - uses: actions/download-artifact@v4
+        with:
+          name: release-v1
+          path: dist
+      - name: Preserve develop, publish clean main and release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SOURCE_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          git fetch origin main
+          test "$(git rev-parse origin/main)" = "$SOURCE_SHA"
+          test "$(git rev-parse HEAD)" = "$SOURCE_SHA"
+          if gh release view v1.0.0 >/dev/null 2>&1; then
+            echo "Release v1.0.0 already exists; refusing overwrite"
+            exit 1
+          fi
+          if git ls-remote --exit-code --heads origin develop >/dev/null; then
+            git fetch origin develop
+            git merge-base --is-ancestor origin/develop "$SOURCE_SHA"
+          fi
+          git push origin "$SOURCE_SHA:refs/heads/develop"
+          test "$(git ls-remote origin refs/heads/develop | cut -f1)" = "$SOURCE_SHA"
+          for path in AGENTS.md tests tools experiments; do
+            git cat-file -e "$SOURCE_SHA:$path"
+          done
+          shader_tree="$(git rev-parse HEAD:shaders)"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git rm -r AGENTS.md tests tools experiments ROADMAP.md docs
+          git commit -m "Distribute v1.0.0 player source; development files retained on develop"
+          test "$(git rev-parse HEAD:shaders)" = "$shader_tree"
+          for path in AGENTS.md tests tools experiments; do
+            if git cat-file -e "HEAD:$path" 2>/dev/null; then exit 1; fi
+          done
+          git push origin HEAD:refs/heads/main
+          public_sha="$(git rev-parse HEAD)"
+          test "$(git ls-remote origin refs/heads/main | cut -f1)" = "$public_sha"
+          (cd dist && sha256sum --check -- *.sha256)
+          cat > /tmp/release-notes.md <<'EOF'
+          First public release of LumenWeave Shaders.
+
+          - Natural HDR lighting and distinct Overworld, Nether and End environments.
+          - Six quality tiers plus four comparison presets.
+          - GTAO, adaptive shadows, advanced water, LabPBR, SSGI, SSR, colored voxel lighting, volumetric clouds and light shafts.
+          - Precomputed atmospheric and cloud assets, incremental caches and temporal reuse.
+          - Fixed Iris compute-dispatch parser crash; improved cloud slab intersection, nighttime LUT access and SSR fade.
+
+          Choose the matching Minecraft inner ZIP. Extract the All-Versions bundle before installation. SHA256 files are included.
+
+          The release passed offline GLSL, regression, packaging and code quality gates. Game/driver-specific runtime and GPU performance certification remain incomplete. Report issues with the first relevant latest.log exception and environment details.
+          EOF
+          gh release create v1.0.0 dist/*.zip dist/*.sha256 --target "$public_sha" --title "LumenWeave Shaders v1.0.0" --notes-file /tmp/release-notes.md --latest
+          gh release view v1.0.0 --json url,tagName,isDraft,isPrerelease,assets
+          for branch in research/advanced-rendering-lut-ssr-dh-voxel feature/natural-rendering-v2; do
+            if git ls-remote --exit-code --heads origin "$branch" >/dev/null; then
+              git fetch origin "$branch"
+              git merge-base --is-ancestor FETCH_HEAD "$SOURCE_SHA"
+              git push origin --delete "$branch"
+            fi
+          done
+          git ls-remote --heads origin

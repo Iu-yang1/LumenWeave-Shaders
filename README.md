@@ -1,73 +1,65 @@
 # LumenWeave Shaders
 
-[English](README.en.md)
+[English](README.en.md) · [下载正式版本](https://github.com/Iu-yang1/LumenWeave-Shaders/releases) · [问题反馈](https://github.com/Iu-yang1/LumenWeave-Shaders/issues)
 
-[完整开发计划与当前进度](ROADMAP.md)（更新于 2026-11-26）
+LumenWeave 是面向 Minecraft Java Edition 的 Iris / OpenGL 光影包，追求自然柔和的日光、清澈水体、具有层次感的天空，以及保留黑暗氛围的彩色人工光照。从轻量前向渲染到高级混合延迟渲染，提供独立可调的性能与画质设置。
 
-面向 Minecraft Java Edition 的 Iris/OpenGL 光影包。视觉方向是自然、柔和的光照，目标覆盖 Intel HD 630 至 RTX 4070。
+## 画面展示
 
-## P5 本地预览
+<!-- Add actual in-game screenshots from screenshots/ -->
+| 主世界 · 日光与体积云 | 主世界 · 水面与日落 |
+| :---: | :---: |
+| 截图待补充 | 截图待补充 |
+| 下界 · 岩浆与彩色光照 | 末地 · 深紫星云 |
+| 截图待补充 | 截图待补充 |
 
-三个原版维度共享线性高动态范围光照，提供轻量前向和标准混合延迟路径。标准路径支持 LabPBR 和屏幕空间水体。提供极低、低、中、高、超高和极致六档预设。极低和低档默认使用快速空间抗锯齿，超高和极致启用实验光照。
+## 主要特性
 
-1. 运行 `python3 tools/package.py`（Windows 可用 `py -3 tools/package.py`），生成 `dist/LumenWeave-Shaders-P5-Preview.zip`。
-2. 将光影 ZIP 放进 Minecraft 实例的 `shaderpacks` 目录，游戏内通过「选项 → 视频设置 → 光影包」启用。
-3. 新安装默认使用「高」档，开启阴影、高级水体和 TAA。已有设置会由 Iris 保留，请在光影包设置中重新选择「高」或「极致」以测试完整效果；「自然」保留为早期无阴影对照档。验证环境为 Minecraft 1.21.1、Fabric Loader 0.16.5、Iris 1.8.8、Sodium 0.6.13 和 Java 21。
+- 自然日夜光照、柔和阴影、GTAO 和 HDR 色调映射。
+- 物理大气查找表、体积云、太阳光束及深度感知重建。
+- 彩色体素光照、局部光源空气散射、SSGI、材质 SSR（高级预设）。
+- 多尺度水面波浪、水深吸收与散射、反射和折射。
+- LabPBR 资源包、植被风场、TAA / 空间抗锯齿、可调辉光。
+- 三个原版维度的独立环境风格；Distant Horizons 可选集成。
+- 预计算资产、局部环形缓存、自适应采样和时域复用。
 
-SSGI 需要开启延迟光照。超高和极致档默认开启独立的 SSGI 时域滤波，用来平滑天空光和日光的间接反弹，可以在光影包设置中单独关闭。体素漫反射还需要开启彩色体素光照。体素网格可独立选择 32³、64³、96³ 或 128³，超高默认 96³，极致默认 128³；高档预选 64³，彩色体素光照默认关闭。该路径需要加载器提供计算着色器、自定义图像、方块发光属性和反向阴影裁剪。
+## 安装
 
-### 水体、植被与后期设置
+1. 安装与你的 Minecraft 版本匹配的 Iris、Sodium 和相应模组加载器。
+2. 在 [Releases](https://github.com/Iu-yang1/LumenWeave-Shaders/releases) 下载对应游戏版本的光影 ZIP。
+3. 将 ZIP 原样放入实例的 `shaderpacks` 目录。若下载 All-Versions 外层合集，先解压并选择一个内层 ZIP。
+4. 在游戏中打开「选项 → 视频设置 → 光影包」，选择 LumenWeave 并应用。
+5. 建议首次选择 **高（High）**，再根据显卡负载调整。升级时如有旧配置冲突，请重新选择预设。
 
-水面独立生成波浪法线，不叠加原版水纹和原版水面 alpha。标准路径根据水深计算分通道吸收、散射、Fresnel 反射和折射；浅水保留水底细节，水色随光程逐渐变化。轻量路径保留深度吸收和透明混合，省去屏幕空间反射步进。水下雾与水面使用相同的光学参数。玻璃继续使用资源包自己的贴图与透明度。
+| 构建文件 | 目标版本 |
+| --- | --- |
+| `LumenWeave-Shaders-MC-1.20.x.zip` | Minecraft 1.20 系列 |
+| `LumenWeave-Shaders-MC-1.21.x.zip` | Minecraft 1.21 系列 |
+| `LumenWeave-Shaders-MC-26.x.zip` | Minecraft 26.x（OpenGL） |
 
-设置采用分层菜单：光照、光源与辉光、大气、水体、反射、植被、后期、性能、高级功能及调试。光源与辉光独立管理发光材质、局部空气散射和 HDR 屏幕辉光；性能下提供时域复用范围。水体光学与通用反射分开，后期保留抗锯齿、色彩、镜头。可调节群系水色占比、水体密度、浑浊度、波浪强度与速度、粗糙度、折射强度和反射步数。
+版本范围为构建兼容目标，不等同于对每个游戏、Iris、Sodium、显卡驱动组合的实机认证。高级计算功能取决于 Iris 与显卡支持的特性；缺少对应能力时使用适用的基础路径。不提供 Vulkan 或 OptiFine 支持保证。
 
-- 抗锯齿提供关闭、快速空间抗锯齿、TAA、TAA 加空间抗锯齿四种模式。TAA 需要延迟路径；前向路径选择 TAA 时使用空间抗锯齿。
-- 树叶、草、花卉和作物支持阵风摆动，可分别开关树叶和草。草根固定，双高植物共享接缝位移，阴影使用相同的风场。远处摆动逐渐淡出。
-- 相机动态模糊提供快门比例与采样数调节，限制最大拖影并拒绝深度边缘。当前仅使用相机运动，不包含独立实体的运动向量。
-- HDR 辉光复用宽高各四分之一的缓冲，提供快速、均衡、宽域滤波以及强度和阈值。极低/低档关闭，中档快速、高/超高/极致均衡；动态模糊和锐化仍独立于预设。
+## 画质预设
 
-极低、低档减少波浪层数、阴影滤波与 AO 采样；非植被顶点跳过风场计算，真实水面跳过普通材质着色。关闭效果后通过编译分支和禁用通道省去对应工作。优化目标包括 HD 630，但本轮验证硬件仍为 RTX 4070 Laptop，不能据此保证低配实机帧率。
+| 预设 | 主要定位 | 阴影 / 抗锯齿 |
+| --- | --- | --- |
+| 极低 Potato | 核显、低功耗优先 | 无场景阴影 / FXAA |
+| 低 Low | 基础光影、轻量水体 | 1024 硬阴影 / FXAA |
+| 中 Medium | 延迟光照、AO、高级水体 | 1024 硬阴影 / TAA + FXAA |
+| 高 High | 日常画质与性能平衡，推荐起点 | 2048 软阴影 / TAA + FXAA |
+| 超高 Ultra | 大气、体积效果、SSGI、SSR、彩色体素光照 | 2048 软阴影 / TAA |
+| 极致 Extreme | 最大默认覆盖范围与体素漫反射 | 4096 软阴影 / TAA |
 
-三个维度分别从 `shaders/world0/`、`shaders/world-1/`、`shaders/world1/` 加载，通用通道实现位于 `shaders/programs/shared/`，维度环境光位于 `shaders/lib/dimensions/`。这样可以独立扩展各维度，同时避免复制整套渲染算法。旧版 `TEMPORAL_AA`、`SPATIAL_AA` 选项已合并为 `AA_MODE`，升级后请重新选择抗锯齿模式。
+Ultra / Extreme 分别默认使用 96³ / 128³ 体素网格。自然、自然低曝光、自然高曝光是无场景阴影的色彩对照预设；标准档是无时域抗锯齿的兼容／对照配置，不属于六档性能阶梯。高级路径保留固定投影选项；可切换动态投影和原计算路径作对照。
 
-体素分辨率为每方块一格，扩大网格增加相机周围的覆盖范围，传播仍为四轮。三张体素图像分别占用合计 0.625、5、16.875 或 40 MiB，不包含阴影贴图、屏幕缓冲和其他维度缓存。关闭彩色体素光照时不分配这些图像。
+## 兼容性与反馈
 
-下界与末地使用同一套材质、局部光源和时域路径。下界保留生物群系雾色与原版雾距离，末地使用偏紫环境光。根据维度的天空光属性关闭太阳/月亮直射、高光、日光束和云层；极低、低档继续使用原版方块光，超高、极致档可使用彩色体素光照。
+离线 GLSL 编译、预设与资源检查、数值回归以及多版本打包用于发行验证，但不能替代真实游戏加载和 GPU 画质测试。高级光照、DH、不同驱动的持续运行与性能仍需要更多实机反馈。不存在跨设备的帧率保证。
 
-Distant Horizons 有独立远景地形和水体路径。开启延迟光照与 TAA 时，地形与水面分别进行历史累积，用深度、法线和表面类型拒绝错误历史。水体采用按像素覆盖范围过滤的多尺度波纹和太阳高光。2.3.2-b 已在 RTX 4070 Laptop 上完成河流远近视图、日出、夜晚和雷雨的后台运行检查。持续移动时的区块加载与 LOD 接缝仍待完整画质验收。
+如发生加载错误、画面异常或性能问题，请附上 Minecraft、Iris、Sodium、显卡与驱动版本、画质预设、截图和 `latest.log` 中首个相关异常。
 
-开发检查使用 `python tools/check_shaders.py` 和 `python -m unittest discover -s tests -v`。前者需要安装 `glslang`，也可用 `--compiler` 指定路径。
+## 开发与许可证
 
-使用 `python tools/package.py --p0` 生成包含「中性」和「柔和」档的 P0 对照包。`python tools/package.py --voxel-probe` 生成独立体素实验包，屏幕上方的绿条表示合成场景的 GPU 自检通过。
+主分支保存玩家使用的光影源码；完整测试、工具、实验、生成器及技术文档位于 [develop](https://github.com/Iu-yang1/LumenWeave-Shaders/tree/develop)。查看 [发行审查](https://github.com/Iu-yang1/LumenWeave-Shaders/blob/develop/docs/release-audit-v1.md) 和 [开发路线](https://github.com/Iu-yang1/LumenWeave-Shaders/blob/develop/ROADMAP.md)。
 
-## 自动构建与手动构建
-
-推送到 `main`、提交面向 `main` 的 Pull Request 时，GitHub Actions 的 **Build shader packs** 工作流会执行配置和语言检查、离线 GLSL 编译、数值与工具测试，并打包三个独立的光影 ZIP。也可在仓库 **Actions → Build shader packs → Run workflow** 中选择分支并手动构建。
-
-构建成功后，在该次运行的 **Artifacts** 中下载 `LumenWeave-Shaders-P5-Preview`，解压下载的产物，将其中的 `LumenWeave-Shaders-P5-Preview.zip` 原样放入游戏的 `shaderpacks` 目录。P0 对照包和体素实验包分别提供，产物保留 30 天。
-
-每个包附带 `.zip.sha256` 校验文件，运行摘要记录源码提交及校验值。本地打包同样生成校验文件。光影源码由 Iris 在游戏加载时按显卡编译；Actions 执行离线编译检查和可安装 ZIP 打包，不能代替游戏内 GPU 验证。
-
-当前预览仍有未完成的兼容性与画质验收：Iris 1.8.8 与 Distant Horizons 2.3.2-b 联用时曾记录一次启动阶段的组合渲染通道诊断，首帧影响尚未确认；缓存维度返回首帧、持续 LOD 切换及 Intel/AMD 实机仍待验证。
-
-## 参考项目
-
-P0 源码为独立实现，采用 LGPL-3.0-only。归属与上游出处见 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)。
-
-### 投影采样与闪烁兼容性
-
-V2.2 的实机隔离测试中，Ultra/Extreme 使用动态投影时闪烁；Ultra 仅固定投影（保留 TAA、体积效果、SSGI 与体素光照）后正常。V2.3 将投影采样和抗锯齿分离：自动模式在体积效果、SSGI 或体素光照开启时使用固定像素中心；Medium/High 原有动态采样不变。固定模式仍执行历史重投影、深度/法线拒绝和时域滤波，但不提供跨帧亚像素超采样。如需额外边缘平滑可选择 TAA + 空间抗锯齿。动态模式仍可手动启用供研究。具体底层交互故障尚未通过 GPU 捕获定位；Extreme 固定模式及新构建仍需实机复测。
-
-
-## 版本兼容构建（P16）
-从同一套 GLSL 源码生成 `LumenWeave-Shaders-MC-1.20.x.zip`、`LumenWeave-Shaders-MC-1.21.x.zip`、`LumenWeave-Shaders-MC-26.x.zip`。运行 `python tools/package.py --all-versions` 生成三个独立 ZIP 及外层 `LumenWeave-Shaders-All-Versions.zip`（含 SHA256 和 manifest.json）。先解压外层包，仅将对应的内层 ZIP 放入 shaderpacks。亦可用 `--compatibility 1.20.x` 单独构建。旧版保留 worldN 映射，所有生成包在每个维度入口注入明确的维度标识；新版本方块 ID 按 MC_VERSION 条件解析。先进 GPU 功能仍按加载器和显卡的实际能力启用。26.x 要求匹配的 Iris/Sodium 和 OpenGL，Vulkan 不在当前实现范围内。目标范围覆盖 1.20–26.3 正式版本；26.4 预发布不作为正式支持声明。上述范围尚待不同游戏/加载器组合的实际运行验收，不以离线编译替代。
-
-### 体积渲染与场景预算（P40）
-大气设置独立提供体积云、光束、历史复用；光源与辉光提供局部散射自适应积分。Extreme/Ultra 默认启用场景感知预算、原生 R8 云图、方向与距离自适应、空区跳跃、光照复用及固定视角体积历史。R8 云形为独立的周期噪声近似，可切换原程序化路径；历史复用在动态投影或不满足图像资源条件时回退，光束始终采样当前遮挡。实际画质与性能比较方法见 `docs/gpu-profiling.md`。
-
-P41–P42：各预设显式启用适用优化开关，不额外开启原先禁用的特效。中/高/标准档固定投影可独立使用半分辨率 AO；手动开启体积效果时不再要求 SSGI。物理大气支持离线静态表及按相机高度/太阳高度/时间变化更新动态表，原始初始化与每帧更新路径仍可独立对照。静态 LUT 由 `tools/generate_atmosphere_assets.py` 生成。
-
-末地星云可使用 128 KiB 球面密度图，保留原紫色辐射量和实时星点。所有预设均支持原程序化路径及预计算路径切换。
-
-P44–P49：风场环形组合云图、太阳方向光学密度复用、共享天空角度查找、PBR 菲涅尔计算复用默认适用所有预设；水波相位纹理为可选实验（默认解析），保留原算法对照。缓存需要额外约1 MiB，不兼容的资源组合自动回退；不改变原预设功能开关。
+许可证：LGPL-3.0-only，见 [LICENSE](LICENSE)、[COPYING](COPYING) 及 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)。
