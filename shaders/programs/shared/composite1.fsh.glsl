@@ -14,15 +14,16 @@ layout(location = 0) out vec4 sceneColor;
 
 /*
 const int colortex4Format = RGBA16F;
-const int colortex5Format = RG16F;
+const int colortex5Format = RGBA16F;
 const bool colortex4Clear = false;
 const bool colortex5Clear = false;
 const vec4 colortex4ClearColor = vec4(0.0, 0.0, 0.0, 0.0);
+const vec4 colortex5ClearColor = vec4(0.0, 0.0, 0.0, 0.0);
 */
 /* RENDERTARGETS: 0,4,5 */
 
 layout(location = 1) out vec4 colorHistory;
-layout(location = 2) out vec2 normalHistory;
+layout(location = 2) out vec4 normalHistory;
 uniform sampler2D colortex1;
 uniform sampler2D colortex2;
 uniform sampler2D colortex4;
@@ -75,8 +76,11 @@ vec4 filteredHistory(vec2 uv, float expectedDepth, vec2 normal, bool water) {
             if ((history.a < 0.0) != water || !matchesHistoryDepth(abs(history.a), expectedDepth)) {
                 continue;
             }
-            vec2 previousNormal = texelFetch(colortex5, samplePixel, 0).rg;
-            if (dot(currentNormal, decodeNormal(previousNormal)) < normalThreshold) {
+            vec4 metadata = texelFetch(colortex5, samplePixel, 0);
+            // Half-float stores common display dimensions exactly. Allow one pixel
+            // for rounding odd widths above 2048; reject resized/stale history.
+            if (any(greaterThan(abs(metadata.zw - vec2(size)), vec2(1.0)))
+                    || dot(currentNormal, decodeNormal(metadata.xy)) < normalThreshold) {
                 continue;
             }
             vec2 weights = mix(1.0 - fraction, fraction, vec2(column, row));
@@ -93,7 +97,7 @@ vec4 filteredHistory(vec2 uv, float expectedDepth, vec2 normal, bool water) {
 vec3 temporalColor(vec3 current, vec3 viewPosition, vec2 normal, ivec2 pixel, mat4 previousProjection, bool water) {
     vec2 previousUv;
     float expectedDepth;
-    if (!reprojectTerrain(viewPosition, previousUv, expectedDepth, previousProjection)) {
+    if (!reprojectStableTerrain(viewPosition, previousUv, expectedDepth, previousProjection)) {
         return current;
     }
     vec2 size = vec2(textureSize(colortex4, 0));
@@ -146,46 +150,84 @@ bool temporalGeometry(ivec2 pixel, vec2 uv, out vec3 viewPosition, out vec2 norm
     return true;
 }
 
-void main() {
-    ivec2 pixel = ivec2(gl_FragCoord.xy);
-    sceneColor = texelFetch(colortex0, pixel, 0);
-    colorHistory = vec4(0.0);
-    normalHistory = vec2(0.0);
-    vec3 viewPosition;
-    mat4 previousProjection;
-    bool water;
-    bool valid = temporalGeometry(pixel, texCoord, viewPosition, normalHistory, previousProjection, water);
-    // Do not write a foreground depth into a sky history pixel.
-    if (!valid) {
-        return;
+vec3 stableSurfacePosition(vec3 samplePosition, vec2 stableUv, vec2 encodedNormal, mat4 projectionInverse) {
+    vec4 clip = projectionInverse * vec4(stableUv * 2.0 - 1.0, 1.0, 1.0);
+    vec3 ray = normalize(clip.xyz);
+    vec3 normal = transpose(mat3(gbufferModelViewInverse)) * decodeNormal(encodedNormal);
+    float denominator = dot(normal, ray);
+    // Intersect the pixel-center ray with the locally planar surface.
+    if (abs(denominator) > 0.02) {
+        float distance = dot(normal, samplePosition) / denominator;
+        vec3 position = ray * distance;
+        if (distance > 0.0 && abs(position.z - samplePosition.z) < max(0.10, -samplePosition.z * 0.03)) {
+            return position;
+        }
     }
-    if (!water && -viewPosition.z > 32.0) {
-        const ivec2 neighbors[4] = ivec2[4](ivec2(-1, 0), ivec2(1, 0), ivec2(0, -1), ivec2(0, 1));
-        ivec2 size = textureSize(colortex0, 0);
-        float closest = -viewPosition.z;
-        for (int tap = 0; tap < 4; ++tap) {
-            ivec2 neighbor = pixel + neighbors[tap];
+    return ray * (samplePosition.z / min(ray.z, -0.00001));
+}
+
+vec3 resolveCurrent(ivec2 pixel, vec2 stableUv, vec3 position, vec2 normal, bool water, bool distant) {
+    ivec2 size = textureSize(colortex0, 0);
+    vec2 location = (stableUv + jitterOffset(frameCounter)) * vec2(size) - 0.5;
+    ivec2 base = ivec2(floor(location));
+    vec2 fraction = fract(location);
+    vec3 color = vec3(0.0);
+    float sum = 0.0;
+    vec3 referenceNormal = decodeNormal(normal);
+    for (int row = 0; row < 2; ++row) {
+        for (int column = 0; column < 2; ++column) {
+            ivec2 neighbor = base + ivec2(column, row);
             if (any(lessThan(neighbor, ivec2(0))) || any(greaterThanEqual(neighbor, size))) {
                 continue;
             }
-            vec3 neighborPosition;
-            vec2 neighborNormal;
-            mat4 neighborProjection;
-            bool neighborWater;
             vec2 neighborUv = (vec2(neighbor) + 0.5) / vec2(size);
-            if (temporalGeometry(neighbor, neighborUv, neighborPosition, neighborNormal, neighborProjection, neighborWater)
-                    && !neighborWater && -neighborPosition.z < closest - max(0.1, closest * 0.012)
-                    && -neighborPosition.z > closest * 0.85) {
-                closest = -neighborPosition.z;
-                viewPosition = neighborPosition;
-                normalHistory = neighborNormal;
-                previousProjection = neighborProjection;
-                water = false;
+            vec3 samplePosition;
+            vec2 sampleNormal;
+            mat4 sampleProjection;
+            bool sampleWater;
+            if (!temporalGeometry(neighbor, neighborUv, samplePosition, sampleNormal, sampleProjection, sampleWater)
+                    || sampleWater != water
+                    || (texelFetch(depthtex0, neighbor, 0).r >= 1.0) != distant
+                    || abs(samplePosition.z - position.z) > max(0.08, -position.z * 0.025)
+                    || dot(referenceNormal, decodeNormal(sampleNormal)) < 0.60) {
+                continue;
             }
+            vec2 weight = mix(1.0 - fraction, fraction, vec2(column, row));
+            float w = weight.x * weight.y;
+            color += texelFetch(colortex0, neighbor, 0).rgb * w;
+            sum += w;
         }
     }
-    sceneColor.rgb = temporalColor(sceneColor.rgb, viewPosition, normalHistory, pixel, previousProjection, water);
-    colorHistory = vec4(sceneColor.rgb, water ? viewPosition.z : -viewPosition.z);
+    return sum > 0.0001 ? color / sum : texelFetch(colortex0, pixel, 0).rgb;
+}
+
+void main() {
+    ivec2 pixel = ivec2(gl_FragCoord.xy);
+    ivec2 size = textureSize(colortex0, 0);
+    vec2 stableUv = (vec2(pixel) + 0.5) / vec2(size);
+    sceneColor = texelFetch(colortex0, pixel, 0);
+    colorHistory = vec4(0.0);
+    normalHistory = vec4(0.0);
+    vec3 viewPosition;
+    vec2 normal;
+    mat4 previousProjection;
+    bool water;
+    if (!temporalGeometry(pixel, stableUv, viewPosition, normal, previousProjection, water)) {
+        return;
+    }
+
+    bool distant = texelFetch(depthtex0, pixel, 0).r >= 1.0;
+    mat4 projectionInverse = gbufferProjectionInverse;
+#ifdef DISTANT_HORIZONS
+    if (distant) {
+        projectionInverse = dhProjectionInverse;
+    }
+#endif
+    vec3 stablePosition = stableSurfacePosition(viewPosition, stableUv, normal, projectionInverse);
+    vec3 current = resolveCurrent(pixel, stableUv, stablePosition, normal, water, distant);
+    sceneColor.rgb = temporalColor(current, stablePosition, normal, pixel, previousProjection, water);
+    colorHistory = vec4(sceneColor.rgb, water ? stablePosition.z : -stablePosition.z);
+    normalHistory = vec4(normal, vec2(size));
 }
 
 #endif

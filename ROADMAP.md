@@ -173,3 +173,10 @@ Actions 生成可安装 ZIP，运行时仍由 Iris 针对实际 GPU 编译。每
 - Use separate wavelength-dependent molecular and aerosol optical depths with a bounded directional phase function; same analytic atmospheric model for native terrain and DH, no new pass or LUT.
 - Water SSR uses wider marching reach and four crossing-refinement steps only on candidate intersections. Preserve Fresnel and screen edge confidence. Offscreen and DH reflections remain approximate.
 - Actual GPU frame-time, continuous LOD and visual acceptance remain pending. No stable release claimed.
+
+### Natural V2.2 — stable-grid temporal resolve
+- Runtime feedback: Ultra/Extreme still shake, especially fullscreen, after V2.1. Static compile was successful, not a runtime acceptance.
+- Separate resolved TAA history coordinates (unjittered) from raw SSGI history coordinates (jittered). Reconstruct the current raster sample onto a fixed output grid with a depth/normal-aware four-tap filter, use a local plane for reprojection, and record viewport dimensions in history metadata. Remove depth-donor replacement at distance edges. Center the finite jitter sequence.
+- Resolve volume using the geometry sample ray before TAA, blend half-resolution GI and full-resolution fallback continuously, and expand compile/test coverage. No preset disables TAA, volumes, or voxel lighting.
+- Runtime A/B matrix: fixed camera 64+ frames, native/DH edges and moving camera, windowed/fullscreen/resized, 720p/1080p/1440p/4K; isolate VOLUME_EFFECTS, SCREEN_GI_HISTORY, SCREEN_GI_SPATIAL and VOXEL_LIGHTING independently; measure image shift and p95/p99 frame time. Actual runtime acceptance pending.
+- Next gated implementation sequence: physical atmospheric transmittance/multiple-scattering/sky-view/aerial LUTs; shared depth-aware material SSR; DH shadow caster and receiver integration; incremental world-aligned voxel cache with dirty-region propagation and deletion correctness. Keep changes isolated until the stability regression is accepted.

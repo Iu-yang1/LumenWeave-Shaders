@@ -329,6 +329,9 @@ def main():
         profiles["color-chart"] = {**profiles["profile.Natural"], "SHOW_COLOR_CHART": "true"}
         profiles["temporal"] = {**profiles["profile.Standard"], "AA_MODE": "2"}
         profiles["volume"] = {**profiles["temporal"], "VOLUME_EFFECTS": "true"}
+        profiles["ultra-no-volume"] = {**profiles["profile.Ultra"], "VOLUME_EFFECTS": "false"}
+        profiles["ultra-no-history"] = {**profiles["profile.Ultra"], "SCREEN_GI_HISTORY": "false"}
+        profiles["ultra-no-spatial"] = {**profiles["profile.Ultra"], "SCREEN_GI_SPATIAL": "false"}
         profiles["screen-gi"] = {**profiles["profile.Standard"], "SCREEN_AO": "false", "SCREEN_GI": "true"}
         profiles["screen-gi-history-no-taa-water"] = {
             **profiles["screen-gi"], "SCREEN_GI_HISTORY": "true", "ADVANCED_WATER": "false"

@@ -44,6 +44,7 @@ class NaturalV2Tests(unittest.TestCase):
         source = (ROOT / "shaders/programs/shared/composite1.fsh.glsl").read_text()
         self.assertIn("temporalGeometry(neighbor, neighborUv,", source)
         self.assertNotIn("temporalGeometry(neighbor, texCoord,", source)
+        self.assertIn("reprojectStableTerrain(viewPosition", source)
 
     def test_aerial_is_shared_by_native_and_dh(self):
         for path in ("programs/p1/surface.fsh.glsl", "programs/p5/distant.fsh.glsl",

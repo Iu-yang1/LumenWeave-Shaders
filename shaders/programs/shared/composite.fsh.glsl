@@ -47,8 +47,9 @@ void main() {
             }
         }
 #endif
-        // Use an unjittered angular ray for the volume; geometry still supplies its true distance.
-        vec3 direction = normalize(worldDirection(ray.xyz));
+        // Integrate along the current geometry sample. The following TAA pass
+        // reconstructs it onto the fixed output pixel grid; bare sky is unjittered.
+        vec3 direction = normalize(worldDirection(view));
         vec3 sun = sunDirection();
         vec3 origin = vec3(cameraPositionInt) + cameraPositionFract;
         scene.rgb = applyCloudVolume(scene.rgb, origin, direction, sun, distanceToSurface);
