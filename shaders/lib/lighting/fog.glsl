@@ -4,6 +4,7 @@ uniform int fogShape;
 uniform int isEyeInWater;
 uniform ivec2 eyeBrightnessSmooth;
 
+#include "/lib/voxel/features.glsl"
 #include "/lib/water/optics.glsl"
 #include "/lib/atmosphere/aerial.glsl"
 
@@ -15,17 +16,22 @@ uniform ivec2 eyeBrightnessSmooth;
 // ray marching, animated noise or additional fullscreen pass.
 vec3 dimensionFog(vec3 lit, vec3 viewPosition, float distanceToEye) {
     vec3 direction = worldDirection(viewPosition) / max(distanceToEye, 0.001);
-    float horizon = 1.0 - smoothstep(0.05, 0.70, abs(direction.y));
-    float density = hasCeiling ? mix(0.012, 0.027, horizon)
-                               : mix(0.0035, 0.010, horizon);
+    float density = dimensionFogDensity(direction);
     float opticalDepth = max(distanceToEye - 5.0, 0.0) * density;
+#ifdef LW_LOCAL_SCATTER_ACTIVE
+    // The local volume shares this medium from the eye; do not apply a
+    // second extinction to the scene in the composite pass.
+    opticalDepth = distanceToEye * density;
+#endif
     float transmission = exp(-opticalDepth);
     // Match the actual dimension sky at the far boundary.
     vec3 haze = skyRadiance(direction, sunDirection());
+#ifndef LW_LOCAL_SCATTER_ACTIVE
     float eyeBlock = clamp(float(eyeBrightnessSmooth.x) / 240.0, 0.0, 1.0);
     if (hasCeiling) {
         haze += vec3(0.075, 0.026, 0.008) * eyeBlock * eyeBlock * exp(-distanceToEye * 0.035);
     }
+#endif
     float shapedDistance = fogShape == 1
         ? max(length(viewPosition.xz), abs(viewPosition.y)) : distanceToEye;
     float boundary = smoothstep(fogStart, max(fogEnd, fogStart + 0.001), shapedDistance);
