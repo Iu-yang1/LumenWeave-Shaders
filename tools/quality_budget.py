@@ -34,7 +34,9 @@ def resource_budget(options, width, height):
     # colortex12/13 plus optional history 14/15; ownership colortex3.
     # Report a single texture payload and double-buffered equivalent separately.
     extra_color_bytes = width * height * (8 * (2 + 2 * int(taa)) * int(ssr) + 8 * int(advanced_dynamic))
+    hiz_bytes = (width//2)*(height//2)*8 if enabled("DEFERRED_LIGHTING") and (enabled("SCREEN_GI") or enabled("MATERIAL_SSR")) else 0
     return {
+        "hiz_mib": hiz_bytes / MIB,
         "voxel_mib": voxel_bytes / MIB,
         "atmosphere_mib": atmo_bytes / MIB,
         "extra_color_single_mib": extra_color_bytes / MIB,
