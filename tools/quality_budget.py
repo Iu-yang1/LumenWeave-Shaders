@@ -39,7 +39,9 @@ def resource_budget(options, width, height):
     hiz_bytes = int(width*(.035 if hiz_mode == 1 else .30))*int(height*(.035 if hiz_mode == 1 else .35))*8 if hiz_mode > 0 and enabled("DEFERRED_LIGHTING") and (enabled("SCREEN_GI") or ssr or (hiz_mode == 2 and enabled("ADVANCED_WATER"))) else 0
     volume_noise=1024**2 if enabled("VOLUME_EFFECTS") and options.get("CLOUD_NOISE_MODE")=="1" else 0
     volume_history=8*int(width*1.5)*height if enabled("VOLUME_EFFECTS") and taa and jitter_mode==1 and options.get("VOLUME_RECONSTRUCTION")=="1" and options.get("VOLUME_TEMPORAL")=="1" and not (enabled("TEMPORAL_REUSE") and enabled("SCREEN_GI") and enabled("SCREEN_GI_SPATIAL") and enabled("SCREEN_GI_HISTORY") and options.get("GI_REUSE_MODE")=="2") and not legacy_full else 0
+    cloud_cache=bool(enabled("VOLUME_EFFECTS") and options.get("CLOUD_NOISE_MODE")=="1" and options.get("CLOUD_DENSITY_CACHE")=="1" and not (voxel_bytes and enabled("INCREMENTAL_VOXELS") and enabled("PHYSICAL_ATMOSPHERE") and (options.get("VOXEL_FUSION")=="0" or options.get("ATMO_PREBAKED")=="0")))
     return {
+        "cloud_cache_mib": 513*512*4/MIB if cloud_cache else 0,
         "end_nebula_mib": (256*256*2/MIB) if options.get("END_NEBULA_ASSET")=="1" else 0,
         "cloud_noise_mib": volume_noise/MIB,
         "volume_history_mib": volume_history/MIB,

@@ -264,3 +264,12 @@ option.END_NEBULA_ASSET=末地星云预计算
 option.END_NEBULA_ASSET.comment=离线生成球面星云密度图，保持原紫色亮度公式；星点仍实时抗锯齿。关闭恢复程序化星云。
 value.END_NEBULA_ASSET.0=程序化
 value.END_NEBULA_ASSET.1=预计算
+
+option.CLOUD_DENSITY_CACHE=组合云层密度缓存
+option.CLOUD_DENSITY_CACHE.comment=风场坐标环形缓存，保留天气和高度实时变化；关闭恢复原三层噪声查询。
+value.CLOUD_DENSITY_CACHE.0=关闭
+value.CLOUD_DENSITY_CACHE.1=开启
+option.CLOUD_OPTICAL_CACHE=太阳光学密度复用
+option.CLOUD_OPTICAL_CACHE.comment=复用同一组合云图计算太阳方向光学厚度，关闭恢复原直接密度查询。
+value.CLOUD_OPTICAL_CACHE.0=直接查询
+value.CLOUD_OPTICAL_CACHE.1=缓存复用

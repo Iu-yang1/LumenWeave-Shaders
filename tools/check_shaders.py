@@ -165,7 +165,7 @@ def preview_profiles(root, config_root=None):
 
 def preprocess_properties(compiler, path, defines):
     rows = {}
-    values = {"MC_VERSION": "12101", "HIZ_MODE": "1", "AO_RECONSTRUCTION": "1", "PROJECTION_JITTER": "0", "VOXEL_FUSION": "1", "ATMO_PREBAKED": "1", "ATMO_UPDATE_MODE": "1", "VOLUME_RECONSTRUCTION": "1", "GI_REUSE_MODE": "1", "AA_MODE": "2", **(defines if isinstance(defines, dict) else dict.fromkeys(defines, "1"))}
+    values = {"MC_VERSION": "12101", "HIZ_MODE": "1", "AO_RECONSTRUCTION": "1", "PROJECTION_JITTER": "0", "VOXEL_FUSION": "1", "ATMO_PREBAKED": "1", "ATMO_UPDATE_MODE": "1", "CLOUD_DENSITY_CACHE": "1", "CLOUD_NOISE_MODE": "1", "VOLUME_RECONSTRUCTION": "1", "GI_REUSE_MODE": "1", "AA_MODE": "2", **(defines if isinstance(defines, dict) else dict.fromkeys(defines, "1"))}
     source = ["#version 330", *(f"#define {name} {value}" for name, value in values.items())]
     for index, line in enumerate(read_source(path).splitlines()):
         directive = line.strip()
@@ -255,22 +255,22 @@ def check_modern_properties(compiler, path):
             raise ValueError("Dependent compute dispatch must be serial")
         if config.get("program.world1/begin1.enabled") != "false":
             raise ValueError("End must not update Overworld sky LUT")
-        if len([key for key in config if key.startswith("image.")]) != 13:
-            raise ValueError("Fused custom image allocation must equal 13")
+        if len([key for key in config if key.startswith("image.")]) != 14:
+            raise ValueError("Fused custom image allocation must equal 14")
     # Full feature path, plus the 16-image legacy propagation fallback.
     flags={**base,"SCREEN_GI_SPATIAL":"1","SCREEN_GI_HISTORY":"1","TEMPORAL_REUSE":"1",
            "PROJECTION_JITTER":"1","VOLUME_TEMPORAL":"1","VOLUME_RECONSTRUCTION":"1",
            "AA_MODE":"2","GI_REUSE_MODE":"1","VOXEL_FUSION":"1","VOXEL_GRID_SIZE":"128"}
     config=preprocess_properties(compiler,path,flags)
-    if len([k for k in config if k.startswith("image.")])!=14 or "image.lwVolumeHistory" not in config:
+    if len([k for k in config if k.startswith("image.")])!=15 or "image.lwVolumeHistory" not in config:
         raise ValueError("Volume history allocation must fit fused image budget")
     for overrides,count,history,cache in (
         ({"VOXEL_FUSION":"0"},16,True,True),
         ({"ATMO_PREBAKED":"0"},16,True,True),
         ({"VOXEL_FUSION":"0","ATMO_PREBAKED":"0"},16,False,False),
-        ({"GI_REUSE_MODE":"2"},13,False,True),
-        ({"PROJECTION_JITTER":"2"},13,False,True),
-        ({"VOLUME_TEMPORAL":"0"},13,False,True),
+        ({"GI_REUSE_MODE":"2"},14,False,True),
+        ({"PROJECTION_JITTER":"2"},14,False,True),
+        ({"VOLUME_TEMPORAL":"0"},14,False,True),
     ):
         config=preprocess_properties(compiler,path,{**flags,**overrides})
         if (len([k for k in config if k.startswith("image.")])!=count or
@@ -439,6 +439,7 @@ def main():
         profiles["ultra-no-spatial"] = {**profiles["profile.Ultra"], "SCREEN_GI_SPATIAL": "false"}
         profiles["ultra-dynamic-projection"] = {**profiles["profile.Ultra"], "PROJECTION_JITTER": "2"}
         profiles["ultra-legacy-voxel"] = {**profiles["profile.Ultra"], "VOXEL_FUSION": "0"}
+        profiles["cloud-cache-off"] = {**profiles["profile.Ultra"], "CLOUD_DENSITY_CACHE": "0", "CLOUD_OPTICAL_CACHE": "0"}
         profiles["medium-volume-no-gi"] = {**profiles["profile.Medium"], "VOLUME_EFFECTS": "true"}
         profiles["legacy-atmo-and-voxel"] = {**profiles["profile.Ultra"], "ATMO_PREBAKED": "0", "VOXEL_FUSION": "0"}
         profiles["end-procedural"] = {**profiles["profile.Natural"], "END_NEBULA_ASSET": "0"}
@@ -499,7 +500,7 @@ def main():
             environment=(*VOXEL_FEATURES, "MC_TEXTURE_FORMAT_LAB_PBR_1_3"),
         )
         compile_pack(args.compiler, PREVIEW, {"world-voxels-fallback": voxel_profiles["world-voxels"]})
-        volume_entries=[p for p in PREVIEW.rglob("*") if p.suffix in STAGES and p.stem in ("deferred","deferred1","composite","composite_a","composite_b","setup","setup1","setup3","begin1","begin2","begin3")]
+        volume_entries=[p for p in PREVIEW.rglob("*") if p.suffix in STAGES and p.stem in ("deferred","deferred1","composite","composite_a","composite_b","setup","setup1","setup3","setup4","begin1","begin2","begin3","begin4","begin5")]
         compile_pack(args.compiler, PREVIEW, {"medium-volume-no-gi":profiles["medium-volume-no-gi"],"atmosphere-original":profiles["atmosphere-original"],"legacy-atmo-and-voxel":profiles["legacy-atmo-and-voxel"]},sources=volume_entries,environment=VOXEL_FEATURES)
         compile_pack(args.compiler, PREVIEW, {"extreme-volume-hardware":profiles["profile.Extreme"]},sources=volume_entries,
             environment=(*VOXEL_FEATURES,"DISTANT_HORIZONS","IRIS_FEATURE_SEPARATE_HARDWARE_SAMPLERS"))

@@ -8,36 +8,11 @@ uniform ivec3 cameraPositionInt;
 uniform vec3 cameraPositionFract;
 #endif
 
-float cloudHash(vec2 cell) {
-    vec3 hash = fract(vec3(cell.xyx) * 0.1031);
-    hash += dot(hash, hash.yzx + 33.33);
-    return fract((hash.x + hash.y) * hash.z);
-}
-
-float proceduralCloudNoise(vec2 position) {
-    vec2 cell = floor(position);
-    vec2 blend = fract(position);
-    blend = blend * blend * (3.0 - 2.0 * blend);
-    vec2 high = vec2(cloudHash(cell + vec2(0.0, 1.0)), cloudHash(cell + vec2(1.0, 1.0)));
-    vec2 low = vec2(cloudHash(cell), cloudHash(cell + vec2(1.0, 0.0)));
-    return mix(mix(low.x, low.y, blend.x), mix(high.x, high.y, blend.x), blend.y);
-}
-
-#if CLOUD_NOISE_MODE == 1
-uniform sampler2D lwCloudNoise;
+#include "/lib/atmosphere/cloud_noise.glsl"
+#ifdef LW_CLOUD_CACHE_ACTIVE
+#include "/lib/atmosphere/cloud_cache.glsl"
+uniform sampler2D lwCloudShape;
 #endif
-float cloudNoise(vec2 position) {
-#if CLOUD_NOISE_MODE == 1
-    // 255 periodic lattice cells, four samples/cell and a two-texel pad.
-    // Manual coordinate wrapping works even with clamped raw textures.
-    return textureLod(lwCloudNoise,(mod(position,255.0)*4.0+2.5)/1024.0,0.0).r;
-#else
-    return proceduralCloudNoise(position);
-#endif
-}
-vec2 cloudNoisePosition(vec3 position) {
-    return (position.xz+frameTimeCounter*vec2(1.1,0.40))*0.017;
-}
 float cloudDensityCoarse(vec3 position,float detail,vec2 uv,float coarse) {
     float height = (position.y - 156.0) / 18.0;
     float layer = smoothstep(0.0, 0.24, height) * (1.0 - smoothstep(0.55, 1.0, height));
@@ -54,12 +29,52 @@ float cloudDensityCoarse(vec3 position,float detail,vec2 uv,float coarse) {
     return layer*smoothstep(threshold,0.78,shape);
 }
 
+#ifdef LW_CLOUD_CACHE_ACTIVE
+vec2 cloudShapeAt(vec2 windPosition) {
+    vec2 grid=windPosition/3.0;
+    ivec2 cell=ivec2(floor(grid));
+    ivec2 origin=cloudCacheOrigin();
+    if(any(lessThan(cell,origin)) || any(greaterThanEqual(cell+1,origin+ivec2(512)))) {
+        vec2 uv=windPosition*0.017;
+        return vec2(0.65*cloudNoise(uv)+0.25*cloudNoise(uv*2.07),0.10*cloudNoise(uv*5.0));
+    }
+    ivec2 p=cloudWrap(cell);
+    vec2 f=fract(grid);
+    // Ordinary samples use one hardware bilinear lookup. At the torus seam
+    // manually interpolate the four donors, avoiding the metadata column.
+    if(all(lessThan(p,ivec2(511)))) {
+        return textureLod(lwCloudShape,(vec2(p)+f+0.5)/vec2(513,512),0.0).rg;
+    }
+    vec2 a=texelFetch(lwCloudShape,p,0).rg;
+    vec2 b=texelFetch(lwCloudShape,cloudWrap(cell+ivec2(1,0)),0).rg;
+    vec2 c=texelFetch(lwCloudShape,cloudWrap(cell+ivec2(0,1)),0).rg;
+    vec2 d=texelFetch(lwCloudShape,cloudWrap(cell+1),0).rg;
+    return mix(mix(a,b,f.x),mix(c,d,f.x),f.y);
+}
+float cachedCloudDensity(vec3 position,float detail) {
+    float h=(position.y-156.0)/18.0;
+    float layer=smoothstep(0.0,0.24,h)*(1.0-smoothstep(0.55,1.0,h));
+    if(layer<=0.0) return 0.0;
+    vec2 shape=cloudShapeAt(position.xz+frameTimeCounter*vec2(1.1,0.40));
+    return layer*smoothstep(mix(0.48,0.34,rainStrength),0.78,shape.x+mix(0.05,shape.y,detail));
+}
+#endif
 float cloudDensity(vec3 position,float detail) {
     if(position.y<=156.0 || position.y>=174.0) return 0.0;
     vec2 uv=cloudNoisePosition(position);
     return cloudDensityCoarse(position,detail,uv,cloudNoise(uv));
 }
 float cloudDensity(vec3 position) { return cloudDensity(position,1.0); }
+float cloudSolarOpticalDepth(vec3 position,float detail) {
+#if defined(LW_CLOUD_CACHE_ACTIVE) && CLOUD_OPTICAL_CACHE == 1
+    // Current light model uses a single shifted density, not a full
+    // light-ray integral. Cache its horizontal optical-density basis;
+    // evaluate height profile and weather at the current sample.
+    return 2.6*cachedCloudDensity(position,detail);
+#else
+    return 2.6*cloudDensity(position,detail);
+#endif
+}
 
 vec4 cloudVolumeTransfer(vec3 origin, vec3 direction, vec3 sun, float maxDistance) {
     if (!hasSkylight) {
@@ -110,7 +125,11 @@ vec4 cloudVolumeTransfer(vec3 origin, vec3 direction, vec3 sun, float maxDistanc
     float previousLight=1.0;
     int lastLightTap=-2;
     for(int tap=0;tap<steps;++tap,point+=rayStep) {
-#if CLOUD_EMPTY_SKIP == 1 && CLOUD_NOISE_MODE == 1
+#ifdef LW_CLOUD_CACHE_ACTIVE
+        // Interpolated density is approximate; do not apply the original
+        // coarse-octave Lipschitz proof to this different representation.
+        float density=cachedCloudDensity(point,detail);
+#elif CLOUD_EMPTY_SKIP == 1 && CLOUD_NOISE_MODE == 1
         // Coarse octave is Lipschitz bounded by 2.3 in lattice coordinates.
         // If even the upper bound at the NEXT midpoint is below threshold
         // with both remaining octaves at one, both samples are exactly empty.
@@ -142,13 +161,13 @@ vec4 cloudVolumeTransfer(vec3 origin, vec3 direction, vec3 sun, float maxDistanc
                length(rayStep)<1.8 && start>80.0) {
                 light=previousLight;
             } else {
-                light=exp(-2.6*cloudDensity(point+sun*6.0,detail));
+                light=exp(-cloudSolarOpticalDepth(point+sun*6.0,detail));
                 previousLight=light;
                 previousDensity=density;
                 lastLightTap=tap;
             }
 #else
-            light=exp(-2.6*cloudDensity(point+sun*6.0,detail));
+            light=exp(-cloudSolarOpticalDepth(point+sun*6.0,detail));
 #endif
             vec3 dayCloud=vec3(0.41,0.48,0.58)+tint*light*0.58;
             radiance=mix(radiance,dayCloud,day);

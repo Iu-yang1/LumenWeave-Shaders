@@ -264,3 +264,12 @@ option.END_NEBULA_ASSET=Precomputed End nebula
 option.END_NEBULA_ASSET.comment=Offline spherical wisps texture with original purple radiance formula; stars remain analytically antialiased. Disable for procedural nebula.
 value.END_NEBULA_ASSET.0=Procedural
 value.END_NEBULA_ASSET.1=Precomputed
+
+option.CLOUD_DENSITY_CACHE=Combined cloud density cache
+option.CLOUD_DENSITY_CACHE.comment=Wind-space ring cache, with live weather and vertical profile. Off restores three noise octaves.
+value.CLOUD_DENSITY_CACHE.0=Off
+value.CLOUD_DENSITY_CACHE.1=On
+option.CLOUD_OPTICAL_CACHE=Solar optical density reuse
+option.CLOUD_OPTICAL_CACHE.comment=Reuse the same combined cloud map for shifted solar optical thickness; off restores direct density.
+value.CLOUD_OPTICAL_CACHE.0=Direct
+value.CLOUD_OPTICAL_CACHE.1=Cached

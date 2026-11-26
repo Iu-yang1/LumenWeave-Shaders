@@ -19,6 +19,8 @@
 #define ATMO_PREBAKED 1 // [0 1]
 #define END_NEBULA_ASSET 1 // [0 1]
 #define ATMO_UPDATE_MODE 1 // [0 1]
+#define CLOUD_DENSITY_CACHE 1 // [0 1]
+#define CLOUD_OPTICAL_CACHE 1 // [0 1]
 #define CLOUD_NOISE_MODE 1 // [0 1]
 #define CLOUD_ADAPTIVE 1 // [0 1]
 #define CLOUD_EMPTY_SKIP 1 // [0 1]
@@ -152,6 +154,11 @@
 // AO-only presets can now use the existing deferred prepass without SSGI.
 #if AO_RECONSTRUCTION == 1 && (PROJECTION_JITTER == 1 || AA_MODE < 2) && defined(DEFERRED_LIGHTING) && defined(SCREEN_AO) && !defined(LW_DIMENSION_END) && !defined(LW_DIMENSION_NETHER)
 #define LW_AO_SPATIAL
+#endif
+
+// One additional image: ring shape cache with in-image origin metadata.
+#if CLOUD_DENSITY_CACHE == 1 && CLOUD_NOISE_MODE == 1 && defined(VOLUME_EFFECTS) && defined(IRIS_FEATURE_CUSTOM_IMAGES) && defined(IRIS_FEATURE_COMPUTE_SHADERS) && !defined(LW_DIMENSION_NETHER) && !defined(LW_DIMENSION_END) && !defined(LW_IMAGE_BUDGET_FULL) && !(defined(LW_VOXEL_INCREMENTAL_ACTIVE) && VOXEL_FUSION != 1 && defined(PHYSICAL_ATMOSPHERE)) && !(defined(LW_VOXEL_INCREMENTAL_ACTIVE) && defined(PHYSICAL_ATMOSPHERE) && ATMO_PREBAKED != 1)
+#define LW_CLOUD_CACHE_ACTIVE
 #endif
 
 // GI's half-size transient texture is free after deferred shading, provided
