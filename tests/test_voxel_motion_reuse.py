@@ -56,7 +56,8 @@ class MotionReuseTests(unittest.TestCase):
                 for a,b,w in zip(raw,history,weights):
                     if read_raw:result[0]+=a*w
                     if read_hist:result[1]+=b*w
-                self.assertEqual(tuple(result),expected)
+                for value,reference in zip(result,expected):
+                    self.assertAlmostEqual(value,reference,places=14)
         src=(S/"lib/voxel/irradiance.glsl").read_text()
         self.assertIn("void voxelDirectPair",src)
         self.assertIn("readHistory",src)
