@@ -14,6 +14,26 @@ class ShaderToolsTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "four explicit"):
             check_iris_directives("const vec4 colortex4ClearColor = vec4(0.0);", "composite")
 
+    def test_iris_compute_directive_rejects_scalar_splat_and_expressions(self):
+        for source in (
+            "const ivec3 workGroups=ivec3(1);",
+            "const ivec3 workGroups=ivec3(1, 1);",
+            "const ivec3 workGroups=ivec3(1+1, 1, 1);",
+            "const ivec3 workGroups=ivec3(1, 0, 1);",
+        ):
+            with self.subTest(source=source), self.assertRaisesRegex(ValueError, "three explicit"):
+                check_iris_directives(source, "setup4.csh")
+        with self.assertRaisesRegex(ValueError, "two explicit"):
+            check_iris_directives("const vec2 workGroupsRender=vec2(0.5);", "composite_b.csh")
+        check_iris_directives("const ivec3 workGroups=ivec3(1, 1, 1);", "setup4.csh")
+        check_iris_directives("const vec2 workGroupsRender=vec2(0.5, 0.5);", "composite_b.csh")
+
+    def test_all_compute_entries_are_iris_parseable(self):
+        # Run in fast packaging CI as well as the full GLSL matrix.
+        for entry in sorted(PREVIEW.rglob("*.csh")):
+            with self.subTest(entry=entry.relative_to(PREVIEW)):
+                check_iris_directives(expand(PREVIEW, entry), entry)
+
     def test_water_uses_a_geometry_stage_sampler(self):
         with self.assertRaisesRegex(ValueError, "cannot bind colortex3"):
             check_iris_directives("uniform sampler2D colortex3;", "gbuffers_water.fsh")
@@ -50,6 +70,14 @@ class ShaderToolsTests(unittest.TestCase):
                 "SHADOW_MAP": "0", "SHADOW_RANGE": "48.0",
                 "WATER_WAVE_DETAIL": "4", "SHADOW_FILTER_TAPS": "4", "AO_SLICES": "2",
                 "WATER_REFLECTION_STEPS": "0",
+                "PHYSICAL_ATMOSPHERE": "false", "MATERIAL_SSR": "false",
+                "DH_SHADOWS": "false", "INCREMENTAL_VOXELS": "false",
+                "MATERIAL_REFLECTION_STEPS": "8", "CLOUD_STEPS": "12",
+                "SHAFT_STEPS": "6", "DH_SHADOW_STEPS": "14", "PROJECTION_JITTER": "0",
+                "ADAPTIVE_SHADING": "true", "ADAPTIVE_SHADOWS": "true", "TEMPORAL_REUSE": "true",
+                "GI_REUSE_MODE": "1", "HIZ_MODE": "1", "EMISSION_STRENGTH": "1.5",
+                "LOCAL_GLOW_STRENGTH": "1.7", "DARK_AMBIENT": "0.65",
+                "BLOOM": "false", "BLOOM_STRENGTH": "0.04", "BLOOM_THRESHOLD": "1.5", "BLOOM_FILTER": "0", "AO_RECONSTRUCTION": "1", "SHADOW_HYBRID": "1", "GLOW_SOFTNESS": "1.0", "VOXEL_FUSION": "1", "VOLUME_RECONSTRUCTION": "1", "HDR_REUSE": "1", "OVERWORLD_BUDGET": "1", "NETHER_BUDGET": "1", "END_BUDGET": "1", "SCENE_BUDGET": "1", "CLOUD_NOISE_MODE": "1", "CLOUD_ADAPTIVE": "1", "CLOUD_EMPTY_SKIP": "1", "SHAFT_ADAPTIVE": "1", "CLOUD_LIGHT_REUSE": "1", "VOLUME_TEMPORAL": "1", "LOCAL_SCATTER_ADAPTIVE": "1", "ATMO_PREBAKED": "1", "ATMO_UPDATE_MODE": "1", "END_NEBULA_ASSET": "1", "CLOUD_DENSITY_CACHE": "1", "CLOUD_OPTICAL_CACHE": "1", "SKY_ENV_REUSE": "1", "WATER_PHASE_LUT": "0", "BRDF_REUSE": "1",
             },
         )
         self.assertEqual(profiles["profile.LowExposure"]["EXPOSURE"], "-1")
@@ -88,13 +116,14 @@ class ShaderToolsTests(unittest.TestCase):
     def test_dimension_entry_points_are_complete(self):
         expected = {path.name for path in (PREVIEW / "world0").iterdir()}
         for dimension in DIMENSIONS:
-            self.assertEqual({path.name for path in (PREVIEW / dimension).iterdir()}, expected)
+            extra = {"gbuffers_clouds.fsh", "gbuffers_clouds.vsh"} if dimension == "world1" else set()
+            self.assertEqual({path.name for path in (PREVIEW / dimension).iterdir()}, expected | extra)
             for entry in (PREVIEW / dimension).iterdir():
                 self.assertTrue(expand(PREVIEW, entry).startswith("#version "))
 
     def test_personal_effects_are_independent_of_quality_profiles(self):
         for profile in preview_profiles(PREVIEW).values():
-            self.assertFalse({"MOTION_BLUR", "BLOOM", "WAVING_LEAVES", "WAVING_GRASS", "PROJECTION_JITTER"} & profile.keys())
+            self.assertFalse({"MOTION_BLUR", "WAVING_LEAVES", "WAVING_GRASS"} & profile.keys())
 
     def test_relative_includes_and_cycles(self):
         with TemporaryDirectory() as directory:

@@ -1,3 +1,5 @@
+#include "/lib/lighting/emitter_palette.glsl"
+
 struct Material {
     float roughness;
     float metallic;
@@ -18,16 +20,22 @@ Material vanillaMaterial(int blockId, vec3 albedo) {
     }
     material.f0 = mix(material.f0, albedo, material.metallic);
 
-    vec3 emitter = vec3(0.0);
-    if (blockId == 10011) {
-        emitter = vec3(2.5, 1.40, 0.57);
-    } else if (blockId == 10012) {
-        emitter = vec3(0.38, 1.68, 2.35);
-    } else if (blockId == 10013) {
-        emitter = vec3(1.35, 2.0, 1.74);
-    } else if (blockId == 10014) {
-        emitter = vec3(1.90, 0.68, 0.30);
+    uint kind = emitterKind(blockId);
+    if (kind!=0u) {
+        float peak = max(albedo.r,max(albedo.g,albedo.b));
+        float mask = smoothstep(0.045,0.65,peak);
+        // Keep the emissive texture's luminance and hue detail rather than
+        // painting its dark seams and bright pixels a uniform solid color.
+        // Visible texels retain resource-pack chromaticity. The light field uses
+        // the separate, softer illuminant palette.
+        vec3 tint = albedo;
+        // Strong emitters gain HDR headroom; redstone/magma remain indicators.
+        float gain=(kind==4u || kind==14u) ? mix(1.0,EMISSION_STRENGTH,0.35) : EMISSION_STRENGTH;
+        material.emission = tint*emitterRadiance(kind)*mask*gain;
     }
-    material.emission = emitter * smoothstep(0.20, 0.79, max(albedo.r, max(albedo.g, albedo.b)));
+    if (kind==5u) {
+        material.roughness = 0.32;
+        material.f0 = vec3(0.045);
+    }
     return material;
 }

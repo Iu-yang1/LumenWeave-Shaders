@@ -1,0 +1,170 @@
+#ifndef LW_REFLECTION_TRACE
+#define LW_REFLECTION_TRACE
+#ifndef LW_REFLECTION_DEPTH
+#define LW_REFLECTION_DEPTH depthtex1
+#define LW_REFLECTION_DH_DEPTH dhDepthTex1
+#endif
+#include "/lib/lighting/hiz.glsl"
+uniform sampler2D colortex8;
+uniform mat4 gbufferProjection;
+#ifdef DISTANT_HORIZONS
+uniform sampler2D LW_REFLECTION_DH_DEPTH;
+uniform mat4 dhProjection;
+uniform mat4 dhProjectionInverse;
+#endif
+
+bool insideScreen(vec2 uv) {
+    return all(greaterThan(uv,vec2(0.0))) && all(lessThan(uv,vec2(1.0)));
+}
+
+vec2 reflectionProjectedUv(vec3 ray,mat4 projection,out float rayDepth) {
+    vec4 clip=projection*vec4(ray,1.0);
+    rayDepth=clip.z/clip.w*0.5+0.5;
+    vec2 uv=clip.xy/clip.w*0.5+0.5;
+#ifdef LW_TAA_ACTIVE
+    uv+=jitterOffset(frameCounter);
+#endif
+    return uv;
+}
+
+vec2 reflectionProjectedUv(vec3 ray,mat4 projection) {
+    float unusedDepth;
+    return reflectionProjectedUv(ray,projection,unusedDepth);
+}
+
+vec3 reflectionNativePosition(vec2 pixelUv,float depth,vec2 targetUv) {
+#ifdef LW_REFLECTION_OWNER
+    int owner=sampleOwner(pixelUv,depth,false);
+    vec3 position=reconstructProjection(pixelUv,depth,gbufferProjectionInverse,owner!=0);
+    if(owner==1) {
+        vec3 normal=transpose(mat3(gbufferModelViewInverse))*decodeNormal(texelFetch(colortex1,depthPixelAtUv(colortex1,pixelUv),0).xy);
+        position=stableViewSurfacePosition(position,unjitteredUv(targetUv,true),normal,gbufferProjectionInverse);
+    }
+    return position;
+#else
+    return reconstructViewPosition(pixelUv,depth);
+#endif
+}
+
+bool reflectionRayDepth(vec3 ray,out vec2 uv,out float delta,out int kind) {
+    float rayDepth;
+    uv=reflectionProjectedUv(ray,gbufferProjection,rayDepth);
+    kind=0;
+    if(!insideScreen(uv)) return false;
+    ivec2 pixel=depthPixelAtUv(LW_REFLECTION_DEPTH,uv);
+    float depth=texelFetch(LW_REFLECTION_DEPTH,pixel,0).r;
+    if(depth<1.0) {
+        vec2 pixelUv=depthPixelUv(LW_REFLECTION_DEPTH,pixel);
+        delta=reflectionNativePosition(pixelUv,depth,uv).z-ray.z;
+        kind=1;
+        return true;
+    }
+#ifdef DISTANT_HORIZONS
+    vec2 distantUv=reflectionProjectedUv(ray,dhProjection);
+    if(insideScreen(distantUv)) {
+        ivec2 dhPixel=depthPixelAtUv(LW_REFLECTION_DH_DEPTH,distantUv);
+        float dhDepth=texelFetch(LW_REFLECTION_DH_DEPTH,dhPixel,0).r;
+        if(dhDepth<1.0) {
+            vec2 pixelUv=depthPixelUv(LW_REFLECTION_DH_DEPTH,dhPixel);
+            vec3 position=reconstructProjection(pixelUv,dhDepth,dhProjectionInverse,true);
+            uv=distantUv;delta=position.z-ray.z;kind=2;
+            return true;
+        }
+    }
+#endif
+    delta=-1.0;
+    return true;
+}
+
+vec4 traceScreenReflection(vec3 origin,vec3 direction,int steps,out vec2 hitUv,out float hitTravel,out int hitKind) {
+    float travel=0.30;
+    float maxTravel=steps<=8 ? 12.0 : 48.0;
+#if defined(LW_HIZ_ACTIVE) && HIZ_MODE == 2
+    ivec2 candidate;float candidateTravel,candidateDelta;
+#ifdef DISTANT_HORIZONS
+    const bool dhFallback=true;
+#else
+    const bool dhFallback=false;
+#endif
+    int status=hizTrace(LW_REFLECTION_DEPTH,gbufferProjection,gbufferProjectionInverse,
+        origin,direction,travel,maxTravel,max(32,steps*8),dhFallback,true,
+        candidate,candidateTravel,candidateDelta);
+    if(status==1) {
+        float thickness=0.20+candidateTravel*0.035;
+        if(candidateDelta<thickness && candidateTravel>0.12) {
+            hitUv=depthPixelUv(LW_REFLECTION_DEPTH,candidate);
+            hitTravel=candidateTravel;hitKind=1;
+            vec2 edge=min(hitUv,1.0-hitUv);
+            float confidence=smoothstep(0.0,0.08,min(edge.x,edge.y))
+                *(1.0-smoothstep(18.0,48.0,hitTravel))
+                *(1.0-smoothstep(thickness*0.65,thickness,candidateDelta));
+            return vec4(texture(colortex8,hitUv).rgb,confidence);
+        }
+    } else if(status==0) {
+        hitUv=vec2(0);hitTravel=0.0;hitKind=0;
+        return vec4(0);
+    }
+#endif
+    float stepRatio=pow((maxTravel+1.0)/1.30,1.0/float(max(steps-1,1)));
+    float previousTravel=0.0;
+    bool previousFront=false;
+    hitUv=vec2(0.0);hitTravel=0.0;hitKind=0;
+    int firstTap=0;
+#if defined(LW_HIZ_ACTIVE) && HIZ_MODE == 1
+    // Preserve the original ray sampling lattice. One conservative interval
+    // test can replace three taps; an inconclusive test never triggers a second trace.
+    if(steps>=4) {
+        float last=(travel+1.0)*stepRatio*stepRatio-1.0;
+        vec3 endRay=origin+direction*last;
+        if(endRay.z< -0.12 && hizRejectInterval(
+            gbufferProjection*vec4(origin+direction*travel,1.0),
+            gbufferProjection*vec4(endRay,1.0),textureSize(LW_REFLECTION_DEPTH,0),
+#ifdef DISTANT_HORIZONS
+            true
+#else
+            false
+#endif
+            )) {
+            previousFront=true;previousTravel=last;
+            travel=(last+1.0)*stepRatio-1.0;
+            firstTap=3;
+        }
+    }
+#endif
+    for(int tap=firstTap;tap<steps;++tap) {
+        vec3 ray=origin+direction*travel;
+        if(ray.z> -0.12 || travel>maxTravel+0.001) break;
+        vec2 uv;float delta;int kind;
+        if(!reflectionRayDepth(ray,uv,delta,kind)) break;
+        if(previousFront && delta>=0.0 && kind!=0) {
+            float lo=previousTravel,hi=travel;
+            for(int refine=0;refine<5;++refine) {
+                float mid=(lo+hi)*0.5;
+                vec2 midUv;float midDelta;int midKind;
+                if(!reflectionRayDepth(origin+direction*mid,midUv,midDelta,midKind) || midDelta<0.0 || midKind==0) {
+                    lo=mid;
+                } else {
+                    hi=mid;uv=midUv;delta=midDelta;kind=midKind;
+                }
+            }
+            float thickness=0.20+hi*0.035;
+            if(delta<thickness && hi>0.12) {
+                vec2 edge=min(uv,1.0-uv);
+                float confidence=smoothstep(0.0,0.08,min(edge.x,edge.y));
+                confidence*=1.0-smoothstep(18.0,48.0,hi);
+                confidence*=1.0-smoothstep(thickness*0.65,thickness,delta);
+                hitUv=uv;hitTravel=hi;hitKind=kind;
+                return vec4(texture(colortex8,uv).rgb,confidence);
+            }
+        }
+        previousFront=delta<0.0;previousTravel=travel;
+        travel=(travel+1.0)*stepRatio-1.0;
+    }
+    return vec4(0.0);
+}
+
+vec4 traceScreenReflection(vec3 origin,vec3 direction,int steps) {
+    vec2 unusedUv;float unusedTravel;int unusedKind;
+    return traceScreenReflection(origin,direction,steps,unusedUv,unusedTravel,unusedKind);
+}
+#endif

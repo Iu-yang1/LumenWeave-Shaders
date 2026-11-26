@@ -1,6 +1,6 @@
-#version 330 compatibility
 
 #include "/lib/quality.glsl"
+#include "/lib/voxel/features.glsl"
 
 uniform sampler2D colortex0;
 in vec2 texCoord;
@@ -9,51 +9,59 @@ layout(location = 0) out vec4 outputColor;
 /* RENDERTARGETS: 0 */
 
 #ifdef VOLUME_EFFECTS
-#include "/lib/coordinates/reconstruct.glsl"
 #include "/lib/lighting/overworld.glsl"
+#include "/lib/atmosphere/volume_depth.glsl"
 #ifdef SCENE_SHADOWS
 #include "/lib/lighting/lite_shadows.glsl"
 #endif
 #include "/lib/atmosphere/volume.glsl"
-
-uniform sampler2D depthtex0;
-uniform int isEyeInWater;
-#ifdef DISTANT_HORIZONS
-uniform sampler2D dhDepthTex0;
-uniform mat4 dhProjectionInverse;
+#ifdef LW_CELESTIAL_VOLUME_SPATIAL
+/*
+const int colortex9Format = RGBA16F;
+*/
+#define LW_VOLUME_SPATIAL_READER
+#include "/lib/atmosphere/volume_spatial.glsl"
+#endif
+#ifdef LW_LOCAL_SCATTER_ACTIVE
+#include "/lib/atmosphere/local_scatter.glsl"
+#include "/lib/atmosphere/scatter_upsample.glsl"
+#endif
+#ifdef LW_SCATTER_UPSAMPLE_ACTIVE
+/*
+const int colortex11Format = RGBA16F;
+*/
 #endif
 #endif
 
 void main() {
     vec4 scene = texture(colortex0, texCoord);
 #ifdef VOLUME_EFFECTS
-    if (isEyeInWater == 0) {
-        float depth = texelFetch(depthtex0, ivec2(gl_FragCoord.xy), 0).r;
-        // Sky geometry has no jitter. Surface depth is reconstructed with its own projection.
-        vec4 ray = gbufferProjectionInverse * vec4(texCoord * 2.0 - 1.0, 1.0, 1.0);
-        vec3 view = depth < 1.0 ? reconstructViewPosition(texCoord, depth) : ray.xyz;
-        float distanceToSurface = depth >= 1.0 ? 680.0 : length(view);
-#ifdef DISTANT_HORIZONS
-        if (depth >= 1.0) {
-            float distantDepth = texelFetch(dhDepthTex0, ivec2(gl_FragCoord.xy), 0).r;
-            if (distantDepth < 1.0) {
-                vec2 distantUv = texCoord;
-#ifdef LW_TAA_ACTIVE
-                distantUv -= jitterOffset(frameCounter);
+    if (isEyeInWater == 0
+#ifndef LW_LOCAL_SCATTER_ACTIVE
+            && hasSkylight
 #endif
-                vec4 distantView = dhProjectionInverse * vec4(vec3(distantUv, distantDepth) * 2.0 - 1.0, 1.0);
-                view = distantView.xyz / distantView.w;
-                distanceToSurface = length(view);
-            }
+    ) {
+        vec3 direction;
+        float distanceToSurface;
+        volumeRay(texCoord,direction,distanceToSurface);
+        if (hasSkylight) {
+#ifdef LW_CELESTIAL_VOLUME_SPATIAL
+            vec4 transfer=upsampleCelestialVolume(texCoord,direction,distanceToSurface);
+            scene.rgb=scene.rgb*transfer.a+transfer.rgb;
+#else
+            vec3 sun = sunDirection();
+            vec3 origin = vec3(cameraPositionInt) + cameraPositionFract;
+            scene.rgb = applyCloudVolume(scene.rgb, origin, direction, sun, distanceToSurface);
+            scene.rgb = applyLightShafts(scene.rgb, origin, direction, sun, distanceToSurface);
+#endif
         }
+#ifdef LW_LOCAL_SCATTER_ACTIVE
+#ifdef LW_SCATTER_UPSAMPLE_ACTIVE
+        scene.rgb += upsampleLocalScatter(texCoord,direction,distanceToSurface);
+#else
+        scene.rgb += integrateLocalScatter(direction, distanceToSurface);
 #endif
-        // Integrate along the current geometry sample. The following TAA pass
-        // reconstructs it onto the fixed output pixel grid; bare sky is unjittered.
-        vec3 direction = normalize(worldDirection(view));
-        vec3 sun = sunDirection();
-        vec3 origin = vec3(cameraPositionInt) + cameraPositionFract;
-        scene.rgb = applyCloudVolume(scene.rgb, origin, direction, sun, distanceToSurface);
-        scene.rgb = applyLightShafts(scene.rgb, origin, direction, sun, distanceToSurface);
+#endif
     }
 #endif
     outputColor = scene;

@@ -20,7 +20,8 @@ vec3 directBrdf(vec3 albedo, Material material, vec3 normal, vec3 view, vec3 lig
     float alphaSquared = alpha * alpha;
     float distributionTerm = normalHalf * normalHalf * (alphaSquared - 1.0) + 1.0;
     float distribution = alphaSquared / (LW_PI * distributionTerm * distributionTerm);
-    float mask = (material.roughness + 1.0) * (material.roughness + 1.0) * 0.125;
+    float roughPlus=material.roughness+1.0;
+    float mask=roughPlus*roughPlus*0.125;
     float visibility = 0.25 / (mix(normalView, 1.0, mask) * mix(normalLight, 1.0, mask));
     vec3 diffuse = (1.0 - fresnel) * (1.0 - material.metallic) * albedo / LW_PI;
     return (diffuse + fresnel * distribution * visibility) * normalLight;

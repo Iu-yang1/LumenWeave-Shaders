@@ -14,7 +14,7 @@ ScreenBounce spatialScreenBounce(vec3 viewPosition, vec3 normal, vec3 sun, vec2 
     vec2 samplePosition = uv * vec2(traceSize) - 0.5;
     ivec2 base = ivec2(floor(samplePosition));
     vec2 fraction = fract(samplePosition);
-    float tolerance = max(0.08, sceneDepth * 0.012);
+    float tolerance = max(0.12, sceneDepth * 0.022);
     float coverage = 0.0;
     for (int row = 0; row < 2; ++row) {
         for (int column = 0; column < 2; ++column) {
@@ -22,6 +22,8 @@ ScreenBounce spatialScreenBounce(vec3 viewPosition, vec3 normal, vec3 sun, vec2 
             if (any(lessThan(texel, ivec2(0))) || any(greaterThanEqual(texel, traceSize))) {
                 continue;
             }
+            vec2 weights = mix(1.0 - fraction, fraction, vec2(column, row));
+            if (weights.x * weights.y <= 0.00001) continue;
             vec4 sky = texelFetch(colortex9, texel, 0);
             float depthDifference = abs(sky.a - sceneDepth);
             if (sky.a <= 0.0 || depthDifference >= tolerance) {
@@ -29,10 +31,9 @@ ScreenBounce spatialScreenBounce(vec3 viewPosition, vec3 normal, vec3 sun, vec2 
             }
             ivec2 pixel = ivec2((vec2(texel) + 0.5) * vec2(fullSize) / vec2(traceSize));
             vec3 donorNormal = decodeNormal(texelFetch(colortex1, pixel, 0).xy);
-            if (dot(normal, donorNormal) <= 0.90) {
+            if (dot(normal, donorNormal) <= 0.82) {
                 continue;
             }
-            vec2 weights = mix(1.0 - fraction, fraction, vec2(column, row));
             float weight = weights.x * weights.y * (1.0 - smoothstep(0.35, 1.0, depthDifference / tolerance));
             coverage += weight;
             bounce.sky += sky.rgb * weight;
@@ -43,14 +44,15 @@ ScreenBounce spatialScreenBounce(vec3 viewPosition, vec3 normal, vec3 sun, vec2 
 #endif
         }
     }
-    if (coverage <= 0.15) {
+    // Compatible donors are normalized even if only one contributes.
+    // Preserve an exact near-field fallback only for true disocclusions.
+    if (coverage <= 0.003) {
         return screenDiffuseBounce(viewPosition, normal, sun);
     }
     ScreenBounce filtered = ScreenBounce(bounce.sky / coverage, bounce.block / coverage, bounce.blockConfidence / coverage);
-    // Avoid a frame-to-frame hard switch between full- and half-resolution GI.
-    if (coverage < 0.55) {
+    if (coverage < 0.035) {
         ScreenBounce full = screenDiffuseBounce(viewPosition, normal, sun);
-        float confidence = smoothstep(0.15, 0.55, coverage);
+        float confidence = smoothstep(0.003, 0.035, coverage);
         filtered.sky = mix(full.sky, filtered.sky, confidence);
         filtered.block = mix(full.block, filtered.block, confidence);
         filtered.blockConfidence = mix(full.blockConfidence, filtered.blockConfidence, confidence);

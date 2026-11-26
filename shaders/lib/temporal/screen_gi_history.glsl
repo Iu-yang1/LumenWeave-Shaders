@@ -6,7 +6,12 @@ uniform sampler2D colortex7;
 vec3 temporalScreenBounce(vec3 current, vec3 viewPosition, vec3 normal, vec2 uv) {
     vec2 previousUv;
     float expectedDepth;
+#ifdef LW_STABLE_DYNAMIC
+    // Stable lighting samples are written on the unjittered grid.
+    if (!reprojectStableTerrain(viewPosition, previousUv, expectedDepth, gbufferPreviousProjection)) {
+#else
     if (!reprojectTerrain(viewPosition, previousUv, expectedDepth)) {
+#endif
         return current;
     }
     ivec2 size = textureSize(colortex6, 0);
@@ -25,8 +30,9 @@ vec3 temporalScreenBounce(vec3 current, vec3 viewPosition, vec3 normal, vec2 uv)
             if (!matchesHistoryDepth(history.a, expectedDepth)) {
                 continue;
             }
-            vec2 encodedNormal = texelFetch(colortex7, pixel, 0).rg;
-            if (dot(normal, decodeNormal(encodedNormal)) < 0.90) {
+            vec4 metadata = texelFetch(colortex7, pixel, 0);
+            if (any(greaterThan(abs(metadata.zw - vec2(size)), vec2(1.0))) ||
+                dot(normal, decodeNormal(metadata.xy)) < 0.90) {
                 continue;
             }
             vec2 weights = mix(1.0 - fraction, fraction, vec2(column, row));

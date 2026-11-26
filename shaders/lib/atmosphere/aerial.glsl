@@ -1,9 +1,17 @@
 #ifndef LW_AERIAL_PERSPECTIVE
 #define LW_AERIAL_PERSPECTIVE
+#ifndef LW_CAMERA_INT_UNIFORM
+#define LW_CAMERA_INT_UNIFORM
 uniform ivec3 cameraPositionInt;
+#endif
 #ifndef LW_CAMERA_FRACT_UNIFORM
 #define LW_CAMERA_FRACT_UNIFORM
 uniform vec3 cameraPositionFract;
+#endif
+
+#ifdef LW_ATMOSPHERE_LUT_ACTIVE
+uniform sampler3D lwAtmoScatter;
+uniform sampler3D lwAtmoThrough;
 #endif
 
 // Scene-scale exponential atmosphere. Rayleigh and aerosol optical depths are separate.
@@ -29,7 +37,25 @@ vec3 applyAerialPerspective(vec3 scene, vec3 viewPosition, float boundaryFade) {
     float height = float(cameraPositionInt.y) + cameraPositionFract.y;
     vec3 direction = displacement / max(distanceToEye, 0.0001);
     vec3 sun = sunDirection();
+#ifdef LW_ATMOSPHERE_LUT_ACTIVE
+    // Blend twilight/weather continuously; no abrupt branch at sunrise.
+    float physicalWeight = smoothstep(-0.15,0.05,sun.y)*(1.0-rainStrength);
+    vec3 physical = scene;
+    if (physicalWeight > 0.0) {
+        vec3 uv = vec3(atmoViewUV(direction,sun),atmoDistanceUV(max(distanceToEye-8.0,0.0)*ATMO_KM_PER_BLOCK*AERIAL_DENSITY));
+        vec3 through = texture(lwAtmoThrough,atmoTexelUVW(uv,textureSize(lwAtmoThrough,0))).rgb;
+        vec3 scatter = texture(lwAtmoScatter,atmoTexelUVW(uv,textureSize(lwAtmoScatter,0))).rgb * (5.4 * SUNLIGHT_STRENGTH);
+        physical=scene*through+scatter;
+        if(physicalWeight>=0.9999) {
+            if(boundaryFade<=0.0) return physical;
+            return mix(physical,skyRadiance(direction,sun),boundaryFade);
+        }
+    }
+#endif
     vec3 sky = skyRadiance(direction, sun);
+#ifdef LW_ATMOSPHERE_LUT_ACTIVE
+    if(physicalWeight>0.0) physical=mix(physical,sky,boundaryFade);
+#endif
     float day = daylight(sun);
     float cosine = clamp(dot(direction, sun), -1.0, 1.0);
     float rayleighPhase = 0.75 * (1.0 + cosine * cosine);
@@ -54,6 +80,11 @@ vec3 applyAerialPerspective(vec3 scene, vec3 viewPosition, float boundaryFade) {
     vec3 aerosolLight = mix(sky * 0.60, sunTint(sun) * (0.27 + 0.40 * miePhase), day * (1.0 - rainStrength));
     vec3 source = (molecularLight * rayleighDepth + aerosolLight * aerosolDepth)
         / max(opticalDepth, vec3(0.000001));
-    return mix(scene * transmission + source * (1.0 - transmission), sky, boundaryFade);
+    vec3 analytic = mix(scene * transmission + source * (1.0 - transmission), sky, boundaryFade);
+#ifdef LW_ATMOSPHERE_LUT_ACTIVE
+    return mix(analytic,physical,physicalWeight);
+#else
+    return analytic;
+#endif
 }
 #endif

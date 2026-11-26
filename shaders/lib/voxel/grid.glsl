@@ -1,3 +1,4 @@
+#include "/lib/lighting/emitter_palette.glsl"
 #include "/lib/voxel/settings.glsl"
 
 const int LW_GRID_SIZE = VOXEL_GRID_SIZE;
@@ -15,14 +16,17 @@ bool withinVoxelGrid(ivec3 cell) {
     return all(greaterThanEqual(cell, ivec3(0))) && all(lessThan(cell, ivec3(LW_GRID_SIZE)));
 }
 
-vec3 voxelEmission(uint kind, uint strength) {
-    vec3 color = vec3(1.0, 0.63, 0.33);
-    if (kind == 2u) {
-        color = vec3(0.17, 0.72, 1.0);
-    } else if (kind == 3u) {
-        color = vec3(0.63, 1.0, 0.78);
-    } else if (kind == 4u) {
-        color = vec3(1.0, 0.21, 0.07);
-    }
-    return color * (float(strength) / 15.0) * 1.7;
+// 4-bit palette + 4-bit vanilla emission level. Walls start at 256.
+uint packVoxelEmitter(uint kind,uint strength) {
+    return (min(strength,15u)<<4u) | min(kind,15u);
+}
+vec3 voxelEmission(uint kind,uint strength) {
+    float level = float(strength)/15.0;
+    float power = kind==5u ? 1.65 : ((kind==6u || kind==11u) ? 1.45 : 1.5);
+    // Lift high-level sources without flooding dim emitters.
+    float shaped=level*mix(0.62,1.15,level);
+    return emitterColor(kind) * shaped * power;
+}
+vec3 voxelSeedEmission(uint seed) {
+    return voxelEmission(seed & 15u, seed >> 4u);
 }

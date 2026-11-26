@@ -1,0 +1,26 @@
+#include "/lib/quality.glsl"
+layout(local_size_x=8,local_size_y=8) in;
+const ivec3 workGroups = ivec3(16, 8, 1);
+#if defined(LW_ATMOSPHERE_LUT_ACTIVE) && !defined(LW_DIMENSION_END) && !defined(LW_DIMENSION_NETHER)
+#include "/lib/atmosphere/physical_integrate.glsl"
+uniform ivec3 cameraPositionInt;
+uniform vec3 cameraPositionFract;
+uniform vec3 sunPosition;
+uniform mat4 gbufferModelViewInverse;
+#include "/lib/atmosphere/update_cache.glsl"
+layout(rgba16f) writeonly uniform image2D lwAtmoSkyImage;
+void main(){
+    ivec2 p=ivec2(gl_GlobalInvocationID.xy);
+    vec2 uv=vec2(p)/vec2(127,63);
+    float mu=normalize(mat3(gbufferModelViewInverse)*sunPosition).y;
+#ifdef LW_ATMO_CACHE_ACTIVE
+    if(!atmoUpdateNeeded(float(cameraPositionInt.y)+cameraPositionFract.y,mu)) return;
+#endif
+    vec3 l,t,f;
+    atmoIntegrate(atmoRadius(float(cameraPositionInt.y)+cameraPositionFract.y),atmoViewDirection(atmoElevationMu(uv.y),uv.x),
+        atmoDirection(mu,0.0),1e6,true,32,l,t,f);
+    imageStore(lwAtmoSkyImage,p,vec4(l,1.0));
+}
+#else
+void main(){}
+#endif

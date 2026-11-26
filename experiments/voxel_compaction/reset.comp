@@ -1,0 +1,14 @@
+#version 430 core
+// Research-only SSBO. Host must issue GL_SHADER_STORAGE_BARRIER_BIT
+// before compaction and GL_COMMAND_BARRIER_BIT before indirect dispatch.
+layout(local_size_x=1) in;
+layout(std430,binding=0) buffer ActiveTiles {
+    uint count1; uint y1; uint z1; uint pad1;
+    uint count2; uint y2; uint z2; uint pad2;
+    uint tasks1[32768];
+    uint tasks2[32768];
+};
+void main() {
+    count1=0u; y1=1u; z1=1u; pad1=0u;
+    count2=0u; y2=1u; z2=1u; pad2=0u;
+}

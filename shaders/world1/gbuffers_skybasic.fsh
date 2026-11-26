@@ -1,1 +1,1 @@
-#include "/programs/shared/gbuffers_skybasic.fsh.glsl"
+#include "/programs/shared/end_sky.fsh.glsl"

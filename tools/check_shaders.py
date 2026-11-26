@@ -10,6 +10,7 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 
 from package import P0_CONFIG, P0_SHARED, PREVIEW, PROBE
+from compatibility import DIMENSION_DEFINES
 
 STAGES = {".vsh": ".vert", ".fsh": ".frag", ".csh": ".comp"}
 INCLUDE = re.compile(r'\s*#\s*include\s+"([^"]+)"\s*')
@@ -85,6 +86,25 @@ def expand(root, path, ancestry=()):
 
 
 def check_iris_directives(text, path):
+    # Iris ComputeDirectiveParser splits constructor arguments by comma and
+    # indexes each component, even after logging a wrong argument count.
+    # GLSL scalar splats and constant expressions compile but can crash Iris.
+    for name, constructor, value in re.findall(
+        r"(?m)^\s*const\s+(?:ivec3|vec2)\s+(workGroups(?:Render)?)\s*=\s*(\w+)\s*\(([^;]*)\)\s*;",
+        text,
+    ):
+        parts = [part.strip() for part in value.split(",")]
+        if name == "workGroups":
+            if constructor != "ivec3" or len(parts) != 3 or any(
+                not re.fullmatch(r"[0-9]+", part) or int(part) <= 0 for part in parts
+            ):
+                raise ValueError(f"Iris requires three explicit positive integer workGroups components: {path}")
+        elif constructor != "vec2" or len(parts) != 2 or any(
+            not re.fullmatch(r"(?:[0-9]+(?:\.[0-9]*)?|\.[0-9]+)", part) or float(part) <= 0
+            for part in parts
+        ):
+            raise ValueError(f"Iris requires two explicit positive numeric workGroupsRender components: {path}")
+
     for arguments in IRIS_CLEAR_COLOR.findall(text):
         if len(arguments.split(",")) != 4:
             raise ValueError(f"Iris 1.8.8 requires four explicit clear-color components: {path}")
@@ -164,7 +184,7 @@ def preview_profiles(root, config_root=None):
 
 def preprocess_properties(compiler, path, defines):
     rows = {}
-    values = defines if isinstance(defines, dict) else dict.fromkeys(defines, "1")
+    values = {"MC_VERSION": "12101", "HIZ_MODE": "1", "AO_RECONSTRUCTION": "1", "PROJECTION_JITTER": "0", "VOXEL_FUSION": "1", "ATMO_PREBAKED": "1", "ATMO_UPDATE_MODE": "1", "CLOUD_DENSITY_CACHE": "1", "CLOUD_NOISE_MODE": "1", "VOLUME_RECONSTRUCTION": "1", "GI_REUSE_MODE": "1", "AA_MODE": "2", **(defines if isinstance(defines, dict) else dict.fromkeys(defines, "1"))}
     source = ["#version 330", *(f"#define {name} {value}" for name, value in values.items())]
     for index, line in enumerate(read_source(path).splitlines()):
         directive = line.strip()
@@ -233,6 +253,52 @@ def check_voxel_properties(compiler, path):
                     raise ValueError(f"Inconsistent voxel image dimensions: {image}, {size}")
 
 
+def check_modern_properties(compiler, path):
+    base = dict.fromkeys((*VOXEL_FEATURES, "VOXEL_LIGHTING", "INCREMENTAL_VOXELS",
+                         "PHYSICAL_ATMOSPHERE", "VOLUME_EFFECTS", "DEFERRED_LIGHTING",
+                         "ADVANCED_WATER", "SCREEN_GI", "MATERIAL_SSR", "IRIS_FEATURE_SSBO"), "1")
+    for minecraft, iris, ssbo, indirect in (
+        ("12001", "10700", True, False),
+        ("12101", "10808", True, False),
+        ("260300", "11106", True, False),
+        ("260300", "11107", False, False),
+        ("260300", "11107", True, True),
+    ):
+        flags = {**base, "MC_VERSION": minecraft, "IRIS_VERSION": iris, "VOXEL_GRID_SIZE": "96"}
+        if not ssbo:
+            flags.pop("IRIS_FEATURE_SSBO")
+        config = preprocess_properties(compiler, path, flags)
+        if ("indirect.prepare1" in config) != indirect or ("bufferObject.0" in config) != indirect:
+            raise ValueError(f"Incorrect indirect dispatch capability gate: {minecraft}/{iris}/{ssbo}")
+        if config.get("allowConcurrentCompute") != "false":
+            raise ValueError("Dependent compute dispatch must be serial")
+        if config.get("program.world1/begin1.enabled") != "false":
+            raise ValueError("End must not update Overworld sky LUT")
+        if len([key for key in config if key.startswith("image.")]) != 14:
+            raise ValueError("Fused custom image allocation must equal 14")
+    # Full feature path, plus the 16-image legacy propagation fallback.
+    flags={**base,"SCREEN_GI_SPATIAL":"1","SCREEN_GI_HISTORY":"1","TEMPORAL_REUSE":"1",
+           "PROJECTION_JITTER":"1","VOLUME_TEMPORAL":"1","VOLUME_RECONSTRUCTION":"1",
+           "AA_MODE":"2","GI_REUSE_MODE":"1","VOXEL_FUSION":"1","VOXEL_GRID_SIZE":"128"}
+    config=preprocess_properties(compiler,path,flags)
+    if len([k for k in config if k.startswith("image.")])!=15 or "image.lwVolumeHistory" not in config:
+        raise ValueError("Volume history allocation must fit fused image budget")
+    for overrides,count,history,cache in (
+        ({"VOXEL_FUSION":"0"},16,True,True),
+        ({"ATMO_PREBAKED":"0"},16,True,True),
+        ({"VOXEL_FUSION":"0","ATMO_PREBAKED":"0"},16,False,False),
+        ({"GI_REUSE_MODE":"2"},14,False,True),
+        ({"PROJECTION_JITTER":"2"},14,False,True),
+        ({"VOLUME_TEMPORAL":"0"},14,False,True),
+    ):
+        config=preprocess_properties(compiler,path,{**flags,**overrides})
+        if (len([k for k in config if k.startswith("image.")])!=count or
+            ("image.lwVolumeHistory" in config)!=history or
+            ("image.lwAtmoState" in config)!=cache):
+            raise ValueError(f"Volume/atmosphere image budget violated: {overrides}")
+    print("Modern/legacy compute and volume history capability matrix: OK")
+
+
 def check_voxel_dispatch(compiler):
     for size, stage, dimension in product(VOXEL_GRID_SIZES, (*VOXEL_PASSES, VOXEL_DIFFUSE_PASS), DIMENSIONS):
         path = PREVIEW / dimension / f"{stage}.csh"
@@ -272,6 +338,18 @@ def compiler_source(root, source, options, environment):
         for stage, value in RENDER_STAGES.items()
     )
     macros += "".join(f"#define {macro} 1\n" for macro in environment)
+    marker = DIMENSION_DEFINES.get(source.parent.name)
+    if marker and not re.search(rf"(?m)^#define {marker}(?:\s|$)",body):
+        macros += f"#define {marker}\n"
+    if "LW_TEST_LEGACY_IRIS" in environment:
+        macros += "#define MC_VERSION 12001\n"
+    elif "LW_TEST_MODERN_IRIS" not in environment:
+        macros += "#define MC_VERSION 12101\n"
+    if "LW_TEST_MODERN_IRIS" in environment:
+        macros += "#define IRIS_VERSION 11107\n#define MC_VERSION 260300\n"
+    if "DISTANT_HORIZONS" in environment and source.name == "dh_shadow.vsh":
+        # Iris injects this attribute and mini-ID. Offline compile needs a declaration.
+        macros += "#define DH_BLOCK_WATER 1\nin int dhMaterialId;\n"
     return version + newline + macros + body
 
 
@@ -284,6 +362,10 @@ def check_projection_sampling(compiler, profiles):
         ("Extreme auto", "Extreme", "0", False),
         ("Ultra dynamic override", "Ultra", "2", True),
         ("High fixed override", "High", "1", False),
+        ("Medium fixed default", "Medium", "1", False),
+        ("Ultra fixed default", "Ultra", "1", False),
+        ("Extreme fixed default", "Extreme", "1", False),
+        ("Extreme dynamic override", "Extreme", "2", True),
     )
     stages = ("gbuffers_terrain.vsh", "gbuffers_water.vsh", "dh_terrain.vsh",
               "dh_water.vsh", "deferred1.fsh", "composite1.fsh")
@@ -305,9 +387,13 @@ def check_projection_sampling(compiler, profiles):
             zero = bool(re.search(r"return\s+vec2\s*\(\s*0\.0\s*\)\s*;", body))
             if zero == dynamic or ("sequence" in body) != dynamic:
                 raise ValueError(f"Projection sampling mismatch: {label}/{dimension}/{stage}")
-            if stage == "composite1.fsh" and ("colorHistory" not in result.stdout
-                                               or "temporalColor" not in result.stdout):
-                raise ValueError(f"Temporal resolve was unexpectedly removed: {label}/{dimension}")
+            if stage == "composite1.fsh":
+                if "colorHistory" not in result.stdout or "temporalColor" not in result.stdout:
+                    raise ValueError(f"Temporal resolve was unexpectedly removed: {label}/{dimension}")
+                stable_path = not dynamic or profile in ("Ultra", "Extreme")
+                spatial_shift = bool(re.search(r"stableUv\s*\+\s*jitterOffset\s*\(",result.stdout))
+                if spatial_shift == stable_path:
+                    raise ValueError(f"Current radiance grid mismatch: {label}/{dimension}")
     print(f"Projection sampling: {len(cases) * len(DIMENSIONS) * len(stages)} preprocessed entry points OK")
 
 
@@ -359,6 +445,7 @@ def main():
     try:
         profiles = preview_profiles(PREVIEW)
         check_voxel_properties(args.compiler, PREVIEW / "shaders.properties")
+        check_modern_properties(args.compiler, PREVIEW / "shaders.properties")
         check_voxel_dispatch(args.compiler)
         check_projection_sampling(args.compiler, profiles)
         print("Shadow and voxel capability matrix: 384 configurations OK")
@@ -370,6 +457,20 @@ def main():
         profiles["ultra-no-history"] = {**profiles["profile.Ultra"], "SCREEN_GI_HISTORY": "false"}
         profiles["ultra-no-spatial"] = {**profiles["profile.Ultra"], "SCREEN_GI_SPATIAL": "false"}
         profiles["ultra-dynamic-projection"] = {**profiles["profile.Ultra"], "PROJECTION_JITTER": "2"}
+        profiles["ultra-legacy-voxel"] = {**profiles["profile.Ultra"], "VOXEL_FUSION": "0"}
+        profiles["water-phase-experiment"] = {**profiles["profile.High"], "WATER_PHASE_LUT": "1"}
+        profiles["sky-original-grid"] = {**profiles["profile.Ultra"], "SKY_ENV_REUSE": "0", "BRDF_REUSE": "0"}
+        profiles["cloud-cache-off"] = {**profiles["profile.Ultra"], "CLOUD_DENSITY_CACHE": "0", "CLOUD_OPTICAL_CACHE": "0"}
+        profiles["medium-volume-no-gi"] = {**profiles["profile.Medium"], "VOLUME_EFFECTS": "true"}
+        profiles["legacy-atmo-and-voxel"] = {**profiles["profile.Ultra"], "ATMO_PREBAKED": "0", "VOXEL_FUSION": "0"}
+        profiles["end-procedural"] = {**profiles["profile.Natural"], "END_NEBULA_ASSET": "0"}
+        profiles["atmosphere-original"] = {**profiles["profile.Ultra"], "ATMO_PREBAKED": "0", "ATMO_UPDATE_MODE": "0"}
+        profiles["volume-history-off"] = {**profiles["profile.Ultra"], "VOLUME_TEMPORAL": "0", "LOCAL_SCATTER_ADAPTIVE": "0"}
+        profiles["legacy-volume-budget"] = {**profiles["profile.Ultra"], "SCENE_BUDGET": "0", "CLOUD_NOISE_MODE": "0", "CLOUD_ADAPTIVE": "0", "CLOUD_EMPTY_SKIP": "0", "SHAFT_ADAPTIVE": "0", "CLOUD_LIGHT_REUSE": "0"}
+        profiles["dimension-performance"] = {**profiles["profile.Ultra"], "OVERWORLD_BUDGET": "2", "NETHER_BUDGET": "2", "END_BUDGET": "2"}
+        profiles["dimension-full"] = {**profiles["profile.Ultra"], "OVERWORLD_BUDGET": "0", "NETHER_BUDGET": "0", "END_BUDGET": "0"}
+        profiles["ultra-original-hdr"] = {**profiles["profile.Ultra"], "HDR_REUSE": "0", "VOLUME_RECONSTRUCTION": "0"}
+        profiles["ultra-full-ao"] = {**profiles["profile.Ultra"], "AO_RECONSTRUCTION": "0"}
         profiles["high-fixed-projection"] = {**profiles["profile.High"], "PROJECTION_JITTER": "1"}
         profiles["screen-gi"] = {**profiles["profile.Standard"], "SCREEN_AO": "false", "SCREEN_GI": "true"}
         profiles["screen-gi-history-no-taa-water"] = {
@@ -380,6 +481,7 @@ def main():
             **profiles["profile.High"], "AA_MODE": "3", "MOTION_BLUR": "true",
             "BLOOM": "true", "IMAGE_SHARPENING": "0.3", "COLOR_CONTRAST": "1.05",
         }
+        profiles["bloom-wide"] = {**profiles["profile.High"], "BLOOM": "true", "BLOOM_FILTER": "2"}
         profiles["forward-post"] = {
             **profiles["profile.Low"], "AA_MODE": "2", "MOTION_BLUR": "true", "BLOOM": "true",
             "WAVING_LEAVES": "false", "WAVING_GRASS": "false",
@@ -396,6 +498,7 @@ def main():
         voxel_profiles = {
             "world-voxels": {**profiles["profile.Standard"], "VOXEL_LIGHTING": "true"},
             "world-voxels-no-shadow-filter": {**profiles["profile.Natural"], "VOXEL_LIGHTING": "true"},
+            "world-local-scatter-full-rebuild": {**profiles["profile.High"], "VOXEL_LIGHTING": "true", "VOLUME_EFFECTS": "true", "INCREMENTAL_VOXELS": "false"},
         }
         compile_pack(args.compiler, PREVIEW, voxel_profiles, environment=VOXEL_FEATURES)
         compile_pack(
@@ -418,12 +521,38 @@ def main():
             environment=(*VOXEL_FEATURES, "MC_TEXTURE_FORMAT_LAB_PBR_1_3"),
         )
         compile_pack(args.compiler, PREVIEW, {"world-voxels-fallback": voxel_profiles["world-voxels"]})
+        volume_entries=[p for p in PREVIEW.rglob("*") if p.suffix in STAGES and p.stem in ("deferred","deferred1","composite","composite_a","composite_b","setup","setup1","setup3","setup4","begin1","begin2","begin3","begin4","begin5")]
+        compile_pack(args.compiler, PREVIEW, {"medium-volume-no-gi":profiles["medium-volume-no-gi"],"atmosphere-original":profiles["atmosphere-original"],"cloud-cache-off":profiles["cloud-cache-off"],"sky-original-grid":profiles["sky-original-grid"],"legacy-atmo-and-voxel":profiles["legacy-atmo-and-voxel"]},sources=volume_entries,environment=VOXEL_FEATURES)
+        compile_pack(args.compiler, PREVIEW, {"extreme-volume-hardware":profiles["profile.Extreme"]},sources=volume_entries,
+            environment=(*VOXEL_FEATURES,"DISTANT_HORIZONS","IRIS_FEATURE_SEPARATE_HARDWARE_SAMPLERS"))
+        compile_pack(args.compiler, PREVIEW, {"modern-compaction": profiles["profile.Ultra"]},
+            environment=(*VOXEL_FEATURES,"IRIS_FEATURE_SSBO","LW_TEST_MODERN_IRIS"))
+        compile_pack(args.compiler, PREVIEW, {"hybrid-shadow": profiles["profile.High"], "hybrid-hard": profiles["profile.Medium"]}, environment=("IRIS_FEATURE_SEPARATE_HARDWARE_SAMPLERS",))
+        compile_pack(args.compiler, PREVIEW, {"full-hiz": {**profiles["profile.Ultra"], "HIZ_MODE": "2"}},
+            environment=VOXEL_FEATURES)
+        compile_pack(args.compiler, PREVIEW, {"adaptive-off": {**profiles["profile.Ultra"], "ADAPTIVE_SHADING": "false", "TEMPORAL_REUSE": "false", "ADAPTIVE_SHADOWS": "false"}},
+            environment=VOXEL_FEATURES)
+        compile_pack(args.compiler, PREVIEW, {"legacy-1.20": profiles["profile.High"]},
+            environment=("LW_TEST_LEGACY_IRIS",))
+
+        compile_pack(args.compiler, PREVIEW, {
+            "research-ssr": {**profiles["profile.High"], "MATERIAL_SSR": "true"},
+            "research-ssr-gi": {**profiles["profile.Extreme"], "MATERIAL_SSR": "true", "DH_SHADOWS": "true", "PHYSICAL_ATMOSPHERE": "true", "INCREMENTAL_VOXELS": "true"},
+            "research-atmosphere": {**profiles["profile.High"], "PHYSICAL_ATMOSPHERE": "true"},
+            "research-incremental": {**profiles["profile.Ultra"], "INCREMENTAL_VOXELS": "true"},
+            "research-dynamic-all": {**profiles["profile.Extreme"], "PROJECTION_JITTER": "2", "MATERIAL_SSR": "true", "DH_SHADOWS": "true", "PHYSICAL_ATMOSPHERE": "true", "INCREMENTAL_VOXELS": "true"},
+        }, environment=(*VOXEL_FEATURES, "DISTANT_HORIZONS", "MC_TEXTURE_FORMAT_LAB_PBR_1_3"))
         compile_pack(
             args.compiler, PREVIEW, preview_profiles(PREVIEW, P0_CONFIG),
             [PREVIEW / name for name in P0_SHARED],
         )
         properties(PROBE / "shaders.properties")
         compile_pack(args.compiler, PROBE, {"voxel-probe": {}})
+        for source in sorted((PREVIEW.parent / "experiments" / "voxel_compaction").glob("*.comp")):
+            result = subprocess.run([args.compiler, "-S", "comp", str(source)], capture_output=True, text=True)
+            if result.returncode:
+                raise ValueError(f"{source}: {result.stdout}{result.stderr}")
+            print(f"compaction-probe/{source.name}: OK")
     except (OSError, ValueError) as error:
         parser.exit(1, f"{error}\n")
 

@@ -35,9 +35,17 @@ flat in int blockId;
 #endif
 
 #if defined(DEFERRED_LIGHTING) && defined(LW_OPAQUE_TERRAIN)
+#ifdef LW_STABLE_DYNAMIC
+/* RENDERTARGETS: 0,1,2,3 */
+#else
 /* RENDERTARGETS: 0,1,2 */
+#endif
 #elif defined(DEFERRED_LIGHTING) && defined(LW_WATER)
+#ifdef LW_STABLE_DYNAMIC
+/* RENDERTARGETS: 0,1,3 */
+#else
 /* RENDERTARGETS: 0,1 */
+#endif
 #else
 /* RENDERTARGETS: 0 */
 #endif
@@ -52,7 +60,13 @@ void main() {
         base.a = 1.0;
     }
 #else
+#ifdef LW_OPAQUE_TERRAIN
+    // Modest positive mip bias only for distant leaves; preserve near texture detail.
+    float leafBias = blockId == 10030 ? 0.35*smoothstep(24.0,80.0,-viewPosition.z) : 0.0;
+    base *= texture(gtexture,texCoord,leafBias);
+#else
     base *= texture(gtexture, texCoord);
+#endif
 #endif
 #endif
     if (base.a <= 0.0 || renderStage == MC_RENDER_STAGE_SUN) {
@@ -66,6 +80,9 @@ void main() {
     normal = faceforward(normal, -view, normal);
 #if defined(DEFERRED_LIGHTING) && defined(LW_WATER)
     gl_FragData[1] = vec4(encodeNormal(normal), blockId == 10004 ? -1.0 : -2.0, 0.0);
+#ifdef LW_STABLE_DYNAMIC
+    gl_FragData[2] = vec4(gl_FragCoord.z, blockId == 10004 ? 2.0 : 5.0, 0.0, 0.0);
+#endif
 #endif
 #if defined(DEFERRED_LIGHTING) && defined(LW_OPAQUE_TERRAIN)
     vec2 mappedMaterial = vec2(0.0, 1.0);
@@ -78,14 +95,24 @@ void main() {
     gl_FragData[0] = vec4(radiance, base.a);
     gl_FragData[1] = vec4(encodeNormal(normal), lightLevels);
     gl_FragData[2] = vec4(gl_FragCoord.z, float(blockId), mappedMaterial);
+#ifdef LW_STABLE_DYNAMIC
+    gl_FragData[3] = vec4(gl_FragCoord.z, 1.0, 0.0, 0.0);
+#endif
 #else
     vec3 sun = sunDirection();
 #ifdef LW_WATER
     if (blockId == 10004) {
 #if defined(ADVANCED_WATER) && defined(DEFERRED_LIGHTING)
-        vec3 water = physicalWater(radiance, normal, viewPosition, view, sun,
+        vec3 waterPosition = viewPosition;
+#ifdef LW_STABLE_DYNAMIC
+        vec2 stableUv=gl_FragCoord.xy/vec2(textureSize(depthtex1,0));
+        waterPosition=stableViewSurfacePosition(viewPosition,stableUv,
+            transpose(mat3(gbufferModelViewInverse))*normal,gbufferProjectionInverse);
+        view=normalize(worldDirection(-waterPosition));
+#endif
+        vec3 water = physicalWater(radiance, normal, waterPosition, view, sun,
             smoothstep(0.56, 1.0, lightLevels.y));
-        gl_FragData[0] = vec4(applySceneFog(water, viewPosition), 1.0);
+        gl_FragData[0] = vec4(applySceneFog(water, waterPosition), 1.0);
         return;
 #else
         vec3 position = (gbufferModelViewInverse * vec4(viewPosition, 1.0)).xyz + cameraPosition;
@@ -96,7 +123,7 @@ void main() {
             : waterThickness(viewPosition, gl_FragCoord.xy / vec2(textureSize(depthtex1, 0)));
         float opacity = 1.0 - luminance(exp(-waterExtinction() * thickness));
         vec3 scatter = waterScatteringColor(radiance)
-            * (ambientIrradiance(lightLevels, 1.0, sun) + celestialIrradiance(sun) * 0.16);
+            * (ambientIrradiance(lightLevels, 1.0, sun) + celestialIrradiance(sun) * (0.16 * smoothstep(0.0,1.0,lightLevels.y)));
         if (isEyeInWater == 1) {
             vec2 screen = gl_FragCoord.xy / vec2(textureSize(depthtex1, 0));
             if (texture(depthtex1, screen).r >= 1.0) {
@@ -116,6 +143,48 @@ void main() {
     }
 #endif
     Material material = vanillaMaterial(blockId, radiance);
+#if defined(LW_WATER) && defined(ADVANCED_WATER) && defined(DEFERRED_LIGHTING)
+    // Lava is emitted in the forward fluid pass, not the deferred material SSR pass.
+    // Reuse the opaque scene and its bounded water ray, without water refraction.
+    if (blockId == 10015) {
+        vec3 lavaPosition = viewPosition;
+#ifdef LW_STABLE_DYNAMIC
+        vec2 stableUv = gl_FragCoord.xy / vec2(textureSize(depthtex1,0));
+        lavaPosition = stableViewSurfacePosition(viewPosition,stableUv,
+            transpose(mat3(gbufferModelViewInverse))*normal,gbufferProjectionInverse);
+        view = normalize(worldDirection(-lavaPosition));
+#endif
+        vec4 metadata, fallback;
+        vec3 lit = surfaceRadiance(radiance, material, normal, view, sun,
+            lightLevels, lavaPosition, metadata, fallback);
+        vec3 reflected = reflect(-view, normal);
+        float fresnel = 0.045 + 0.955 * pow(1.0 - clamp(dot(view,normal),0.0,1.0),5.0);
+        vec3 reflectedRadiance = hasSkylight ? skyRadiance(reflected,sun)
+            : ambientIrradiance(lightLevels,normal.y,sun) * 0.35;
+#if WATER_REFLECTION_STEPS > 0
+        if (fresnel > 0.065 && -lavaPosition.z < 48.0 && isEyeInWater == 0) {
+            mat3 toView = transpose(mat3(gbufferModelViewInverse));
+            vec4 hit = traceScreenReflection(lavaPosition + toView*normal*0.07,
+                toView*reflected, min(WATER_REFLECTION_STEPS,8));
+            reflectedRadiance = mix(reflectedRadiance,hit.rgb,hit.a);
+        }
+#endif
+        // Replace the prior specular fallback, never attenuate emitted radiance.
+        // Molten rock is not a clear water mirror. Keep a warm, bounded
+        // reflected component and keep emission separate from reflection.
+        vec3 lavaTint=mix(vec3(1.0,0.48,0.15),radiance/max(max(radiance.r,max(radiance.g,radiance.b)),0.001),0.35);
+        vec3 reflection=reflectedRadiance*lavaTint*min(fresnel,0.18);
+        float emissionPeak=max(material.emission.r,max(material.emission.g,material.emission.b));
+        float reflectionPeak=max(reflection.r,max(reflection.g,reflection.b));
+        reflection*=min(1.0,(0.12+0.22*emissionPeak)/max(reflectionPeak,0.001));
+        vec3 nonEmissive=max(lit - fallback.rgb-material.emission,vec3(0.0));
+        // Suppress the broad white diffuse/direct response of molten pixels,
+        // but leave dark crust detail and the HDR emission intact.
+        lit=material.emission+nonEmissive*lavaTint*0.65+reflection;
+        gl_FragData[0] = vec4(applySceneFog(lit,lavaPosition),1.0);
+        return;
+    }
+#endif
     radiance = surfaceRadiance(radiance, material, normal, view, sun, lightLevels, viewPosition);
 #endif
 #elif defined(LW_LIT)

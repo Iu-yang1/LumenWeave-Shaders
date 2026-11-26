@@ -10,10 +10,50 @@ uniform bool hasSkylight;
 uniform bool hasCeiling;
 uniform float ambientLight;
 uniform vec3 fogColor;
+#ifdef CAT_THE_END
+uniform int biome_category;
+#endif
+
+// Sky-light capability is not a dimension identity (modern End has sky light).
+bool lwEndDimension() {
+#ifdef LW_DIMENSION_END
+    return true;
+#elif defined(LW_DIMENSION_NETHER)
+    return false;
+#elif defined(CAT_THE_END)
+    return biome_category == CAT_THE_END || (!hasSkylight && !hasCeiling);
+#else
+    return !hasSkylight && !hasCeiling;
+#endif
+}
+bool lwHasCelestial() {
+#if defined(LW_DIMENSION_END) || defined(LW_DIMENSION_NETHER)
+    return false;
+#else
+    return hasSkylight && !lwEndDimension();
+#endif
+}
+// Existing lighting users mean celestial sky, not the vanilla light-map flag.
+#define hasSkylight lwHasCelestial()
 
 #include "/lib/dimensions/overworld.glsl"
 #include "/lib/dimensions/nether.glsl"
 #include "/lib/dimensions/end.glsl"
+#ifdef LW_DIMENSION_END
+#include "/lib/dimensions/end_nebula.glsl"
+#endif
+#ifdef LW_ATMOSPHERE_LUT_ACTIVE
+#include "/lib/atmosphere/physical_lookup.glsl"
+uniform sampler2D lwAtmoSky;
+#ifndef LW_CAMERA_INT_UNIFORM
+#define LW_CAMERA_INT_UNIFORM
+uniform ivec3 cameraPositionInt;
+#endif
+#ifndef LW_CAMERA_FRACT_UNIFORM
+#define LW_CAMERA_FRACT_UNIFORM
+uniform vec3 cameraPositionFract;
+#endif
+#endif
 
 vec3 worldDirection(vec3 viewDirection) {
     return mat3(gbufferModelViewInverse) * viewDirection;
@@ -38,14 +78,42 @@ vec3 celestialIrradiance(vec3 sun) {
     if (!hasSkylight) {
         return vec3(0.0);
     }
+#ifdef LW_ATMOSPHERE_LUT_ACTIVE
+    if(sun.y>=0.0) {
+        float radius=atmoRadius(float(cameraPositionInt.y)+cameraPositionFract.y);
+        return atmoSolar(radius,sun.y)*(5.4*SUNLIGHT_STRENGTH);
+    }
+#endif
     return (sun.y >= 0.0 ? sunTint(sun) * 5.4 : vec3(0.095, 0.13, 0.20)) * SUNLIGHT_STRENGTH;
+}
+
+float dimensionFogDensity(vec3 direction) {
+    float horizon = 1.0 - smoothstep(0.05, 0.70, abs(direction.y));
+    return hasCeiling ? mix(0.012, 0.027, horizon)
+                      : mix(0.0035, 0.010, horizon);
 }
 
 vec3 skyRadiance(vec3 direction, vec3 sun) {
     if (!hasSkylight) {
         vec3 fog = decodeSrgb(fogColor);
-        return hasCeiling ? fog : mix(fog, vec3(0.004, 0.003, 0.012), max(direction.y, 0.0));
+        if (hasCeiling) {
+            // Preserve biome identity, with a warmer lower horizon and darker ceiling.
+            float lower = 1.0-smoothstep(-0.25,0.65,direction.y);
+            return mix(fog,vec3(0.14,0.032,0.012),0.10+0.13*lower)*mix(0.68,1.0,lower);
+        }
+        vec3 horizon = vec3(0.010,0.0038,0.022);
+        vec3 zenith = vec3(0.0009,0.00055,0.0030);
+        return mix(horizon,zenith,smoothstep(0.0,0.85,abs(direction.y)));
     }
+#ifdef LW_ATMOSPHERE_LUT_ACTIVE
+    // In daylight the physical LUT has unit blend weight. Do not calculate
+    // analytic Rayleigh/twilight terms which would be discarded.
+    if(sun.y>=0.05) {
+        vec2 uv=atmoViewUV(direction,sun);
+        vec3 physical=texture(lwAtmoSky,atmoTexelUV(uv,textureSize(lwAtmoSky,0))).rgb*(5.4*SUNLIGHT_STRENGTH);
+        return mix(physical,mix(vec3(0.024),vec3(0.45,0.51,0.57),daylight(sun)),rainStrength*0.83);
+    }
+#endif
     float height = max(direction.y, 0.0);
     float cosine = max(dot(direction, sun), 0.0);
     float twilight = 1.0 - smoothstep(0.06, 0.36, abs(sun.y));
@@ -64,19 +132,36 @@ vec3 skyRadiance(vec3 direction, vec3 sun) {
         float band = 1.0 - smoothstep(0.0, 0.24, abs(dot(direction, normalize(vec3(0.36, 0.48, 0.80)))));
         color += vec3(0.010, 0.012, 0.022) * band * band * height * (1.0 - day);
     }
+#ifdef LW_ATMOSPHERE_LUT_ACTIVE
+    float physicalWeight=smoothstep(-0.15,0.05,sun.y);
+    if(physicalWeight>0.0) {
+        vec2 uv=atmoViewUV(direction,sun);
+        vec3 physical=texture(lwAtmoSky,atmoTexelUV(uv,textureSize(lwAtmoSky,0))).rgb*(5.4*SUNLIGHT_STRENGTH);
+        color=mix(color,physical,physicalWeight);
+    }
+#endif
     color = mix(color, mix(vec3(0.024), vec3(0.45, 0.51, 0.57), day), rainStrength * 0.83);
     return color;
 }
 
+// Keep dim light dim, but give level-15 emitters HDR headroom.
+vec3 blockLightIrradiance(float level) {
+    float x = clamp(level, 0.0, 1.0);
+    return x*x*(0.20 + 1.60*x) * vec3(1.0, 0.82, 0.62) * BLOCKLIGHT_STRENGTH;
+}
+
+float ambientFloor() {
+    return (hasSkylight ? 0.010 : 0.008) * DARK_AMBIENT * AMBIENT_STRENGTH;
+}
+
 vec3 ambientIrradiance(vec2 light, float up, vec3 sun) {
-    float sky = light.y * light.y;
-    float block = light.x * light.x;
+    float sky = light.y * light.y * mix(DARK_AMBIENT,1.0,light.y);
     if (!hasSkylight) {
         vec3 environment = hasCeiling ? netherEnvironment(up) : endEnvironment(up);
-        return (vec3(0.015) + environment) * AMBIENT_STRENGTH
-            + block * vec3(1.12, 0.69, 0.39) * BLOCKLIGHT_STRENGTH;
+        return vec3(ambientFloor()) + environment * (hasCeiling ? 0.48 : 0.38) * DARK_AMBIENT * AMBIENT_STRENGTH
+            + blockLightIrradiance(light.x);
     }
     vec3 hemisphere = overworldEnvironment(up, daylight(sun));
-    return (vec3(0.015) + sky * hemisphere) * AMBIENT_STRENGTH
-        + block * vec3(1.12, 0.69, 0.39) * BLOCKLIGHT_STRENGTH;
+    return vec3(ambientFloor()) + sky * hemisphere * 0.82 * AMBIENT_STRENGTH
+        + blockLightIrradiance(light.x);
 }
