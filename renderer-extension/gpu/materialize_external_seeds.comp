@@ -15,12 +15,15 @@ void main(){
     uint lane=gl_LocalInvocationIndex;
     if(lane==0u)touched=0u;
     barrier();
-    ivec3 base=bricks[gl_WorkGroupID.x].xyz-gridOrigin;
+    ivec4 brick=bricks[gl_WorkGroupID.x];
+    ivec3 base=brick.xyz-gridOrigin;
+    // 144 is divisible by four: every aligned brick fits without wrapping.
+    // Host floorMod avoids GLSL signed negative remainder semantics.
+    ivec3 atlasBase=ivec3(brick.w&255,(brick.w>>8)&255,(brick.w>>16)&255);
     ivec3 cell=base+ivec3(gl_LocalInvocationID);
     ivec3 firstTile=base>>2;
     if(all(greaterThanEqual(cell,ivec3(0)))&&all(lessThan(cell,ivec3(gridSize)))){
-        ivec3 world=cell+gridOrigin;
-        ivec3 wrapped=(world%144+144)%144;
+        ivec3 wrapped=atlasBase+ivec3(gl_LocalInvocationID);
         uint seed=imageLoad(externalSeeds,wrapped).r;
         if(seed!=0u){
             imageStore(occupancy,cell,uvec4(seed));

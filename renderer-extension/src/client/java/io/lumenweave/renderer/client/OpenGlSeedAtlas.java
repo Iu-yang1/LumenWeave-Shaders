@@ -10,7 +10,7 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import static org.lwjgl.opengl.GL45C.*;
 
-/** Real persistent OpenGL seed upload probe. Its texture is not yet bound into Iris shaders. */
+/** Real persistent OpenGL seed upload probe. Includes the experimental sparse materialization bridge. */
 public final class OpenGlSeedAtlas implements RendererBackend {
     public record Difference(long differing,long referenceNonzero,long candidateNonzero){}
     private final int texture;
@@ -66,7 +66,9 @@ public final class OpenGlSeedAtlas implements RendererBackend {
                 var k=entry.getKey();long bits=entry.getValue();
                 while(bits!=0){
                     int i=Long.numberOfTrailingZeros(bits);bits&=bits-1;
-                    list.put(k.x()*16+(i&3)*4).put(k.y()*16+((i>>2)&3)*4).put(k.z()*16+(i>>4)*4).put(0);
+                    int x=k.x()*16+(i&3)*4,y=k.y()*16+((i>>2)&3)*4,z=k.z()*16+(i>>4)*4;
+                    int packed=Math.floorMod(x,SeedAtlasLayout.SIDE)|(Math.floorMod(y,SeedAtlasLayout.SIDE)<<8)|(Math.floorMod(z,SeedAtlasLayout.SIDE)<<16);
+                    list.put(x).put(y).put(z).put(packed);
                 }
             }
             if(brickCount==0)list.put(0).put(0).put(0).put(0);

@@ -69,7 +69,8 @@ public final class NativeGpuSmoke {
             atlas.uploadSeeds(d);
             var receipt=atlas.materialize(target,d);
             check(RendererBackend.mayUseNormalCulling(d,receipt,atlas.capabilities()),"actual texture handoff");
-            check(atlas.compare(target,w).differing()==0,"materialized GPU seeds");
+            var difference=atlas.compare(target,w);
+            check(difference.differing()==0,"materialized GPU seeds: "+difference+"; GL error="+glGetError());
             IntBuffer value=MemoryUtil.memAllocInt(1);
             try{
                 glGetTextureSubImage(target,0,0,0,33,1,1,1,GL_RED_INTEGER,GL_UNSIGNED_INT,value);
