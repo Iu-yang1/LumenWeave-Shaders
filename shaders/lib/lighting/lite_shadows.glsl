@@ -31,8 +31,8 @@ vec2 receiverDepthGradient(vec3 normal) {
 }
 
 float receiverDepthAt(vec3 receiver,vec2 gradient,ivec2 pixel,ivec2 resolution) {
-    vec2 uv=(vec2(pixel)+0.5)/vec2(resolution);
-    return receiver.z+dot(gradient,uv-receiver.xy);
+    vec2 offset=(vec2(pixel)+0.5)-receiver.xy*vec2(resolution);
+    return receiver.z+dot(gradient/vec2(resolution),offset);
 }
 
 float compareShadowTexel(vec3 receiver,vec2 gradient,ivec2 pixel,ivec2 resolution) {
@@ -74,7 +74,7 @@ float softShadow(vec3 receiver,vec2 gradient,float viewDistance) {
     if(viewDistance>28.0) blockerTaps=min(4,SHADOW_FILTER_TAPS);
     if(viewDistance>48.0) filterTaps=min(4,SHADOW_FILTER_TAPS);
 #endif
-    int blockerStride=blockerTaps==SHADOW_FILTER_TAPS ? 1 : 2;
+    int blockerStride=blockerTaps==8 ? 1 : 2;
     for (int index = 0; index < SHADOW_FILTER_TAPS; ++index) {
         if(index>=blockerTaps) break;
         int tap=index*blockerStride;
@@ -98,7 +98,7 @@ float softShadow(vec3 receiver,vec2 gradient,float viewDistance) {
     // extra filtering. This is an approximation only on far surfaces.
     if(viewDistance>48.0 && count==float(blockerTaps) && center==0.0 && radius<=1.5) return 0.0;
 #endif
-    int filterStride=filterTaps==SHADOW_FILTER_TAPS ? 1 : 2;
+    int filterStride=filterTaps==8 ? 1 : 2;
     for (int index = 0; index < SHADOW_FILTER_TAPS; ++index) {
         if(index>=filterTaps) break;
         int tap=index*filterStride;
