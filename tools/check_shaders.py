@@ -505,7 +505,10 @@ def compile_pack(compiler, root, profiles, sources=None, environment=(), *, shar
     groups = {}
     for path in sorted(sources if sources is not None else root.rglob("*")):
         if path.suffix in STAGES:
-            groups.setdefault(path.with_suffix(""), []).append(path)
+            # Iris runs compute stages before the corresponding raster program.
+            # Validate each compute independently; link only vertex/fragment stages.
+            program = path if path.suffix == ".csh" else path.with_suffix("")
+            groups.setdefault(program, []).append(path)
     if not groups:
         raise ValueError(f"No shader programs: {root}")
     for name, options in profiles.items():
