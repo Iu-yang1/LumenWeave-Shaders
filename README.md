@@ -1,8 +1,8 @@
 # LumenWeave Shaders
 
-[English](README.en.md) · [下载正式版本](https://github.com/Iu-yang1/LumenWeave-Shaders/releases) · [问题反馈](https://github.com/Iu-yang1/LumenWeave-Shaders/issues)
+[English](README.en.md) 
 
-LumenWeave 是面向 Minecraft Java Edition 的 Iris / OpenGL 光影包，追求自然柔和的日光、清澈水体、具有层次感的天空，以及保留黑暗氛围的彩色人工光照。从轻量前向渲染到高级混合延迟渲染，提供独立可调的性能与画质设置。
+LumenWeave 是面向 Minecraft Java Edition 的 Iris / OpenGL 光影包,追求自然柔和的日光,清澈水体,具有层次感的天空,以及保留黑暗氛围的彩色人工光照.从轻量前向渲染到高级混合延迟渲染,提供独立可调的性能与画质设置.
 
 ## 画面展示
 
@@ -15,21 +15,21 @@ LumenWeave 是面向 Minecraft Java Edition 的 Iris / OpenGL 光影包，追求
 
 ## 主要特性
 
-- 自然日夜光照、柔和阴影、GTAO 和 HDR 色调映射。
-- 物理大气查找表、体积云、太阳光束及深度感知重建。
-- 彩色体素光照、局部光源空气散射、SSGI、材质 SSR（高级预设）。
-- 多尺度水面波浪、水深吸收与散射、反射和折射。
-- LabPBR 资源包、植被风场、TAA / 空间抗锯齿、可调辉光。
-- 三个原版维度的独立环境风格；Distant Horizons 可选集成。
-- 预计算资产、局部环形缓存、自适应采样和时域复用。
+- 自然日夜光照,柔和阴影,GTAO 和 HDR 色调映射.
+- 物理大气查找表,体积云,太阳光束及深度感知重建.
+- 彩色体素光照,局部光源空气散射,SSGI,材质 SSR（高级预设）.
+- 多尺度水面波浪,水深吸收与散射,反射和折射.
+- LabPBR 资源包,植被风场,TAA / 空间抗锯齿,可调辉光.
+- 三个原版维度的独立环境风格；Distant Horizons 可选集成.
+- 预计算资产,局部环形缓存,自适应采样和时域复用.
 
 ## 安装
 
-1. 安装与你的 Minecraft 版本匹配的 Iris、Sodium 和相应模组加载器。
-2. 在 [Releases](https://github.com/Iu-yang1/LumenWeave-Shaders/releases) 下载对应游戏版本的光影 ZIP。
-3. 将 ZIP 原样放入实例的 `shaderpacks` 目录。若下载 All-Versions 外层合集，先解压并选择一个内层 ZIP。
-4. 在游戏中打开「选项 → 视频设置 → 光影包」，选择 LumenWeave 并应用。
-5. 建议首次选择 **高（High）**，再根据显卡负载调整。升级时如有旧配置冲突，请重新选择预设。
+1. 安装与你的 Minecraft 版本匹配的 Iris,Sodium 和相应模组加载器.
+2. 在 [Releases](https://github.com/Iu-yang1/LumenWeave-Shaders/releases) 下载对应游戏版本的光影 ZIP.
+3. 将 ZIP 原样放入实例的 `shaderpacks` 目录.若下载 All-Versions 外层合集,先解压并选择一个内层 ZIP.
+4. 在游戏中打开「选项 → 视频设置 → 光影包」,选择 LumenWeave 并应用.
+5. 建议首次选择 **高（High）**,再根据显卡负载调整.升级时如有旧配置冲突,请重新选择预设.
 
 | 构建文件 | 目标版本 |
 | --- | --- |
@@ -37,29 +37,17 @@ LumenWeave 是面向 Minecraft Java Edition 的 Iris / OpenGL 光影包，追求
 | `LumenWeave-Shaders-MC-1.21.x.zip` | Minecraft 1.21 系列 |
 | `LumenWeave-Shaders-MC-26.x.zip` | Minecraft 26.x（OpenGL） |
 
-版本范围为构建兼容目标，不等同于对每个游戏、Iris、Sodium、显卡驱动组合的实机认证。高级计算功能取决于 Iris 与显卡支持的特性；缺少对应能力时使用适用的基础路径。不提供 Vulkan 或 OptiFine 支持保证。
+暂时不提供 Vulkan 或 OptiFine 支持.
 
 ## 画质预设
 
 | 预设 | 主要定位 | 阴影 / 抗锯齿 |
 | --- | --- | --- |
-| 极低 Potato | 核显、低功耗优先 | 无场景阴影 / FXAA |
-| 低 Low | 基础光影、轻量水体 | 1024 硬阴影 / FXAA |
-| 中 Medium | 延迟光照、AO、高级水体 | 1024 硬阴影 / TAA + FXAA |
-| 高 High | 日常画质与性能平衡，推荐起点 | 2048 软阴影 / TAA + FXAA |
-| 超高 Ultra | 大气、体积效果、SSGI、SSR、彩色体素光照 | 2048 软阴影 / TAA |
+| 极低 Potato | 核显,低功耗优先 | 无场景阴影 / FXAA |
+| 低 Low | 基础光影,轻量水体 | 1024 硬阴影 / FXAA |
+| 中 Medium | 延迟光照,AO,高级水体 | 1024 硬阴影 / TAA + FXAA |
+| 高 High | 日常画质与性能平衡,推荐起点 | 2048 软阴影 / TAA + FXAA |
+| 超高 Ultra | 大气,体积效果,SSGI,SSR,彩色体素光照 | 2048 软阴影 / TAA |
 | 极致 Extreme | 最大默认覆盖范围与体素漫反射 | 4096 软阴影 / TAA |
 
-Ultra / Extreme 分别默认使用 96³ / 128³ 体素网格。自然、自然低曝光、自然高曝光是无场景阴影的色彩对照预设；标准档是无时域抗锯齿的兼容／对照配置，不属于六档性能阶梯。高级路径保留固定投影选项；可切换动态投影和原计算路径作对照。
-
-## 兼容性与反馈
-
-离线 GLSL 编译、预设与资源检查、数值回归以及多版本打包用于发行验证，但不能替代真实游戏加载和 GPU 画质测试。高级光照、DH、不同驱动的持续运行与性能仍需要更多实机反馈。不存在跨设备的帧率保证。
-
-如发生加载错误、画面异常或性能问题，请附上 Minecraft、Iris、Sodium、显卡与驱动版本、画质预设、截图和 `latest.log` 中首个相关异常。
-
-## 开发与许可证
-
-主分支保存玩家使用的光影源码；完整测试、工具、实验、生成器及技术文档位于 [develop](https://github.com/Iu-yang1/LumenWeave-Shaders/tree/develop)。查看 [发行审查](https://github.com/Iu-yang1/LumenWeave-Shaders/blob/develop/docs/release-audit-v1.md) 和 [开发路线](https://github.com/Iu-yang1/LumenWeave-Shaders/blob/develop/ROADMAP.md)。
-
-许可证：LGPL-3.0-only，见 [LICENSE](LICENSE)、[COPYING](COPYING) 及 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)。
+Ultra / Extreme 分别默认使用 96³ / 128³ 体素网格.自然,自然低曝光,自然高曝光是无场景阴影的色彩对照预设；
