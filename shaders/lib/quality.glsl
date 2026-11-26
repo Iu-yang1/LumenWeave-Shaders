@@ -27,6 +27,14 @@
 #define AUTO_EXPOSURE
 #define EXPOSURE_ADAPTATION 0.65 // [0.25 0.5 0.65 0.8 1.0]
 #define SMOOTH_LIGHTING
+#define RAIN_GEOMETRY 1 // [0 1]
+#define VOXEL_DIFFUSE_SMOOTHING 1 // [0 1]
+#define DIRECT_RISE_HALF 0.10 // [0.05 0.10 0.16 0.25 0.40]
+#define DIRECT_FALL_HALF 0.18 // [0.05 0.10 0.18 0.28 0.50]
+#define DIFFUSE_RISE_HALF 0.16 // [0.05 0.10 0.16 0.25 0.40]
+#define DIFFUSE_FALL_HALF 0.28 // [0.10 0.18 0.28 0.40 0.60]
+#define RAIN_RISE_TIME 20.0 // [2.0 5.0 10.0 20.0 40.0]
+#define RAIN_FALL_TIME 40.0 // [5.0 10.0 20.0 40.0 60.0]
 #define DOF_MODE 0 // [0 1 2 3]
 #define DOF_FOCUS 8.0 // [2.0 4.0 8.0 16.0 32.0 64.0]
 #define DOF_STRENGTH 0.5 // [0.25 0.5 0.75 1.0]
@@ -128,7 +136,7 @@
 #endif
 #endif
 
-#if defined(WET_SURFACES) && defined(LW_VOXEL_INCREMENTAL_ACTIVE) && !defined(LW_DIMENSION_END) && !defined(LW_DIMENSION_NETHER)
+#if RAIN_GEOMETRY == 1 && defined(WET_SURFACES) && defined(LW_VOXEL_INCREMENTAL_ACTIVE) && !defined(LW_DIMENSION_END) && !defined(LW_DIMENSION_NETHER)
 #define LW_VOXEL_WEATHER_ACTIVE
 #ifdef SMOOTH_LIGHTING
 #define LW_RAIN_COLUMN_SLICE (2*VOXEL_GRID_SIZE+2)
@@ -138,7 +146,7 @@
 #endif
 #if defined(SMOOTH_LIGHTING) && defined(LW_VOXEL_INCREMENTAL_ACTIVE)
 #define LW_VOXEL_SMOOTH_ACTIVE
-#if defined(VOXEL_GI) && defined(DEFERRED_LIGHTING)
+#if VOXEL_DIFFUSE_SMOOTHING == 1 && defined(VOXEL_GI) && defined(DEFERRED_LIGHTING)
 #define LW_VOXEL_DIFFUSE_SMOOTH
 #endif
 #endif

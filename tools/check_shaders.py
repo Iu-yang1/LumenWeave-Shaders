@@ -184,7 +184,7 @@ def preview_profiles(root, config_root=None):
 
 def preprocess_properties(compiler, path, defines):
     rows = {}
-    values = {"MC_VERSION": "12101", "HIZ_MODE": "1", "AO_RECONSTRUCTION": "1", "PROJECTION_JITTER": "0", "VOXEL_FUSION": "1", "ATMO_PREBAKED": "1", "ATMO_UPDATE_MODE": "1", "CLOUD_DENSITY_CACHE": "1", "CLOUD_NOISE_MODE": "1", "VOLUME_RECONSTRUCTION": "1", "GI_REUSE_MODE": "1", "AA_MODE": "2", "SCENE_TAAU_SCALE": "100", **(defines if isinstance(defines, dict) else dict.fromkeys(defines, "1"))}
+    values = {"MC_VERSION": "12101", "HIZ_MODE": "1", "AO_RECONSTRUCTION": "1", "PROJECTION_JITTER": "0", "VOXEL_FUSION": "1", "ATMO_PREBAKED": "1", "ATMO_UPDATE_MODE": "1", "CLOUD_DENSITY_CACHE": "1", "CLOUD_NOISE_MODE": "1", "VOLUME_RECONSTRUCTION": "1", "GI_REUSE_MODE": "1", "AA_MODE": "2", "SCENE_TAAU_SCALE": "100", "GEOMETRY_TAAU_SCALE": "100", "RAIN_GEOMETRY":"1", "VOXEL_DIFFUSE_SMOOTHING":"1", "RAIN_RISE_TIME":"20.0", "RAIN_FALL_TIME":"40.0", **(defines if isinstance(defines, dict) else dict.fromkeys(defines, "1"))}
     source = ["#version 330", *(f"#define {name} {value}" for name, value in values.items())]
     for index, line in enumerate(read_source(path).splitlines()):
         directive = line.strip()
@@ -345,6 +345,10 @@ def check_modern_properties(compiler, path):
                 expected=scale<100 and aa>=2
                 if (config.get(f"program.{dimension}/composite.enabled")=="true")!=expected:
                     raise ValueError("Scene TAAU composition gate incorrect")
+    for scale in (50,67,75,85,100):
+        config=preprocess_properties(compiler,path,{"GEOMETRY_TAAU_SCALE":str(scale),"AA_MODE":"2","DEFERRED_LIGHTING":"1"})
+        if ("uniform.int.lwRasterFrame" in config)!=(scale<100):
+            raise ValueError("Geometry raster frame uniform gate incorrect")
     print("Modern/legacy compute, exposure and volume history capability matrix: OK")
 
 
@@ -499,7 +503,13 @@ def main():
             names = {"prepare5","prepare6","prepare6_a","prepare7","prepare8","deferred","deferred_a","deferred1","deferred2","deferred2_a","composite","composite_a","composite_b","composite1","composite2","composite3","composite4","composite5","final","gbuffers_terrain","gbuffers_water","gbuffers_weather","dh_terrain","dh_water"}
             sources = [p for p in PREVIEW.rglob("*") if p.suffix in STAGES and p.stem in names]
             variants = {
-                "v4-native": profiles["profile.Ultra"],
+                "v5-native": {**profiles["profile.Ultra"],"GEOMETRY_TAAU_SCALE":"100"},
+                "v5-geometry-half": {**profiles["profile.Extreme"],"GEOMETRY_TAAU_SCALE":"50","DOF_MODE":"2","MOTION_BLUR":"true"},
+                "v5-geometry-full-hiz": {**profiles["profile.Ultra"],"GEOMETRY_TAAU_SCALE":"67","HIZ_MODE":"2","GI_REUSE_MODE":"2"},
+                "v5-geometry-default": profiles["profile.Extreme"],
+                "v5-geometry-wet-no-smooth": {**profiles["profile.Ultra"],"SMOOTH_LIGHTING":"false"},
+                "v5-geometry-wet-off": {**profiles["profile.Ultra"],"RAIN_GEOMETRY":"0"},
+                "v5-geometry-no-diffuse-history": {**profiles["profile.Extreme"],"VOXEL_DIFFUSE_SMOOTHING":"0"},
                 "v4-taau-diffuse": {**profiles["profile.Extreme"], "SCENE_TAAU_SCALE":"75", "DOF_MODE":"1"},
                 "v4-taau-wet-no-smooth": {**profiles["profile.Ultra"], "SCENE_TAAU_SCALE":"67", "SMOOTH_LIGHTING":"false"},
                 "v4-taau-dynamic": {**profiles["profile.High"], "SCENE_TAAU_SCALE":"85", "PROJECTION_JITTER":"2", "MOTION_BLUR":"true"},

@@ -51,3 +51,6 @@ LumenWeave 是面向 Minecraft Java Edition 的 Iris / OpenGL 光影包,追求�
 | 极致 Extreme | 最大默认覆盖范围与体素漫反射 | 4096 软阴影 / TAA |
 
 Ultra / Extreme 分别默认使用 96³ / 128³ 体素网格.自然,自然低曝光,自然高曝光是无场景阴影的色彩对照预设；Standard 用于对照基础延迟光照与水面效果.
+
+### Geometry temporal upscaling (development)
+In Shader Options → Post → Anti-aliasing, Geometry render scale controls actual pre-resolve rendering at 50/67/75/85/100%. Medium 67%, High/Ultra 75%, Extreme 85%; native comparison and forward presets remain 100%. Weather and Lighting response menus expose geometric rain shelter, rain transition times and direct/diffuse irradiance response. These development defaults are pending runtime validation.

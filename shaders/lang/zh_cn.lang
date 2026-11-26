@@ -315,3 +315,22 @@ option.SSR_HALF_RES=半分辨率粗糙反射
 
 option.SCENE_TAAU_SCALE=场景 HDR 时域重建比例
 option.SCENE_TAAU_SCALE.comment=实验性低分辨率场景/体积合成与时域重建。几何及深度仍保持原始分辨率，GI、水体和 DH 保持启用。需要延迟渲染与 TAA；100 为原始模式。
+
+screen.LIGHT_RESPONSE=光照响应
+option.GEOMETRY_TAAU_SCALE=几何 TAAU 渲染比例
+option.GEOMETRY_TAAU_SCALE.comment=降低几何、光照和体积栅格分辨率，时域恢复原始输出。需要延迟渲染与 TAA；100% 为原生几何。优先于仅场景缩放。
+option.RAIN_GEOMETRY=几何降雨遮挡
+option.RAIN_GEOMETRY.comment=增量体素光照可用时，依据已知实体柱和局部排水判断；否则使用天空光照与程序湿润模型。
+option.VOXEL_DIFFUSE_SMOOTHING=间接体素光照渐变
+option.VOXEL_DIFFUSE_SMOOTHING.comment=启用体素 GI 和光照平滑时，使用独立漫反射历史场。
+option.DIRECT_RISE_HALF=直接光增强半衰期（秒）
+option.DIRECT_FALL_HALF=直接光衰减半衰期（秒）
+option.DIFFUSE_RISE_HALF=间接光增强半衰期（秒）
+option.DIFFUSE_FALL_HALF=间接光衰减半衰期（秒）
+option.RAIN_RISE_TIME=降雨渐入时间（秒）
+option.RAIN_FALL_TIME=雨后渐出时间（秒）
+value.GEOMETRY_TAAU_SCALE.50=50%
+value.GEOMETRY_TAAU_SCALE.67=67%
+value.GEOMETRY_TAAU_SCALE.75=75%
+value.GEOMETRY_TAAU_SCALE.85=85%
+value.GEOMETRY_TAAU_SCALE.100=100%

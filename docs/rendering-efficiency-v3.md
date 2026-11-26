@@ -29,3 +29,5 @@ V4 follow-up: independent diffuse temporal slab, geometric rain columns and opti
 - Diffuse: separate raw and smoothed `lwVoxelSecond` slabs, 0.16 s rise/0.28 s fall, world overlap validation, immediate wall reset, shared occupancy union and no additional image slot. 8*N^3 extra bytes when enabled. Direct smoothing and air scatter retain their existing field.
 - TAAU: scene/volume composition and both existing volume compute grids operate at the optional reduced integer resolution, full-resolution depth/normal/DH/material-guided reconstruction before later post effects. Native geometry/deferred grids still full size. Default 100%.
 - Validation: focused V4 GLSL mode plus full compile matrix, numerical tests, Iris directives, ZIP and aislop; no in-game GPU measurement or release claim until actual checks complete.
+
+V5: actual geometry viewport, logical UV/active extent contract and native temporal resolve are integrated; see docs/taau-v1.md. Geometric rain, independent diffuse smoothing and direct/diffuse half-life controls are exposed in the options menu. Hardware/loader validation remains separate from static GLSL.

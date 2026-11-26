@@ -315,3 +315,22 @@ option.SSR_HALF_RES=Half-resolution rough reflections
 
 option.SCENE_TAAU_SCALE=Scene HDR reconstruction scale
 option.SCENE_TAAU_SCALE.comment=Experimental reduced-resolution scene/volume composition with temporal reconstruction. Geometry and depth stay native; GI, water and DH remain enabled. Requires deferred TAA. 100 is original mode.
+
+screen.LIGHT_RESPONSE=Lighting response
+option.GEOMETRY_TAAU_SCALE=Geometry render scale
+option.GEOMETRY_TAAU_SCALE.comment=Reduced geometry, lighting and volume raster with native temporal output. Requires deferred TAA; 100% uses native geometry. Takes precedence over scene-only scale.
+option.RAIN_GEOMETRY=Geometric rain shelter
+option.RAIN_GEOMETRY.comment=Use known opaque voxel columns and local drainage with incremental voxel lighting. Otherwise use skylight and procedural wetness.
+option.VOXEL_DIFFUSE_SMOOTHING=Diffuse voxel temporal response
+option.VOXEL_DIFFUSE_SMOOTHING.comment=Independent diffuse irradiance history when voxel GI and temporal lighting are enabled.
+option.DIRECT_RISE_HALF=Direct light rise half-life (s)
+option.DIRECT_FALL_HALF=Direct light decay half-life (s)
+option.DIFFUSE_RISE_HALF=Diffuse light rise half-life (s)
+option.DIFFUSE_FALL_HALF=Diffuse light decay half-life (s)
+option.RAIN_RISE_TIME=Rain transition time (s)
+option.RAIN_FALL_TIME=Rain clearing time (s)
+value.GEOMETRY_TAAU_SCALE.50=50%
+value.GEOMETRY_TAAU_SCALE.67=67%
+value.GEOMETRY_TAAU_SCALE.75=75%
+value.GEOMETRY_TAAU_SCALE.85=85%
+value.GEOMETRY_TAAU_SCALE.100=100%

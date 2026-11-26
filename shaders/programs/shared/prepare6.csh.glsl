@@ -44,7 +44,7 @@ void main(){
     bool valid=previous.w==frameCounter-1 && withinVoxelGrid(previousLocal);
     vec4 target=imageLoad(lwVoxelFirst,cell);
     vec4 old=valid?imageLoad(lwVoxelFirst,historyCell):target;
-    float halfLife=dot(target.rgb,vec3(0.2126,0.7152,0.0722))>dot(old.rgb,vec3(0.2126,0.7152,0.0722))?0.10:0.18;
+    float halfLife=dot(target.rgb,vec3(0.2126,0.7152,0.0722))>dot(old.rgb,vec3(0.2126,0.7152,0.0722))?DIRECT_RISE_HALF:DIRECT_FALL_HALF;
     vec4 value=mix(target,old,exp2(-clamp(frameTime,0.0,0.25)/halfLife));
     // New opaque walls must never retain old light. Quantize tiny tails to zero.
     bool wall=imageLoad(lwVoxelOccupancy,local).r>=LW_VOXEL_WALL;
@@ -57,7 +57,7 @@ void main(){
     // history follows its own irradiance, including hue changes and removals.
     vec4 diffuseTarget=imageLoad(lwVoxelSecond,cell);
     vec4 diffuseOld=valid?imageLoad(lwVoxelSecond,historyCell):diffuseTarget;
-    float diffuseHalf=dot(diffuseTarget.rgb,vec3(0.2126,0.7152,0.0722))>dot(diffuseOld.rgb,vec3(0.2126,0.7152,0.0722))?0.16:0.28;
+    float diffuseHalf=dot(diffuseTarget.rgb,vec3(0.2126,0.7152,0.0722))>dot(diffuseOld.rgb,vec3(0.2126,0.7152,0.0722))?DIFFUSE_RISE_HALF:DIFFUSE_FALL_HALF;
     vec4 diffuseValue=mix(diffuseTarget,diffuseOld,exp2(-clamp(frameTime,0.0,0.25)/diffuseHalf));
     if(wall) diffuseValue=vec4(0.0);
     if(max(diffuseValue.r,max(diffuseValue.g,diffuseValue.b))<0.0005) diffuseValue=vec4(0.0);

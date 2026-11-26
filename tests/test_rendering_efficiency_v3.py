@@ -154,3 +154,30 @@ class RenderingEfficiencyTests(unittest.TestCase):
             self.assertIn("size=lwSceneRenderSize(size)",(S/f"programs/shared/{name}.csh.glsl").read_text())
             self.assertIn("size=lwSceneRenderSize(size)",(S/f"lib/atmosphere/{reader}.glsl").read_text())
         self.assertIn("cloudUv=clamp",(S/"lib/post/solar_visibility.glsl").read_text())
+
+    def test_geometry_taau_presets_and_raster_contract(self):
+        from check_shaders import preview_profiles
+        profiles=preview_profiles(S)
+        expected={"Natural":100,"LowExposure":100,"HighExposure":100,"Potato":100,"Low":100,"Medium":67,"High":75,"Ultra":75,"Extreme":85,"Standard":100}
+        self.assertEqual({k.split(".")[1]:int(v["GEOMETRY_TAAU_SCALE"]) for k,v in profiles.items()},expected)
+        for width,height in ((1,1),(1919,1079),(1920,1080),(3840,2160)):
+            for scale in (50,67,75,85,100):
+                for divisor in (1,2,4):
+                    for dimension in (width,height):
+                        storage=max(dimension//divisor,1)
+                        active=max(storage*scale//100,1)
+                        for p in (0,active-1):
+                            uv=(p+.5)/active
+                            self.assertAlmostEqual(uv*active/storage*storage-.5,p)
+                            clip=2*uv-1
+                            ratio=active/storage
+                            self.assertAlmostEqual((clip*ratio+ratio-1)*.5+.5,uv*ratio)
+        for stage in ("p1/surface","p5/distant","shared/gbuffers_skybasic"):
+            self.assertIn("lwRasterClip",(S/f"programs/{stage}.vsh.glsl").read_text())
+            self.assertIn("lwRasterDiscardOutside",(S/f"programs/{stage}.fsh.glsl").read_text())
+        for name in ("deferred","deferred1","deferred2","composite"):
+            self.assertIn("lwRasterClip",(S/f"programs/shared/{name}.vsh.glsl").read_text())
+        resolve=(S/"programs/shared/composite1.fsh.glsl").read_text()
+        self.assertIn("stableUv+jitterOffset(frameCounter)",resolve)
+        self.assertIn("donorWater!=water",resolve)
+        self.assertIn("lwRasterSize(colortex0)",resolve)
