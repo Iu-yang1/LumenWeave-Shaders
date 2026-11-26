@@ -6,11 +6,11 @@ uniform sampler3D lwVoxelLight;
 
 // Most lookups use hardware filtering. Only ring seams need a manual 8-tap
 // reconstruction; clamp to the active domain before wrapping storage indices.
-vec3 sampleWrappedVoxel(sampler3D field,vec3 localCell) {
+vec3 sampleWrappedVoxelAtOrigin(sampler3D field,vec3 localCell,vec3 cacheOrigin) {
     float size=float(LW_GRID_SIZE);
-    vec3 p=mod(clamp(localCell,vec3(0.5),vec3(size-0.5))+vec3(voxelCacheOrigin()),size);
+    vec3 p=mod(clamp(localCell,vec3(0.5),vec3(size-0.5))+cacheOrigin,size);
     if(all(greaterThanEqual(p,vec3(0.5))) && all(lessThanEqual(p,vec3(size-0.5)))) {
-        return texture(field,p/size).rgb;
+        return textureLod(field,p/size,0.0).rgb;
     }
     vec3 texel=p-0.5;
     ivec3 base=ivec3(floor(texel));
@@ -22,6 +22,9 @@ vec3 sampleWrappedVoxel(sampler3D field,vec3 localCell) {
         result+=texelFetch(field,voxelWrap(base+offset),0).rgb*weight.x*weight.y*weight.z;
     }
     return result;
+}
+vec3 sampleWrappedVoxel(sampler3D field,vec3 localCell) {
+    return sampleWrappedVoxelAtOrigin(field,localCell,vec3(voxelCacheOrigin()));
 }
 #endif
 #ifndef LW_CAMERA_FRACT_UNIFORM
