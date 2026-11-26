@@ -19,13 +19,19 @@ bool insideScreen(vec2 uv) {
     return all(greaterThan(uv,vec2(0.0))) && all(lessThan(uv,vec2(1.0)));
 }
 
-vec2 reflectionProjectedUv(vec3 ray,mat4 projection) {
+vec2 reflectionProjectedUv(vec3 ray,mat4 projection,out float rayDepth) {
     vec4 clip=projection*vec4(ray,1.0);
+    rayDepth=clip.z/clip.w*0.5+0.5;
     vec2 uv=clip.xy/clip.w*0.5+0.5;
 #ifdef LW_TAA_ACTIVE
     uv+=jitterOffset(frameCounter);
 #endif
     return uv;
+}
+
+vec2 reflectionProjectedUv(vec3 ray,mat4 projection) {
+    float unusedDepth;
+    return reflectionProjectedUv(ray,projection,unusedDepth);
 }
 
 vec3 reflectionNativePosition(vec2 pixelUv,float depth,vec2 targetUv) {
@@ -43,11 +49,12 @@ vec3 reflectionNativePosition(vec2 pixelUv,float depth,vec2 targetUv) {
 }
 
 bool reflectionRayDepth(vec3 ray,out vec2 uv,out float delta,out int kind) {
-    uv=reflectionProjectedUv(ray,gbufferProjection);
+    float rayDepth;
+    uv=reflectionProjectedUv(ray,gbufferProjection,rayDepth);
     kind=0;
     if(!insideScreen(uv)) return false;
 #if defined(LW_NATIVE_HIZ) && defined(LW_HIZ_ACTIVE)
-    if(hizRayInFront(uv,ray,textureSize(LW_REFLECTION_DEPTH,0),gbufferProjection)) {
+    if(hizRayInFront(uv,rayDepth,textureSize(LW_REFLECTION_DEPTH,0))) {
         delta=-1.0;
         return true;
     }
