@@ -14,5 +14,9 @@ in vec4 vertexColor;
 /* RENDERTARGETS: 0 */
 
 void main() {
-    gl_FragData[0] = texture(gtexture, texCoord) * vertexColor;
+    vec4 color = texture(gtexture, texCoord) * vertexColor;
+    if (color.a < 0.10) {
+        discard;
+    }
+    gl_FragData[0] = color;
 }

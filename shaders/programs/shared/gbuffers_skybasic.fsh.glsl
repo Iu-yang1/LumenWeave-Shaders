@@ -18,13 +18,16 @@ void main() {
     vec3 direction = normalize(worldDirection(viewPosition));
     vec3 sun = sunDirection();
     vec3 radiance = skyRadiance(direction, sun);
-    if (isEyeInWater == 1) {
-        radiance = waterScatteringColor(decodeSrgb(fogColor))
-            * (ambientIrradiance(vec2(0.0, 0.7), 1.0, sun) + celestialIrradiance(sun) * 0.08);
-    } else if (isEyeInWater != 0) {
+    // Preserve air radiance for transmission at the water interface.
+    if (isEyeInWater != 0 && isEyeInWater != 1) {
         radiance = decodeSrgb(fogColor);
     } else if (renderStage == MC_RENDER_STAGE_STARS) {
-        gl_FragData[0] = vec4(vec3(0.32), vertexColor.a);
+        float darkness = 1.0 - smoothstep(-0.25, -0.08, sun.y);
+        float visibility = darkness * (1.0 - rainStrength) * smoothstep(0.0, 0.22, direction.y);
+        if (visibility <= 0.0) {
+            discard;
+        }
+        gl_FragData[0] = vec4(vec3(0.70, 0.78, 0.92), vertexColor.a * visibility);
         return;
     } else if (hasSkylight && renderStage != MC_RENDER_STAGE_VOID) {
         float alignment = dot(direction, sun);

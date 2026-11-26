@@ -38,7 +38,7 @@ const int colortex10Format = RGBA16F;
 void main() {
     ivec2 fullSize = textureSize(depthtex0, 0);
     ivec2 traceSize = max(fullSize / 2, ivec2(1));
-    ivec2 pixel = ivec2(gl_FragCoord.xy * vec2(fullSize) / vec2(traceSize));
+    ivec2 pixel = clamp(ivec2(gl_FragCoord.xy * vec2(fullSize) / vec2(traceSize)), ivec2(0), fullSize - 1);
     vec2 sampleUv = (vec2(pixel) + 0.5) / vec2(fullSize);
     float depth = texelFetch(depthtex0, pixel, 0).r;
     float terrainDepth = texelFetch(colortex2, pixel, 0).r;

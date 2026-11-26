@@ -97,9 +97,19 @@ void main() {
         float opacity = 1.0 - luminance(exp(-waterExtinction() * thickness));
         vec3 scatter = waterScatteringColor(radiance)
             * (ambientIrradiance(lightLevels, 1.0, sun) + celestialIrradiance(sun) * 0.16);
+        if (isEyeInWater == 1) {
+            vec2 screen = gl_FragCoord.xy / vec2(textureSize(depthtex1, 0));
+            if (texture(depthtex1, screen).r >= 1.0) {
+                vec3 airDirection = waterToAirDirection(-view, normal);
+                vec3 air = dot(airDirection, airDirection) > 0.0 ? skyRadiance(airDirection, sun) : scatter;
+                gl_FragData[0] = vec4(applySceneFog(mix(air, scatter, fresnel), viewPosition), 1.0);
+                return;
+            }
+            reflection = scatter;
+        }
         base.a = max(mix(opacity, 1.0, fresnel), 0.001);
         radiance = (scatter * opacity * (1.0 - fresnel) + reflection * fresnel
-            + waterSunGlint(normal, view, sun, smoothstep(0.56, 1.0, lightLevels.y))) / base.a;
+            + (isEyeInWater == 1 ? vec3(0.0) : waterSunGlint(normal, view, sun, smoothstep(0.56, 1.0, lightLevels.y)))) / base.a;
         gl_FragData[0] = vec4(applySceneFog(radiance, viewPosition), base.a);
         return;
 #endif

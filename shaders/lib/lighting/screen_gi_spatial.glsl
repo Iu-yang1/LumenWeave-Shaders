@@ -43,8 +43,17 @@ ScreenBounce spatialScreenBounce(vec3 viewPosition, vec3 normal, vec3 sun, vec2 
 #endif
         }
     }
-    if (coverage < 0.25) {
+    if (coverage <= 0.15) {
         return screenDiffuseBounce(viewPosition, normal, sun);
     }
-    return ScreenBounce(bounce.sky / coverage, bounce.block / coverage, bounce.blockConfidence / coverage);
+    ScreenBounce filtered = ScreenBounce(bounce.sky / coverage, bounce.block / coverage, bounce.blockConfidence / coverage);
+    // Avoid a frame-to-frame hard switch between full- and half-resolution GI.
+    if (coverage < 0.55) {
+        ScreenBounce full = screenDiffuseBounce(viewPosition, normal, sun);
+        float confidence = smoothstep(0.15, 0.55, coverage);
+        filtered.sky = mix(full.sky, filtered.sky, confidence);
+        filtered.block = mix(full.block, filtered.block, confidence);
+        filtered.blockConfidence = mix(full.blockConfidence, filtered.blockConfidence, confidence);
+    }
+    return filtered;
 }

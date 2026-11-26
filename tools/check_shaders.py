@@ -275,6 +275,42 @@ def compiler_source(root, source, options, environment):
     return version + newline + macros + body
 
 
+def check_projection_sampling(compiler, profiles):
+    # Inspect the actual preprocessed entry points, not only shader option declarations.
+    cases = (
+        ("Medium auto", "Medium", "0", True),
+        ("High auto", "High", "0", True),
+        ("Ultra auto", "Ultra", "0", False),
+        ("Extreme auto", "Extreme", "0", False),
+        ("Ultra dynamic override", "Ultra", "2", True),
+        ("High fixed override", "High", "1", False),
+    )
+    stages = ("gbuffers_terrain.vsh", "gbuffers_water.vsh", "dh_terrain.vsh",
+              "dh_water.vsh", "deferred1.fsh", "composite1.fsh")
+    for label, profile, mode, dynamic in cases:
+        options = {**profiles[f"profile.{profile}"], "PROJECTION_JITTER": mode}
+        for dimension, stage in product(DIMENSIONS, stages):
+            path = PREVIEW / dimension / stage
+            shader = compiler_source(PREVIEW, path, options, (*VOXEL_FEATURES, "DISTANT_HORIZONS"))
+            with TemporaryDirectory(prefix="lumenweave-projection-") as directory:
+                target = Path(directory) / ("sampling" + STAGES[path.suffix])
+                target.write_text(shader, encoding="utf-8")
+                result = subprocess.run([compiler, "-E", str(target)], capture_output=True, text=True)
+            if result.returncode:
+                raise ValueError(f"{label}/{dimension}/{stage}: {result.stderr}")
+            function = re.search(r"vec2\s+jitterOffset\s*\([^)]*\)\s*\{([^}]+)\}", result.stdout)
+            if not function:
+                raise ValueError(f"Missing jitter contract: {label}/{dimension}/{stage}")
+            body = function.group(1)
+            zero = bool(re.search(r"return\s+vec2\s*\(\s*0\.0\s*\)\s*;", body))
+            if zero == dynamic or ("sequence" in body) != dynamic:
+                raise ValueError(f"Projection sampling mismatch: {label}/{dimension}/{stage}")
+            if stage == "composite1.fsh" and ("colorHistory" not in result.stdout
+                                               or "temporalColor" not in result.stdout):
+                raise ValueError(f"Temporal resolve was unexpectedly removed: {label}/{dimension}")
+    print(f"Projection sampling: {len(cases) * len(DIMENSIONS) * len(stages)} preprocessed entry points OK")
+
+
 def compile_pack(compiler, root, profiles, sources=None, environment=()):
     groups = {}
     for path in sorted(sources if sources is not None else root.rglob("*")):
@@ -324,11 +360,17 @@ def main():
         profiles = preview_profiles(PREVIEW)
         check_voxel_properties(args.compiler, PREVIEW / "shaders.properties")
         check_voxel_dispatch(args.compiler)
+        check_projection_sampling(args.compiler, profiles)
         print("Shadow and voxel capability matrix: 384 configurations OK")
         print("Voxel dispatch: 84 dimension/stage/size combinations OK")
         profiles["color-chart"] = {**profiles["profile.Natural"], "SHOW_COLOR_CHART": "true"}
         profiles["temporal"] = {**profiles["profile.Standard"], "AA_MODE": "2"}
         profiles["volume"] = {**profiles["temporal"], "VOLUME_EFFECTS": "true"}
+        profiles["ultra-no-volume"] = {**profiles["profile.Ultra"], "VOLUME_EFFECTS": "false"}
+        profiles["ultra-no-history"] = {**profiles["profile.Ultra"], "SCREEN_GI_HISTORY": "false"}
+        profiles["ultra-no-spatial"] = {**profiles["profile.Ultra"], "SCREEN_GI_SPATIAL": "false"}
+        profiles["ultra-dynamic-projection"] = {**profiles["profile.Ultra"], "PROJECTION_JITTER": "2"}
+        profiles["high-fixed-projection"] = {**profiles["profile.High"], "PROJECTION_JITTER": "1"}
         profiles["screen-gi"] = {**profiles["profile.Standard"], "SCREEN_AO": "false", "SCREEN_GI": "true"}
         profiles["screen-gi-history-no-taa-water"] = {
             **profiles["screen-gi"], "SCREEN_GI_HISTORY": "true", "ADVANCED_WATER": "false"
@@ -367,7 +409,7 @@ def main():
             environment=VOXEL_FEATURES,
         )
         compile_pack(
-            args.compiler, PREVIEW, {"distant-horizons": profiles["profile.Extreme"]},
+            args.compiler, PREVIEW, {name: profiles[f"profile.{name}"] for name in ("Medium", "High", "Ultra", "Extreme")},
             environment=(*VOXEL_FEATURES, "DISTANT_HORIZONS"),
         )
         compile_pack(

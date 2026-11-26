@@ -39,6 +39,8 @@ vec3 applyCloudVolume(vec3 scene, vec3 origin, vec3 direction, vec3 sun, float m
         return scene;
     }
     float stepSize = (end - start) / 12.0;
+    float day = daylight(sun);
+    vec3 tint = sunTint(sun);
     float transmission = 1.0;
     vec3 scattering = vec3(0.0);
     for (int tap = 0; tap < 12; ++tap) {
@@ -49,8 +51,8 @@ vec3 applyCloudVolume(vec3 scene, vec3 origin, vec3 direction, vec3 sun, float m
         }
         float opacity = 1.0 - exp(-density * stepSize * 0.15);
         float light = exp(-2.6 * cloudDensity(point + sun * 6.0));
-        vec3 dayCloud = vec3(0.41, 0.48, 0.58) + sunTint(sun) * light * 0.58;
-        vec3 radiance = mix(vec3(0.044, 0.052, 0.074), dayCloud, daylight(sun));
+        vec3 dayCloud = vec3(0.41, 0.48, 0.58) + tint * light * 0.58;
+        vec3 radiance = mix(vec3(0.044, 0.052, 0.074), dayCloud, day);
         radiance *= 1.0 - rainStrength * 0.28;
         scattering += radiance * transmission * opacity;
         transmission *= 1.0 - opacity;
@@ -66,6 +68,8 @@ vec3 applyLightShafts(vec3 scene, vec3 origin, vec3 direction, vec3 sun, float m
         return scene;
     }
     float day = smoothstep(0.0, 0.2, sun.y) * (1.0 - rainStrength);
+    float cosine = max(dot(direction, sun), 0.0);
+    float phase = 0.025 + 0.975 * pow(cosine, 6.0);
     if (day <= 0.0) {
         return scene;
     }
@@ -76,11 +80,9 @@ vec3 applyLightShafts(vec3 scene, vec3 origin, vec3 direction, vec3 sun, float m
         float altitude = origin.y + offset.y;
         float sunlight = 1.0;
 #ifdef SCENE_SHADOWS
-        sunlight = sceneShadow(offset, sun, sun);
+        sunlight = volumeShadow(offset);
 #endif
         density += sunlight * exp(-max(altitude - 63.0, 0.0) * 0.019);
     }
-    float cosine = max(dot(direction, sun), 0.0);
-    float phase = 0.08 + 0.92 * pow(cosine, 6.0);
     return scene + celestialIrradiance(sun) * (density * stepSize * phase * day * (0.008 / 3.1));
 }

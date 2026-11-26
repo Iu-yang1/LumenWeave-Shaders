@@ -156,3 +156,32 @@
 Actions 生成可安装 ZIP，运行时仍由 Iris 针对实际 GPU 编译。每次交付应记录源码提交、ZIP 摘要、运行组合、覆盖场景和已知问题。推送主分支不自动等同于发布稳定版。
 
 持续遵守：UTF-8 无 BOM、Git 提交签名、不提交本地日志和工具、不复制受限参考源码。游戏测试使用静音隔离桌面和存档副本，保持用户前台可用；安装与缓存优先放在 H 盘。
+
+## Natural Rendering V2 (candidate)
+
+- Correct water-to-air Snell direction and preserve sky radiance before water fog; screen-space reflection/refraction remains an approximation, including DH.
+- Fix neighbor UV reprojection, tighten distant history normal rejection, fade unresolved water waves, and tune sun/ambient balance and shadow bias.
+- Add optional-density analytical height-dependent aerial perspective, shared by native terrain and DH. Lite uses midpoint density; standard uses an exponential-height integral. No extra textures or passes. Existing volume effects remain separate.
+- Night sky uses the existing star geometry and a broad sky band. No SEUS PTGI source imported.
+- Medium uses 8 SSR steps; High through Extreme retain 16. Actual frame-time and runtime visual acceptance are pending.
+- Research reference: [Hillaire, EGSR 2020](https://sebh.github.io/publications/egsr2020.pdf) and [AtmosphereRenderer](https://github.com/AirGuanZ/AtmosphereRenderer) (MIT). Future LUT work is separate from this analytic implementation; no upstream code or paper PDF copied.
+
+### Natural V2.1 — runtime feedback follow-up (candidate)
+- Ultra/Extreme user reports whole-image and distant jitter. Move volume composition before TAA, use a stable angular ray, keep geometry depth reconstruction projection-specific, avoid contaminating sky history with foreground depth. This is a source-level hypothesis pending replay.
+- Volume uses a four-depth comparison (or hardware PCF) instead of per-step blocker search/PCSS. Enable existing half-resolution SSGI with depth/normal-aware full-resolution fallback on Ultra and Extreme; no voxel grid reduction.
+- Split shadowed sky diffuse from independent block/voxel irradiance. Explicit cutout shadow alpha, tilted solar path, analytic environment specular for smooth materials.
+- Use separate wavelength-dependent molecular and aerosol optical depths with a bounded directional phase function; same analytic atmospheric model for native terrain and DH, no new pass or LUT.
+- Water SSR uses wider marching reach and four crossing-refinement steps only on candidate intersections. Preserve Fresnel and screen edge confidence. Offscreen and DH reflections remain approximate.
+- Actual GPU frame-time, continuous LOD and visual acceptance remain pending. No stable release claimed.
+
+### Natural V2.2 — stable-grid temporal resolve
+- Runtime feedback: Ultra/Extreme still shake, especially fullscreen, after V2.1. Static compile was successful, not a runtime acceptance.
+- Separate resolved TAA history coordinates (unjittered) from raw SSGI history coordinates (jittered). Reconstruct the current raster sample onto a fixed output grid with a depth/normal-aware four-tap filter, use a local plane for reprojection, and record viewport dimensions in history metadata. Remove depth-donor replacement at distance edges. Center the finite jitter sequence.
+- Resolve volume using the geometry sample ray before TAA, blend half-resolution GI and full-resolution fallback continuously, and expand compile/test coverage. No preset disables TAA, volumes, or voxel lighting.
+- Runtime A/B matrix: fixed camera 64+ frames, native/DH edges and moving camera, windowed/fullscreen/resized, 720p/1080p/1440p/4K; isolate VOLUME_EFFECTS, SCREEN_GI_HISTORY, SCREEN_GI_SPATIAL and VOXEL_LIGHTING independently; measure image shift and p95/p99 frame time. Actual runtime acceptance pending.
+- Next gated implementation sequence: physical atmospheric transmittance/multiple-scattering/sky-view/aerial LUTs; shared depth-aware material SSR; DH shadow caster and receiver integration; incremental world-aligned voxel cache with dirty-region propagation and deletion correctness. Keep changes isolated until the stability regression is accepted.
+
+### Natural V2.3 — evidence-driven projection compatibility
+- V2.2 user isolation: D00, D07, D08, D11 normal; D01–D06, D09, D10, D12, D13 flicker. D07 fixes projection only with all Ultra lighting enabled. D12 bar colors were not recorded. This establishes a necessary trigger in the tested configuration, not a unique GPU/driver cause. Do not claim a dynamic-jitter root-cause fix yet.
+- Introduce independent projection mode (auto/fixed/dynamic), using exactly the zero-jitter path proven by D07 for advanced lighting in auto. Preserve all quality preset flags, TAA/SSGI accumulation and voxel dimensions. Dynamic remains available. Fixed sampling does not provide temporal supersampling; optional spatial AA can improve edges.
+- Validate normal Ultra/Extreme auto, explicit dynamic Ultra, and explicit fixed High in the compile matrix. Runtime acceptance: Ultra/Extreme auto, fullscreen and windowed, plus DH edges and stationary/moving camera. Keep research branch isolated until acceptance.

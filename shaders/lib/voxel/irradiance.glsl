@@ -1,7 +1,10 @@
 #include "/lib/voxel/grid.glsl"
 
 uniform sampler3D lwVoxelLight;
+#ifndef LW_CAMERA_FRACT_UNIFORM
+#define LW_CAMERA_FRACT_UNIFORM
 uniform vec3 cameraPositionFract;
+#endif
 
 vec3 sampleVoxelIrradiance(sampler3D field, vec3 relativePosition, vec3 normal, float offset) {
     vec3 cell = relativePosition + cameraPositionFract + vec3(float(LW_GRID_SIZE) * 0.5);

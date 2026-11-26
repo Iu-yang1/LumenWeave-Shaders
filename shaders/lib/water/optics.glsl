@@ -23,4 +23,8 @@ float waterFresnel(float cosine, bool submerged) {
     return 0.0204 + 0.9796 * fifth;
 }
 
+vec3 waterToAirDirection(vec3 incident, vec3 normal) {
+    return refract(incident, normal, 1.333);
+}
+
 #endif

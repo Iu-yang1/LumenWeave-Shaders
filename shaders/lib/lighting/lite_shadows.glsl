@@ -72,7 +72,8 @@ float sceneShadow(vec3 position, vec3 normal, vec3 light) {
         return 1.0;
     }
     float grazing = 1.0 - max(dot(normal, light), 0.0);
-    vec3 offset = normal * mix(0.045, 0.16, grazing);
+    float worldTexel = 2.0 * shadowDistance / float(shadowMapResolution);
+    vec3 offset = normal * clamp(worldTexel * mix(0.22, 0.60, grazing), 0.012, 0.095);
     vec4 clip = shadowProjection * shadowModelView * vec4(position + offset, 1.0);
     vec3 samplePosition = clip.xyz / clip.w * 0.5 + 0.5;
     vec2 edge = abs(samplePosition.xy - 0.5);
@@ -80,11 +81,28 @@ float sceneShadow(vec3 position, vec3 normal, vec3 light) {
     if (range >= 0.49 || samplePosition.z <= 0.0 || samplePosition.z >= 1.0) {
         return 1.0;
     }
-    samplePosition.z -= 0.00020;
+    samplePosition.z -= clamp(0.16 / float(shadowMapResolution), 0.00004, 0.00020);
 #ifdef SOFT_SHADOWS
     float visibility = softShadow(samplePosition);
 #else
     float visibility = texture(shadowtex0, samplePosition);
+#endif
+    return mix(visibility, 1.0, smoothstep(0.39, 0.49, range));
+}
+
+float volumeShadow(vec3 position) {
+    vec4 clip = shadowProjection * shadowModelView * vec4(position, 1.0);
+    vec3 receiver = clip.xyz / clip.w * 0.5 + 0.5;
+    vec2 edge = abs(receiver.xy - 0.5);
+    float range = max(edge.x, edge.y);
+    if (range >= 0.49 || receiver.z <= 0.0 || receiver.z >= 1.0) {
+        return 1.0;
+    }
+    receiver.z -= clamp(0.16 / float(shadowMapResolution), 0.00004, 0.00020);
+#ifdef SOFT_SHADOWS
+    float visibility = filteredShadow(receiver.xy, receiver.z, textureSize(shadowtex0, 0));
+#else
+    float visibility = texture(shadowtex0, receiver);
 #endif
     return mix(visibility, 1.0, smoothstep(0.39, 0.49, range));
 }
