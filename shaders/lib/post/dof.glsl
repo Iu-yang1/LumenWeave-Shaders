@@ -1,5 +1,8 @@
 // Linear view depth and signed circle of confusion, in pixels.
 uniform sampler2D depthtex0;
+uniform sampler2D depthtex1;
+uniform sampler2D depthtex2;
+uniform bool firstPersonCamera;
 uniform mat4 gbufferProjectionInverse;
 uniform float centerDepthSmooth;
 #ifdef DISTANT_HORIZONS
@@ -12,7 +15,11 @@ float lwLinearDepth(mat4 inverseProjection,float depth) {
 }
 float lwDofDepth(vec2 uv) {
     float depth=texture(depthtex0,uv).r;
-    if(depth<0.55) return -1.0;
+    // The hand has a compressed projection and is absent from depthtex2.
+    // Keep close world geometry when the solid depth agrees.
+    float solid=texture(depthtex1,uv).r;
+    float withoutHand=texture(depthtex2,uv).r;
+    if(firstPersonCamera && depth<0.55 && (solid+0.00001<withoutHand || depth+0.00001<solid)) return -1.0;
 #ifdef DISTANT_HORIZONS
     if(depth>=1.0) {
         float distant=texture(dhDepthTex0,uv).r;
@@ -38,16 +45,33 @@ float lwCoC(float depth,float focus) {
     return clamp((1.0/focus-1.0/depth)*48.0*strength,-14.0,14.0);
 }
 vec3 lwDofGather(sampler2D source,vec2 uv,vec3 center,float depth,float coc) {
-    if(abs(coc)<0.65) return center;
+    if(depth<=0.0) return center;
     vec2 texel=1.0/vec2(textureSize(source,0));
     const vec2 taps[8]=vec2[8](vec2(1,0),vec2(-1,0),vec2(0,1),vec2(0,-1),vec2(0.707,0.707),vec2(-0.707,0.707),vec2(0.707,-0.707),vec2(-0.707,-0.707));
-    vec3 sum=center;float total=1.0;
+    vec3 farSum=center,nearSum=vec3(0.0);
+    float farTotal=1.0,nearTotal=0.0;
+    float focus=lwFocusDepth();
+    // Separate foreground dilation from the background disk. A foreground
+    // donor may cover a sharp background pixel; the reverse is forbidden.
     for(int i=0;i<8;++i) {
-        vec2 p=clamp(uv+taps[i]*texel*abs(coc),texel*0.5,1.0-texel*0.5);
-        float d=lwDofDepth(p);
-        if(d<=0.0) continue;
-        float w=1.0-smoothstep(0.04,0.23,abs(d-depth)/max(depth,0.5));
-        sum+=texture(source,p).rgb*w;total+=w;
+        if(abs(coc)>0.65) {
+            vec2 p=clamp(uv+taps[i]*texel*abs(coc),texel*0.5,1.0-texel*0.5);
+            float d=lwDofDepth(p);
+            if(d>0.0) {
+                float w=1.0-smoothstep(0.04,0.23,abs(d-depth)/max(depth,0.5));
+                farSum+=texture(source,p).rgb*w;farTotal+=w;
+            }
+        }
+        for(int ring=0;ring<2;++ring) {
+            float distancePixels=ring==0?4.0:10.0;
+            vec2 p=clamp(uv+taps[i]*texel*distancePixels,texel*0.5,1.0-texel*0.5);
+            float d=lwDofDepth(p);
+            if(d<=0.0 || d>=depth*0.97) continue;
+            float cover=smoothstep(distancePixels-1.5,distancePixels+1.5,-lwCoC(d,focus));
+            if(cover<=0.0) continue;
+            nearSum+=texture(source,p).rgb*cover;nearTotal+=cover;
+        }
     }
-    return sum/total;
+    vec3 farColor=farSum/farTotal;
+    return mix(farColor,nearSum/max(nearTotal,0.0001),clamp(nearTotal*0.125,0.0,1.0));
 }

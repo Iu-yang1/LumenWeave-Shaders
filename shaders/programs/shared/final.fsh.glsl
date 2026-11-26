@@ -3,6 +3,7 @@
 #include "/lib/color/scene.glsl"
 #include "/lib/quality.glsl"
 #include "/lib/post/display.glsl"
+#define LW_EXPOSURE_FINAL
 #include "/lib/post/exposure.glsl"
 #if DOF_MODE != 0
 #include "/lib/post/dof.glsl"
@@ -51,11 +52,11 @@ void main() {
     }
 #if DOF_MODE != 0
     float depth=lwDofDepth(texCoord), coc=lwCoC(depth,lwFocusDepth());
-    if(abs(coc)>0.65) {
+    if(depth>0.0) {
 #ifdef LW_DOF_HALF
         vec4 blurred=texture(colortex10,texCoord);
         float confidence=1.0-smoothstep(0.04,0.18,abs(blurred.a-depth)/max(depth,0.5));
-        scene=mix(scene,blurred.rgb,confidence*smoothstep(0.65,2.0,abs(coc)));
+        scene=confidence>=0.999 ? blurred.rgb : mix(lwDofGather(LW_POST_SOURCE,texCoord,scene,depth,coc),blurred.rgb,confidence);
 #else
         scene=lwDofGather(LW_POST_SOURCE,texCoord,scene,depth,coc);
 #endif

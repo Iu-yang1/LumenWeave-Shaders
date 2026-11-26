@@ -24,3 +24,17 @@ class RenderingEfficiencyTests(unittest.TestCase):
         self.assertIn("wetSurface(albedo,source",(S/"lib/lighting/screen_gi.glsl").read_text())
         self.assertIn("wetSurface(bounceAlbedo",(S/"programs/shared/deferred1.fsh.glsl").read_text())
         self.assertIn("smoothstep(0.02,0.30,above)",(S/"lib/water/screen_space.glsl").read_text())
+
+    def test_exposure_state_coherence(self):
+        source=(S/"programs/shared/composite4.csh.glsl").read_text()
+        self.assertIn("vec4(next,old,glare,target)",source)
+        self.assertIn("terrainWeight",source)
+        self.assertIn("return state.g",(S/"lib/post/exposure.glsl").read_text())
+        self.assertIn("LW_EXPOSURE_FINAL",(S/"programs/shared/final.fsh.glsl").read_text())
+        self.assertIn("colortex9,sampleUv,0.0).a",(S/"lib/post/solar_visibility.glsl").read_text())
+
+    def test_dof_near_coverage_and_hand_depth(self):
+        src=(S/"lib/post/dof.glsl").read_text()
+        self.assertIn("depthtex2",src)
+        self.assertIn("nearTotal",src)
+        self.assertIn("-lwCoC(d,focus)",src)

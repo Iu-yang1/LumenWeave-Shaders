@@ -1,7 +1,15 @@
 #ifdef AUTO_EXPOSURE
 #ifdef LW_EXPOSURE_METER
 uniform sampler2D lwExposureSampler;
-float lwExposureEV(){return texelFetch(lwExposureSampler,ivec2(0),0).r;}
+float lwExposureEV(){
+    vec4 state=texelFetch(lwExposureSampler,ivec2(0),0);
+#ifdef LW_EXPOSURE_FINAL
+    // Bloom already used R before composite4 advanced the history.
+    return state.g;
+#else
+    return state.r;
+#endif
+}
 #else
 uniform ivec2 eyeBrightnessSmooth;
 float lwExposureEV(){
