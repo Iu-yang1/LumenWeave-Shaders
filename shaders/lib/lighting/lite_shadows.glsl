@@ -20,32 +20,54 @@ uniform mat4 shadowProjection;
 uniform vec3 shadowLightPosition;
 
 #ifdef SOFT_SHADOWS
-float shadowDepth(vec2 uv, ivec2 resolution) {
-    ivec2 pixel = clamp(ivec2(uv * vec2(resolution)), ivec2(0), resolution - 1);
-    return texelFetch(shadowtex0, pixel, 0).r;
+// Orthographic shadow projection: transform the receiver normal into light
+// view space and solve n.x*dx+n.y*dy+n.z*dz=0 in normalized shadow UVZ.
+// Clamp near grazing incidence, where the plane becomes ill-conditioned.
+vec2 receiverDepthGradient(vec3 normal) {
+    vec3 n=mat3(shadowModelView)*normal;
+    float nz=(n.z<0.0 ? -1.0 : 1.0)*max(abs(n.z),0.12);
+    vec2 gradient=-(n.xy/nz)*shadowProjection[2][2]/vec2(shadowProjection[0][0],shadowProjection[1][1]);
+    return clamp(gradient,vec2(-8.0),vec2(8.0));
 }
 
-float filteredShadow(vec2 uv, float receiverDepth, ivec2 resolution) {
-    vec2 position = uv * vec2(resolution) - 0.5;
-    ivec2 base = ivec2(floor(position));
-    vec2 fraction = fract(position);
-    ivec2 limit = resolution - 1;
-    float lowerLeft = step(receiverDepth, texelFetch(shadowtex0, clamp(base, ivec2(0), limit), 0).r);
-    float lowerRight = step(receiverDepth, texelFetch(shadowtex0, clamp(base + ivec2(1, 0), ivec2(0), limit), 0).r);
-    float upperLeft = step(receiverDepth, texelFetch(shadowtex0, clamp(base + ivec2(0, 1), ivec2(0), limit), 0).r);
-    float upperRight = step(receiverDepth, texelFetch(shadowtex0, clamp(base + ivec2(1, 1), ivec2(0), limit), 0).r);
-    return mix(mix(lowerLeft, lowerRight, fraction.x), mix(upperLeft, upperRight, fraction.x), fraction.y);
+float receiverDepthAt(vec3 receiver,vec2 gradient,ivec2 pixel,ivec2 resolution) {
+    vec2 uv=(vec2(pixel)+0.5)/vec2(resolution);
+    return receiver.z+dot(gradient,uv-receiver.xy);
 }
 
-float softShadow(vec3 receiver, float viewDistance) {
-    const vec2 taps[8] = vec2[8](
-        vec2(-0.59, -0.57), vec2(-0.22, -0.11), vec2(-0.87, 0.20), vec2(-0.17, 0.82),
-        vec2(0.39, 0.42), vec2(0.62, -0.54), vec2(0.12, -0.85), vec2(0.89, 0.14)
+float compareShadowTexel(vec3 receiver,vec2 gradient,ivec2 pixel,ivec2 resolution) {
+    pixel=clamp(pixel,ivec2(0),resolution-1);
+    return step(receiverDepthAt(receiver,gradient,pixel,resolution),texelFetch(shadowtex0,pixel,0).r);
+}
+
+float filteredReceiverShadow(vec2 uv,vec3 receiver,vec2 gradient,ivec2 resolution) {
+    vec2 position=uv*vec2(resolution)-0.5;
+    ivec2 base=ivec2(floor(position));
+    vec2 fraction=fract(position);
+    float ll=compareShadowTexel(receiver,gradient,base,resolution);
+    float lr=compareShadowTexel(receiver,gradient,base+ivec2(1,0),resolution);
+    float ul=compareShadowTexel(receiver,gradient,base+ivec2(0,1),resolution);
+    float ur=compareShadowTexel(receiver,gradient,base+ivec2(1,1),resolution);
+    return mix(mix(ll,lr,fraction.x),mix(ul,ur,fraction.x),fraction.y);
+}
+
+// Volume samples have no receiver surface; retain the ordinary depth comparison.
+float filteredShadow(vec2 uv,float receiverDepth,ivec2 resolution) {
+    return filteredReceiverShadow(uv,vec3(uv,receiverDepth),vec2(0.0),resolution);
+}
+
+float softShadow(vec3 receiver,vec2 gradient,float viewDistance) {
+    const vec2 taps[8]=vec2[8](
+        vec2(-0.62,-0.62),vec2(-0.16,-0.38),
+        vec2(0.62,-0.62),vec2(0.38,-0.16),
+        vec2(0.62,0.62),vec2(0.16,0.38),
+        vec2(-0.62,0.62),vec2(-0.38,0.16)
     );
     ivec2 resolution = textureSize(shadowtex0, 0);
     vec2 texel = 1.0 / vec2(resolution);
     float sum = 0.0;
     float count = 0.0;
+    float center=filteredReceiverShadow(receiver.xy,receiver,gradient,resolution);
     int blockerTaps=SHADOW_FILTER_TAPS;
     int filterTaps=SHADOW_FILTER_TAPS;
 #ifdef ADAPTIVE_SHADOWS
@@ -56,26 +78,31 @@ float softShadow(vec3 receiver, float viewDistance) {
     for (int index = 0; index < SHADOW_FILTER_TAPS; ++index) {
         if(index>=blockerTaps) break;
         int tap=index*blockerStride;
-        float depth = shadowDepth(receiver.xy + taps[tap] * texel * 3.5, resolution);
-        if (depth < receiver.z) {
-            sum += depth;
+        ivec2 p=clamp(ivec2((receiver.xy+taps[tap]*texel*3.5)*vec2(resolution)),ivec2(0),resolution-1);
+        float depth=texelFetch(shadowtex0,p,0).r;
+        float plane=receiverDepthAt(receiver,gradient,p,resolution);
+        if(depth<plane) {
+            sum+=plane-depth;
             count += 1.0;
         }
     }
     if (count == 0.0) {
-        return filteredShadow(receiver.xy, receiver.z, resolution);
+        return center;
     }
-    float separation = (receiver.z - sum / count) * (2.0 / abs(shadowProjection[2][2]));
+    float separation = (sum / count) * (2.0 / abs(shadowProjection[2][2]));
     float radius = clamp(separation * 0.018 / (2.0 * shadowDistance * texel.x), 1.0, 8.0);
-    float samples = filteredShadow(receiver.xy, receiver.z, resolution);
+    float samples = center;
 #ifdef ADAPTIVE_SHADOWS
     if(viewDistance>28.0 && radius<=1.5) filterTaps=min(4,filterTaps);
+    // Distant, uniformly blocked probes with a narrow penumbra need no
+    // extra filtering. This is an approximation only on far surfaces.
+    if(viewDistance>48.0 && count==float(blockerTaps) && center==0.0 && radius<=1.5) return 0.0;
 #endif
     int filterStride=filterTaps==SHADOW_FILTER_TAPS ? 1 : 2;
     for (int index = 0; index < SHADOW_FILTER_TAPS; ++index) {
         if(index>=filterTaps) break;
         int tap=index*filterStride;
-        samples += filteredShadow(receiver.xy + taps[tap] * texel * radius, receiver.z, resolution);
+        samples += filteredReceiverShadow(receiver.xy+taps[tap]*texel*radius,receiver,gradient,resolution);
     }
     return samples / float(filterTaps + 1);
 }
@@ -98,8 +125,9 @@ float sceneShadow(vec3 position, vec3 normal, vec3 light, bool detailed) {
     }
     samplePosition.z -= clamp(0.16 / float(shadowMapResolution), 0.00004, 0.00020);
 #ifdef SOFT_SHADOWS
-    float visibility = detailed ? softShadow(samplePosition,length(position))
-        : filteredShadow(samplePosition.xy,samplePosition.z,textureSize(shadowtex0,0));
+    vec2 gradient=receiverDepthGradient(normal);
+    float visibility = detailed ? softShadow(samplePosition,gradient,length(position))
+        : filteredReceiverShadow(samplePosition.xy,samplePosition,gradient,textureSize(shadowtex0,0));
 #else
     float visibility = texture(shadowtex0, samplePosition);
 #endif

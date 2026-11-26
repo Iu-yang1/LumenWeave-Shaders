@@ -172,3 +172,8 @@ value.BLOOM_FILTER.1=均衡
 value.BLOOM_FILTER.2=宽域
 option.BLOOM_STRENGTH.comment=控制最终镜头辉光强度，不改变物体真实光照。
 option.BLOOM_THRESHOLD.comment=仅让足够亮的HDR高光进入辉光，阈值越低越容易泛光。
+
+option.AO_RECONSTRUCTION=环境光遮蔽计算方式
+option.AO_RECONSTRUCTION.comment=自适应模式复用主世界半分辨率间接光通道，近处和几何不匹配时使用完整GTAO；动态投影仍使用原路径。
+value.AO_RECONSTRUCTION.0=全分辨率
+value.AO_RECONSTRUCTION.1=自适应

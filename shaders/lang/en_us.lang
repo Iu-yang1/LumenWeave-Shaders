@@ -172,3 +172,8 @@ value.BLOOM_FILTER.1=Balanced
 value.BLOOM_FILTER.2=Wide
 option.BLOOM_STRENGTH.comment=Controls the screen-space halo, not physical scene illumination.
 option.BLOOM_THRESHOLD.comment=Only sufficiently bright HDR highlights contribute. Lower thresholds increase glow.
+
+option.AO_RECONSTRUCTION=Ambient occlusion computation
+option.AO_RECONSTRUCTION.comment=Adaptive shares the Overworld half-resolution GI pass, with full GTAO near the eye and at geometry mismatches. Dynamic projection retains the original path.
+value.AO_RECONSTRUCTION.0=Full resolution
+value.AO_RECONSTRUCTION.1=Adaptive

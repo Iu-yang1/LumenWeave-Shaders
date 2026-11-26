@@ -71,6 +71,7 @@
 #define IMAGE_SHARPENING 0.0 // [0.0 0.15 0.3 0.5 0.75]
 #define SHADOW_FILTER_TAPS 8 // [4 8]
 #define AO_SLICES 3 // [2 3 4]
+#define AO_RECONSTRUCTION 1 // [0 1]
 #define AO_STRENGTH 1.0 // [0.0 0.5 0.75 1.0 1.25]
 
 #ifdef INCREMENTAL_VOXELS
@@ -111,6 +112,12 @@
 #endif
 #if AA_MODE == 1 || AA_MODE == 3 || (AA_MODE == 2 && !defined(DEFERRED_LIGHTING))
 #define LW_FXAA_ACTIVE
+#endif
+
+// Only the explicit fixed-grid path can safely share the unused ownership
+// attachment with half-resolution AO; dynamic projection keeps it full size.
+#if AO_RECONSTRUCTION == 1 && PROJECTION_JITTER == 1 && defined(DEFERRED_LIGHTING) && defined(SCREEN_AO) && defined(SCREEN_GI) && defined(SCREEN_GI_SPATIAL) && !defined(LW_DIMENSION_END) && !defined(LW_DIMENSION_NETHER)
+#define LW_AO_SPATIAL
 #endif
 
 // Stable native depth only; dynamic reanchoring can shift hit depth.
