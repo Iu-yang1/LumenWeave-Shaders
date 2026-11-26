@@ -143,6 +143,38 @@ void main() {
     }
 #endif
     Material material = vanillaMaterial(blockId, radiance);
+#if defined(LW_WATER) && defined(ADVANCED_WATER) && defined(DEFERRED_LIGHTING)
+    // Lava is emitted in the forward fluid pass, not the deferred material SSR pass.
+    // Reuse the opaque scene and its bounded water ray, without water refraction.
+    if (blockId == 10015) {
+        vec3 lavaPosition = viewPosition;
+#ifdef LW_STABLE_DYNAMIC
+        vec2 stableUv = gl_FragCoord.xy / vec2(textureSize(depthtex1,0));
+        lavaPosition = stableViewSurfacePosition(viewPosition,stableUv,
+            transpose(mat3(gbufferModelViewInverse))*normal,gbufferProjectionInverse);
+        view = normalize(worldDirection(-lavaPosition));
+#endif
+        vec4 metadata, fallback;
+        vec3 lit = surfaceRadiance(radiance, material, normal, view, sun,
+            lightLevels, lavaPosition, metadata, fallback);
+        vec3 reflected = reflect(-view, normal);
+        float fresnel = 0.045 + 0.955 * pow(1.0 - clamp(dot(view,normal),0.0,1.0),5.0);
+        vec3 reflectedRadiance = hasSkylight ? skyRadiance(reflected,sun)
+            : ambientIrradiance(lightLevels,normal.y,sun) * 0.35;
+#if WATER_REFLECTION_STEPS > 0
+        if (fresnel > 0.065 && -lavaPosition.z < 48.0 && isEyeInWater == 0) {
+            mat3 toView = transpose(mat3(gbufferModelViewInverse));
+            vec4 hit = traceScreenReflection(lavaPosition + toView*normal*0.07,
+                toView*reflected, min(WATER_REFLECTION_STEPS,8));
+            reflectedRadiance = mix(reflectedRadiance,hit.rgb,hit.a);
+        }
+#endif
+        // Replace the prior specular fallback, never attenuate emitted radiance.
+        lit = max(lit - fallback.rgb + reflectedRadiance * min(fresnel,0.42),vec3(0.0));
+        gl_FragData[0] = vec4(applySceneFog(lit,lavaPosition),1.0);
+        return;
+    }
+#endif
     radiance = surfaceRadiance(radiance, material, normal, view, sun, lightLevels, viewPosition);
 #endif
 #elif defined(LW_LIT)
