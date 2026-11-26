@@ -1,8 +1,7 @@
-#version 430 core
 #include "/lib/quality.glsl"
 layout(local_size_x = 8, local_size_y = 8) in;
 const ivec3 workGroups = ivec3(4, 4, 1);
-#ifdef LW_ATMOSPHERE_LUT_ACTIVE
+#if defined(LW_ATMOSPHERE_LUT_ACTIVE) && !defined(LW_DIMENSION_END) && !defined(LW_DIMENSION_NETHER)
 #include "/lib/atmosphere/physical_integrate.glsl"
 uniform ivec3 cameraPositionInt;
 uniform vec3 cameraPositionFract;

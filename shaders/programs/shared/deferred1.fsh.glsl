@@ -116,6 +116,8 @@ uniform sampler2D colortex2;
 uniform sampler2D depthtex0;
 #ifdef LW_DH_DEFERRED_SHADOWS
 #include "/lib/lighting/dh_terrain_shadows.glsl"
+#elif defined(LW_DIMENSION_END) && defined(DISTANT_HORIZONS)
+uniform sampler2D dhDepthTex0;
 #endif
 
 #if defined(SCREEN_AO) || defined(SCREEN_GI)
@@ -174,10 +176,14 @@ void main() {
         }
     }
 #endif
-#if defined(LW_DIMENSION_END) && !defined(DISTANT_HORIZONS)
+#ifdef LW_DIMENSION_END
     // Authoritative background before translucent rendering, even if the
     // loader did not submit the textured End sky geometry.
-    if(depth>=1.0 && (isEyeInWater==0 || isEyeInWater==1)) {
+    bool bareEndSky=depth>=1.0;
+#ifdef DISTANT_HORIZONS
+    bareEndSky=bareEndSky && depthAtUv(dhDepthTex0,texCoord)>=1.0;
+#endif
+    if(bareEndSky && (isEyeInWater==0 || isEyeInWater==1)) {
         vec3 ray=normalize(worldDirection((gbufferProjectionInverse*vec4(texCoord*2.0-1.0,1.0,1.0)).xyz));
         writeScene(vec4(skyRadiance(ray,vec3(0,1,0))+endSkyDetail(ray),1.0));
         return;

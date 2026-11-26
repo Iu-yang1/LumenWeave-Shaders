@@ -81,7 +81,7 @@ void main() {
 #endif
             }
         }
-        imageStore(LW_VOXEL_WRITE,storageCell,vec4(max(source,incoming.rgb*0.73),max(float(seed!=0u),incoming.a-0.20)));
+        imageStore(LW_VOXEL_WRITE,storageCell,vec4(max(source,incoming.rgb*0.73),max(float(any(greaterThan(source,vec3(0.0)))),incoming.a-0.20)));
         return;
     }
 
@@ -108,5 +108,5 @@ void main() {
     for (int stepIndex = 0; stepIndex < 6; ++stepIndex) {
         incoming = max(incoming,lwStencil[stencilIndex(local+LW_VOXEL_DIRECTIONS[stepIndex])]);
     }
-    imageStore(LW_VOXEL_WRITE, storageCell, vec4(max(source, incoming * 0.73), 0.0));
+    imageStore(LW_VOXEL_WRITE, storageCell, vec4(max(source,incoming.rgb*0.73),max(float(any(greaterThan(source,vec3(0.0)))),incoming.a-0.20)));
 }

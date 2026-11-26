@@ -1,4 +1,3 @@
-#version 330 compatibility
 
 #include "/lib/quality.glsl"
 #include "/lib/voxel/features.glsl"
@@ -33,7 +32,11 @@ void main() {
     // No celestial shadow consumer in Nether/End or a voxel-only profile.
     // Keep vertex-side injection but clip before wind and rasterization.
 #ifdef SCENE_SHADOWS
+#if defined(LW_DIMENSION_END) || defined(LW_DIMENSION_NETHER)
+    if (true) {
+#else
     if (!hasSkylight) {
+#endif
 #endif
         gl_Position = vec4(2.0, 2.0, 2.0, 1.0);
         texCoord = vec2(0.0);
