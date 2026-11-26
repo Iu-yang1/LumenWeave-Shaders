@@ -29,6 +29,9 @@ Material vanillaMaterial(int blockId, vec3 albedo) {
         vec3 tint = mix(albedo,emitterColor(kind)*peak,0.45);
         material.emission = tint*emitterRadiance(kind)*mask;
     }
-    if (kind==5u) material.roughness = 0.48;
+    if (kind==5u) {
+        material.roughness = 0.32;
+        material.f0 = vec3(0.045);
+    }
     return material;
 }
