@@ -4,14 +4,8 @@
 
 LumenWeave is a Minecraft Java Edition shader pack for Iris and OpenGL. It focuses on natural soft lighting, clear water, atmospheric skies and colored artificial lights that preserve dark surroundings. Quality settings range from a lightweight forward renderer to advanced hybrid deferred lighting.
 
-## Gallery
-
 <!-- Add actual in-game screenshots from screenshots/ -->
-| Overworld — daylight and clouds | Overworld — water and sunset |
-| :---: | :---: |
-| Screenshot pending | Screenshot pending |
-| Nether — lava and colored light | End — purple nebula |
-| Screenshot pending | Screenshot pending |
+<img width="1916" height="1071" alt="2026-11-26_15 03 31" src="https://github.com/user-attachments/assets/1bd40d47-486f-42dc-8ee6-af8786cd8207" />
 
 ## Features
 
