@@ -28,6 +28,8 @@ class PerceptualTests(unittest.TestCase):
         self.assertGreater(r['gi_1']['reduction_pct'],0)
         self.assertGreater(r['spatial']['reduction_pct'],0)
         self.assertGreater(r['volume_2']['reduction_pct'],r['volume_1']['reduction_pct'])
+        for mode in (1,2):
+            self.assertLessEqual(r[f'ssr_{mode}']['candidate_steps'],r[f'ssr_{mode}']['reference_adaptive_steps'])
         self.assertLess(r['sh']['max_abs'],1e-12)
     def test_profiles_and_ordering(self):
         profiles=preview_profiles(ROOT/'shaders')
@@ -41,3 +43,15 @@ class PerceptualTests(unittest.TestCase):
         s=(ROOT/'shaders/lib/lighting/screen_gi_spatial.glsl').read_text()
         self.assertIn('coverage>=0.72',s)
         self.assertIn('cacheCoherent',s)
+
+    def test_refresh_schedule_and_ssr_range(self):
+        for period in (2,4):
+            for x in range(4):
+                for y in range(4):
+                    for start in range(12):
+                        self.assertEqual(sum((x+y+frame)%period==0 for frame in range(start,start+period)),1)
+        trace=(ROOT/'shaders/lib/reflection/trace.glsl').read_text()
+        material=(ROOT/'shaders/lib/reflection/material_trace.glsl').read_text()
+        self.assertIn('int steps,float maxTravel,int refineBudget',trace)
+        self.assertIn('refine<refineBudget',trace)
+        self.assertLess(material.index('traceRange=steps<=8?12.0:48.0;',material.index('#if SSR_FOOTPRINT > 0')),material.index('steps=min(steps,reduced)'))

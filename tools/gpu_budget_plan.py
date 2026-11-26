@@ -43,7 +43,7 @@ def capture(rows):
 
 
 def allocate(baseline,target_fps=240,reserve_ms=.3,protected=()):
-    if target_fps<=0 or reserve_ms<0 or reserve_ms>=1000/target_fps:
+    if not math.isfinite(target_fps) or not math.isfinite(reserve_ms) or target_fps<=0 or reserve_ms<0 or reserve_ms>=1000/target_fps:
         raise ValueError('Invalid FPS or headroom')
     budget=1000/target_fps-reserve_ms
     # Work only with passes sampled on every frame. Do not treat missing as zero.

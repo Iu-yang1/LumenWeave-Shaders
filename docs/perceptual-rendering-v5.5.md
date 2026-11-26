@@ -32,6 +32,8 @@ Planner allocates mean GPU budget proportionally to measured complete pass costs
 | cloud taps vs 12-tap reference | 198,227 / 240,000 (-17.41%) | 154,132 / 240,000 (-35.78%) |
 | cloud mean transmission error | .00009506 | .00039028 |
 | cloud max transmission error | .00086675 | .00341751 |
-| SSR adaptive ceiling | see reproducible simulator | see reproducible simulator |
+| SSR adaptive ceiling | 237,719 / 250,840 (-5.23%) | 231,525 / 250,707 (-7.65%) |
 
 Spatial donor count 57,034 / 80,000 (-28.71%), mean absolute scalar error .00057267, max .05997907; not an arbitrary-scene error bound. SH affine equivalence 40,000 cases, max 2.22e-16 in CPU double precision. Synthetic planner tests verify overlap rejection, protected cost exceeding budget, and CPU-limited candidate rejection. Real GPU speedup, visual quality, and all-tier 240 FPS remain unverified.
+
+The SSR step counts use the pre-V5.5 adaptive roughness/distance ceiling, not the unadapted 16-step ceiling. The separate hit refinement savings are not measured. No guarantees of image equivalence: missed thin geometry, high contrast GI edges, and temporal instability remain acceptance items. SH is an algebraic baseline, not a performance claim.
