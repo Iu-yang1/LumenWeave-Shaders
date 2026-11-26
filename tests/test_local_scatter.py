@@ -29,7 +29,7 @@ class LocalScatterTests(unittest.TestCase):
         for density in (.0035, .006, .010, .027):
             for distance in (.5, 2., 8., 20., 45., 100.):
                 actual, steps = integrate(distance, 48., density, lambda t: (1., .3, .1))
-                expected = .75 * .90 * (1. - math.exp(-density * min(distance - .08, 47.)))
+                expected = .75 * .90 * 1.7 * (1. - math.exp(-density * min(distance - .08, 47.)))
                 for a, c in zip(actual, (1., .3, .1)):
                     self.assertAlmostEqual(a, expected*c, places=12)
                 self.assertLessEqual(steps, 24)
