@@ -57,7 +57,7 @@ const int colortex8Format = RGBA16F;
 #ifdef LW_MATERIAL_SSR_ACTIVE
 /*
 const int colortex12Format = RGBA16F;
-const int colortex13Format = RGBA16F;
+const int colortex13Format = R11F_G11F_B10F;
 */
 #endif
 

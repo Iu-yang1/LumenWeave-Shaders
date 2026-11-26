@@ -4,7 +4,7 @@ layout(local_size_x=4,local_size_y=4,local_size_z=4) in;
 const ivec3 workGroups=ivec3(8,8,8);
 #ifdef LW_GPU_COMPACTION
 #include "/lib/voxel/active_tiles.glsl"
-layout(r32ui) readonly uniform uimage3D lwVoxelDirtyTiles;
+layout(r8ui) readonly uniform uimage3D lwVoxelDirtyTiles;
 shared uint localCount1,localCount2,base1,base2;
 void main() {
     if(gl_LocalInvocationIndex==0u){localCount1=0u;localCount2=0u;}

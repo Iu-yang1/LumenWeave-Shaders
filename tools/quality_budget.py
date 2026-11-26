@@ -22,7 +22,7 @@ def resource_budget(options, width, height):
     size = int(options["VOXEL_GRID_SIZE"])
     voxel_bytes = 20 * size ** 3 if enabled("VOXEL_LIGHTING") else 0
     if voxel_bytes and enabled("INCREMENTAL_VOXELS"):
-        voxel_bytes += 36 * size ** 3 + 4 * 128 * 32 * 32 + 16
+        voxel_bytes += 34 * size ** 3 + 128 * 32 * 32 + 16
     atmo_bytes = ATMO_BYTES if enabled("PHYSICAL_ATMOSPHERE") else 0
     ssr = enabled("MATERIAL_SSR") and enabled("DEFERRED_LIGHTING") and enabled("ADVANCED_WATER") and not enabled("LITE_LIGHTING")
     taa = int(options["AA_MODE"]) >= 2 and enabled("DEFERRED_LIGHTING")
@@ -33,7 +33,7 @@ def resource_budget(options, width, height):
     )
     # colortex12/13 plus optional history 14/15; ownership colortex3.
     # Report a single texture payload and double-buffered equivalent separately.
-    extra_color_bytes = width * height * (8 * (2 + 2 * int(taa)) * int(ssr) + 8 * int(advanced_dynamic))
+    extra_color_bytes = width * height * ((12 + 16 * int(taa)) * int(ssr) + 8 * int(advanced_dynamic))
     hiz_mode = int(options.get("HIZ_MODE", "1"))
     hiz_bytes = int(width*(.035 if hiz_mode == 1 else .30))*int(height*(.035 if hiz_mode == 1 else .35))*8 if hiz_mode > 0 and enabled("DEFERRED_LIGHTING") and (enabled("SCREEN_GI") or ssr or (hiz_mode == 2 and enabled("ADVANCED_WATER"))) else 0
     return {

@@ -5,7 +5,7 @@
 layout(local_size_x=4,local_size_y=4,local_size_z=4) in;
 const ivec3 workGroups = ivec3(8,8,8);
 #if defined(LW_LOCAL_SCATTER_ACTIVE) && defined(LW_VOXEL_INCREMENTAL_ACTIVE)
-layout(r32ui) uniform uimage3D lwVoxelDirtyTiles;
+layout(r8ui) uniform uimage3D lwVoxelDirtyTiles;
 void main() {
     ivec3 tile = ivec3(gl_GlobalInvocationID);
     int limit = VOXEL_GRID_SIZE/4;

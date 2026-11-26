@@ -7,12 +7,13 @@
 layout(r32ui) readonly uniform uimage3D lwVoxelOccupancy;
 #ifdef LW_VOXEL_INCREMENTAL_ACTIVE
 layout(rgba16f) writeonly uniform image3D lwVoxelStage0;
-layout(r32ui) uniform uimage3D lwVoxelPrevSeed;
-layout(r32ui) coherent uniform uimage3D lwVoxelDirtyTiles;
+layout(r16ui) uniform uimage3D lwVoxelPrevSeed;
+layout(r8ui) coherent uniform uimage3D lwVoxelDirtyTiles;
 layout(rgba32i) readonly uniform iimage2D lwVoxelMeta;
 #include "/lib/voxel/cache_coordinates.glsl"
 uniform int frameCounter;
 shared ivec4 lwPreviousMeta;
+shared ivec3 lwCacheOrigin;
 shared uint lwGroupFlags[8];
 #else
 layout(rgba16f) writeonly uniform image3D lwVoxelFirst;
@@ -24,18 +25,21 @@ void main() {
 #ifdef LW_VOXEL_INCREMENTAL_ACTIVE
     if(gl_LocalInvocationIndex==0u) {
         lwPreviousMeta=imageLoad(lwVoxelMeta,ivec2(0));
+        lwCacheOrigin=voxelCacheOrigin();
     }
     if(gl_LocalInvocationIndex<8u) lwGroupFlags[gl_LocalInvocationIndex]=0u;
     barrier();
     ivec4 previous=lwPreviousMeta;
-    ivec3 previousLocal = cell + (cameraPositionInt - previous.xyz);
-    ivec3 cacheCell = voxelCacheCell(cell);
+    ivec3 movement=cameraPositionInt-previous.xyz;
+    ivec3 previousLocal = cell + movement;
+    ivec3 cacheCell = voxelWrapNear(cell+lwCacheOrigin);
     bool fullRebuild = previous.w != frameCounter - 1;
-    bool entered = !withinVoxelGrid(previousLocal);
+    bool stationary=all(equal(movement,ivec3(0)));
+    bool entered = !stationary && !withinVoxelGrid(previousLocal);
     // A new boundary can lose a neighbour that existed in the old domain,
     // even if the retained voxel seed itself did not change.
     bool lostNeighbor = false;
-    for (int axis=0;axis<3;++axis) {
+    if(!stationary) for (int axis=0;axis<3;++axis) {
         lostNeighbor = lostNeighbor ||
             (cell[axis]==0 && previousLocal[axis]>0) ||
             (cell[axis]==LW_GRID_SIZE-1 && previousLocal[axis]<LW_GRID_SIZE-1);
@@ -55,7 +59,7 @@ void main() {
     if(gl_LocalInvocationIndex==0u) {
         uint mask=0u;
         for(int i=0;i<8;++i) mask|=lwGroupFlags[i];
-        if(mask!=0u) imageStore(lwVoxelDirtyTiles,ivec3(gl_WorkGroupID),uvec4(mask));
+        imageStore(lwVoxelDirtyTiles,ivec3(gl_WorkGroupID),uvec4(mask));
     }
 #else
     vec3 source=seed < LW_VOXEL_WALL ? voxelSeedEmission(seed) : vec3(0.0);

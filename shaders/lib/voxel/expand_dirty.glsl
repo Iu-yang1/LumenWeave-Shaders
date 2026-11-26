@@ -6,7 +6,7 @@ const ivec3 workGroups = ivec3(8, 8, 8);
 #ifdef LW_VOXEL_INCREMENTAL_ACTIVE
 // Each axis reads only the preceding 32^3 slab and writes a disjoint slab.
 // Iris executes prepare, prepare_a, prepare_b, prepare_c serially.
-layout(r32ui) uniform uimage3D lwVoxelDirtyTiles;
+layout(r8ui) uniform uimage3D lwVoxelDirtyTiles;
 void main(){
     ivec3 tile=ivec3(gl_GlobalInvocationID);
     int limit=VOXEL_GRID_SIZE/4;

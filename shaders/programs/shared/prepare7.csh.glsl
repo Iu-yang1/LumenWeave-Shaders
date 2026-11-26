@@ -6,7 +6,7 @@
 #include "/lib/voxel/grid.glsl"
 #include "/lib/voxel/cache_coordinates.glsl"
 layout(rgba16f) readonly uniform image3D lwVoxelFirst;
-layout(r32ui) writeonly uniform uimage3D lwVoxelDirtyTiles;
+layout(r8ui) writeonly uniform uimage3D lwVoxelDirtyTiles;
 shared uint occupied;
 void main() {
     if (gl_LocalInvocationIndex == 0u) occupied = 0u;
