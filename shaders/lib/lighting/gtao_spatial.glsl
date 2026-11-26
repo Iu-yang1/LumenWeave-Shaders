@@ -14,13 +14,15 @@ float spatialGroundTruthOcclusion(vec2 uv,vec3 position,vec3 normal,vec3 normalV
     for(int y=0;y<2;++y) for(int x=0;x<2;++x) {
         ivec2 p=base+ivec2(x,y);
         if(any(lessThan(p,ivec2(0))) || any(greaterThanEqual(p,size))) continue;
+        vec2 w=mix(1.0-fraction,fraction,vec2(x,y));
+        float spatial=w.x*w.y;
+        if(spatial<=0.00001) continue;
         vec2 sampleValue=texelFetch(colortex3,p,0).rg;
         float delta=abs(sampleValue.y-depth);
         if(sampleValue.y<=0.0 || delta>=tolerance) continue;
         ivec2 donor=clamp(ivec2((vec2(p)+0.5)*vec2(fullSize)/vec2(size)),ivec2(0),fullSize-1);
         if(dot(normal,decodeNormal(texelFetch(colortex1,donor,0).xy))<0.85) continue;
-        vec2 w=mix(1.0-fraction,fraction,vec2(x,y));
-        float weight=w.x*w.y*(1.0-smoothstep(0.35,1.0,delta/tolerance));
+        float weight=spatial*(1.0-smoothstep(0.35,1.0,delta/tolerance));
         total+=sampleValue.x*weight;
         coverage+=weight;
     }

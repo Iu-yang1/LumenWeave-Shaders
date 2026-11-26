@@ -12,8 +12,15 @@ float waterPhaseCos(float phase) { return cos(phase); }
 uniform sampler2D lwWaterNormal;
 // One-pixel periodic gutters make bilinear filtering continuous even on
 // loaders which clamp raw custom textures. The footprint fades fine bands.
-vec2 lwWaterSlopeTexture(vec2 uv) {
-    return textureLod(lwWaterNormal,(fract(uv)*64.0+1.0)/66.0,0.0).rg-0.5;
+vec2 lwWaterSlopeTexture(vec2 uv,float footprint) {
+    vec2 p=fract(uv);
+    float level=smoothstep(0.60,2.0,footprint*64.0);
+    vec2 size=vec2(66.0,100.0);
+    vec2 fineUv=(p*64.0+1.0)/size;
+    vec2 coarseUv=(p*32.0+vec2(1.0,67.0))/size;
+    if(level<=0.0) return textureLod(lwWaterNormal,fineUv,0.0).rg-0.5;
+    if(level>=1.0) return textureLod(lwWaterNormal,coarseUv,0.0).rg-0.5;
+    return mix(textureLod(lwWaterNormal,fineUv,0.0).rg,textureLod(lwWaterNormal,coarseUv,0.0).rg,level)-0.5;
 }
 #endif
 vec2 waterWaveSlope(vec2 position, vec2 footprintX, vec2 footprintY, float time, float elapsed) {
@@ -54,34 +61,15 @@ vec2 waterWaveSlope(vec2 position, vec2 footprintX, vec2 footprintY, float time,
     float footprint=max(length(footprintX),length(footprintY));
     if(WATER_WAVE_DETAIL>=4 && footprint<1.2) {
         vec2 uv=position*0.032+time*WATER_WAVE_SPEED*vec2(0.013,-0.008);
-        vec2 fine=lwWaterSlopeTexture(uv);
+        vec2 fine=lwWaterSlopeTexture(uv,footprint*0.032);
         slope+=fine*0.065*(1.0-smoothstep(0.12,1.2,footprint));
         if(WATER_WAVE_DETAIL>=8 && footprint<0.45) {
             vec2 uv2=position.yx*0.071-time*WATER_WAVE_SPEED*vec2(0.019,0.012);
-            slope+=lwWaterSlopeTexture(uv2)*0.045*(1.0-smoothstep(0.04,0.45,footprint));
+            slope+=lwWaterSlopeTexture(uv2,footprint*0.071)*0.045*(1.0-smoothstep(0.04,0.45,footprint));
         }
     }
 #endif
     return slope * WATER_WAVE_STRENGTH;
 }
 
-#if RAIN_RIPPLES > 0
-vec2 rainRippleSlope(vec2 position,float time,float footprint) {
-    if(footprint>=0.35) return vec2(0.0);
-    vec2 p=position*2.5, cell=floor(p), local=fract(p);
-    vec2 result=vec2(0.0);
-    for(int y=-1;y<=1;++y) for(int x=-1;x<=1;++x) {
-#if RAIN_RIPPLES == 1
-        if(abs(x)+abs(y)>1) continue;
-#endif
-        vec2 offset=vec2(x,y);
-        vec2 h=fract(sin(vec2(dot(cell+offset,vec2(127.1,311.7)),dot(cell+offset,vec2(269.5,183.3))))*43758.5453);
-        vec2 delta=local-offset-h;
-        float d=length(delta), age=fract(time*1.25+h.x);
-        float ring=d-age*0.85;
-        float envelope=smoothstep(0.0,0.12,age)*(1.0-smoothstep(0.60,1.0,age))*(1.0-smoothstep(0.02,0.16,abs(ring)));
-        result+=delta/max(d,0.001)*sin(ring*35.0)*envelope;
-    }
-    return result*0.075*(1.0-smoothstep(0.06,0.35,footprint));
-}
-#endif
+#include "/lib/weather/ripples.glsl"

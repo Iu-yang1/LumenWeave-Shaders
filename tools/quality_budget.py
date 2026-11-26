@@ -43,6 +43,8 @@ def resource_budget(options, width, height):
     volume_history=8*int(width*1.5)*height if enabled("VOLUME_EFFECTS") and taa and jitter_mode==1 and options.get("VOLUME_RECONSTRUCTION")=="1" and options.get("VOLUME_TEMPORAL")=="1" and not (enabled("TEMPORAL_REUSE") and enabled("SCREEN_GI") and enabled("SCREEN_GI_SPATIAL") and enabled("SCREEN_GI_HISTORY") and options.get("GI_REUSE_MODE")=="2") and not legacy_full else 0
     cloud_cache=bool(enabled("VOLUME_EFFECTS") and options.get("CLOUD_NOISE_MODE")=="1" and options.get("CLOUD_DENSITY_CACHE")=="1" and not (voxel_bytes and enabled("INCREMENTAL_VOXELS") and enabled("PHYSICAL_ATMOSPHERE") and (options.get("VOXEL_FUSION")=="0" or options.get("ATMO_PREBAKED")=="0")))
     return {
+        "water_normal_mib": 66*100*2/MIB if options.get("WATER_HYBRID_WAVES","1")=="1" else 0,
+        "opaque_hdr_single_mib": width*height*4/MIB if enabled("DEFERRED_LIGHTING") and enabled("ADVANCED_WATER") else 0,
         "water_phase_mib": 514/MIB if enabled("ADVANCED_WATER") and options.get("WATER_PHASE_LUT")=="1" else 0,
         "cloud_cache_mib": 513*512*4/MIB if cloud_cache else 0,
         "end_nebula_mib": (256*256*2/MIB) if options.get("END_NEBULA_ASSET")=="1" else 0,

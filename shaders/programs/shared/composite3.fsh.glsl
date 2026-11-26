@@ -1,5 +1,6 @@
 #version 330 compatibility
 #include "/lib/quality.glsl"
+#include "/lib/voxel/features.glsl"
 #include "/lib/color/scene.glsl"
 #include "/lib/post/exposure.glsl"
 #ifdef LW_TAA_DIRECT
@@ -13,9 +14,15 @@ in vec2 texCoord;
 layout(location = 0) out vec4 outputColor;
 #ifdef BLOOM
 /* RENDERTARGETS: 11 */
+#ifdef LW_SCATTER_UPSAMPLE_ACTIVE
 /*
 const int colortex11Format = RGBA16F;
 */
+#else
+/*
+const int colortex11Format = R11F_G11F_B10F;
+*/
+#endif
 vec3 bloomHighlight(vec2 uv,vec2 texel,float threshold) {
     vec3 sampleColor=texture(LW_POST_SOURCE,clamp(uv,texel*0.5,1.0-texel*0.5)).rgb;
     // Hue-preserving HDR extraction, including saturated red/orange emitters.

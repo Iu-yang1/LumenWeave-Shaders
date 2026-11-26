@@ -31,7 +31,7 @@ layout(location = 5) out vec4 specularEnvironment;
 /* RENDERTARGETS: 0,6,7,8 */
 #endif
 /*
-const int colortex8Format = RGBA16F;
+const int colortex8Format = R11F_G11F_B10F;
 */
 #else
 /* RENDERTARGETS: 0,6,7 */
@@ -47,7 +47,7 @@ layout(location = 3) out vec4 specularEnvironment;
 /* RENDERTARGETS: 0,8 */
 #endif
 /*
-const int colortex8Format = RGBA16F;
+const int colortex8Format = R11F_G11F_B10F;
 */
 #else
 /* RENDERTARGETS: 0 */

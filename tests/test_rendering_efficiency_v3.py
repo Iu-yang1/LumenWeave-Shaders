@@ -11,13 +11,17 @@ class RenderingEfficiencyTests(unittest.TestCase):
     def test_water_asset_reproducible_and_periodic(self):
         data = generate()
         self.assertEqual(data, (S/"textures/water_normal.rg8").read_bytes())
-        self.assertEqual(len(data), 66*66*2)
+        self.assertEqual(len(data), 66*100*2)
         for y in range(66):
             row=data[y*132:(y+1)*132]
             self.assertEqual(row[:2],row[128:130])
             self.assertEqual(row[2:4],row[130:132])
         self.assertEqual(data[:132],data[64*132:65*132])
-        self.assertEqual(data[132:264],data[65*132:])
+        self.assertEqual(data[132:264],data[65*132:66*132])
+        for y in range(66,100):
+            row=data[y*132:(y+1)*132]
+            self.assertEqual(row[:2],row[64:66])
+            self.assertEqual(row[2:4],row[66:68])
         self.assertNotIn("noisetex",(S/"lib/water/waves.glsl").read_text())
 
     def test_wet_gi_and_transmission_contract(self):
@@ -49,3 +53,10 @@ class RenderingEfficiencyTests(unittest.TestCase):
             cells={(x+31)%size for x in range(size)}
             self.assertEqual(len(cells),size)
             self.assertTrue(set(range(size)).isdisjoint(range(size,2*size)))
+
+    def test_hdr_format_and_rain_ripple_reuse(self):
+        self.assertIn("colortex8Format = R11F_G11F_B10F",(S/"programs/shared/deferred1.fsh.glsl").read_text())
+        bloom=(S/"programs/shared/composite3.fsh.glsl").read_text()
+        self.assertIn("LW_SCATTER_UPSAMPLE_ACTIVE",bloom)
+        self.assertIn("colortex11Format = R11F_G11F_B10F",bloom)
+        self.assertIn("rainRippleSlope",(S/"lib/weather/wet_surface.glsl").read_text())
