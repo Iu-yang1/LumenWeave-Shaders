@@ -62,7 +62,10 @@ public final class ShadowFramePlanner {
             boolean clearDynamic=redraw||priorDynamic.contains(tile)||!dynamic.isEmpty();
             if(redraw||clearDynamic)work.add(new PageWork(tile,entry.getValue().slot(),fixed.getOrDefault(tile,List.of()),dynamic,redraw,clearDynamic));
         }
-        priorDynamic.clear();priorDynamic.addAll(moving.keySet());
+        priorDynamic.retainAll(allocation.table().keySet());
+        priorDynamic.addAll(moving.keySet());
+        // A failed clear may leave a previous dynamic caster in a reused layer.
+        for(PageWork page:work)if(page.clearDynamic())priorDynamic.add(page.tile());
         return pending=new Frame(allocation.ticket(),allocation,work);
     }
     private static void bin(Caster caster,ShadowTileCache.Tile tile,VirtualPages.Plan p,
@@ -72,8 +75,14 @@ public final class ShadowFramePlanner {
             (caster.dynamic?moving:fixed).computeIfAbsent(tile,k->new ArrayList<>()).add(caster.draw);
     }
     /** Call only after raster submission completes in the same ordered GPU timeline. */
-    public void complete(long ticket,Set<ShadowTileCache.Tile> staticRendered){
+    public void complete(long ticket,Set<ShadowTileCache.Tile> staticRendered,Set<ShadowTileCache.Tile> dynamicRendered){
         if(pending==null||pending.ticket!=ticket)return;
-        pages.complete(ticket,staticRendered);pending=null;
+        Set<ShadowTileCache.Tile> expected=new HashSet<>();
+        for(PageWork p:pending.work)if(p.clearDynamic)expected.add(p.tile);
+        if(!expected.containsAll(dynamicRendered))throw new IllegalArgumentException("unplanned dynamic page");
+        pages.complete(ticket,staticRendered);
+        for(PageWork p:pending.work)
+            if(dynamicRendered.contains(p.tile)&&p.dynamicDraws.isEmpty())priorDynamic.remove(p.tile);
+        pending=null;
     }
 }

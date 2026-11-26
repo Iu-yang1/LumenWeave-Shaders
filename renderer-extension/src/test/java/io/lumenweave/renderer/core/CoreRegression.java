@@ -97,14 +97,17 @@ public final class CoreRegression {
         var moving=new ShadowFramePlanner.Caster(2,bounds,true,command);
         var first=planner.plan(basis,required,List.of(),List.of(fixed,moving));
         check(first.work().size()==2&&first.allocation().render().size()==2,"initial pages");
-        planner.complete(first.ticket(),first.allocation().render());
+        planner.complete(first.ticket(),first.allocation().render(),required.keySet());
         var second=planner.plan(basis,required,List.of(),List.of(fixed));
         check(second.work().size()==1&&second.work().getFirst().tile().equals(a),"old dynamic cleared");
         check(!second.work().getFirst().redrawStatic()&&second.work().getFirst().clearDynamic(),"static reused");
-        planner.complete(second.ticket(),Set.of());
+        planner.complete(second.ticket(),Set.of(),Set.of());
+        var retry=planner.plan(basis,required,List.of(),List.of(fixed));
+        check(retry.work().size()==1&&retry.work().getFirst().clearDynamic(),"failed dynamic clear retries");
+        planner.complete(retry.ticket(),Set.of(),Set.of(a));
         var third=planner.plan(basis,required,List.of(bounds),List.of(fixed));
         check(third.allocation().render().equals(Set.of(a))&&third.work().getFirst().staticDraws().size()==1,"dirty caster");
-        planner.complete(third.ticket(),Set.of());
+        planner.complete(third.ticket(),Set.of(),Set.of(a));
         check(planner.plan(basis,required,List.of(),List.of(fixed)).allocation().render().equals(Set.of(a)),"failed raster not valid");
     }
     static void randomized(){

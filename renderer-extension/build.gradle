@@ -43,3 +43,23 @@ check.dependsOn coreRegression
 // The dependency-free suite is a JavaExec main, not a JUnit class.
 // check still requires coreRegression; an empty JUnit discovery is expected.
 tasks.named('test') { failOnNoDiscoveredTests = false }
+
+sourceSets {
+    gpuSmoke {
+        java.srcDir 'src/gpuSmoke/java'
+        compileClasspath += sourceSets.main.output + sourceSets.client.output
+        runtimeClasspath += sourceSets.main.output + sourceSets.client.output
+    }
+}
+dependencies {
+    ['lwjgl','lwjgl-glfw','lwjgl-opengl'].each { module ->
+        gpuSmokeImplementation "org.lwjgl:${module}:3.3.6"
+        gpuSmokeRuntimeOnly "org.lwjgl:${module}:3.3.6:natives-linux"
+    }
+}
+tasks.register('gpuSmokeTest', JavaExec) {
+    dependsOn gpuSmokeClasses, clientClasses
+    classpath = sourceSets.gpuSmoke.runtimeClasspath
+    mainClass = 'io.lumenweave.renderer.client.NativeGpuSmoke'
+    workingDir = project.projectDir
+}
