@@ -24,6 +24,15 @@ void injectTerrainVoxel(vec3 shadowView) {
     }
     uint kind = emitterKind(blockId);
     uint seed = strength > 0u ? packVoxelEmitter(kind,strength) : LW_VOXEL_WALL | uint(blockId - 10020);
+#ifdef LW_VOXEL_SUBGROUP
+    // The grid is at most 128^3 and seeds are at most 259. This is an
+    // injective 30-bit key. Remove only identical submissions; distinct
+    // seeds and cells retain the same atomic-max arbitration.
+    uint key=uint(cell.x)|(uint(cell.y)<<7u)|(uint(cell.z)<<14u)|(seed<<21u);
+    uint firstKey=readFirstInvocationARB(key);
+    uint firstLane=readFirstInvocationARB(gl_SubGroupInvocationARB);
+    if(key==firstKey && gl_SubGroupInvocationARB!=firstLane) return;
+#endif
 #ifdef LW_VOXEL_INCREMENTAL_ACTIVE
     // Publish occupied tiles on the first writer, retaining atomic seed arbitration.
     uint previous = imageAtomicMax(lwVoxelOccupancy, cell, seed);

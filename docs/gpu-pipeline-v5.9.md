@@ -24,3 +24,16 @@ No dynamic shadow cache, independent chunk geometry feed, or full HDR
 tile fusion is implemented: these need loader geometry invalidation or a
 verified attachment/flip and neighborhood exchange contract. GPU timing,
 visual quality, and the driver/loader dispatch barrier need live testing.
+
+## Stationary HDR ownership and subgroup injection
+
+When HDR reuse and motion blur are enabled and the existing transform
+predicate is exactly stationary, the fullscreen motion vertex pass clips
+its quad. Bloom, exposure/solar meter, DOF, final color and solar visibility
+read current colortex4 directly. Moving frames still write/read colortex0.
+Mip-assisted DOF retains its original statically selected mip source.
+The ARB shader ballot path suppresses only duplicate cell+seed keys
+matching the first active vertex invocation; unsupported hardware uses
+original atomics. No geometric assumption about quad indices is required.
+Neither change alters the scene shadow draw or implements a cross-tile
+motion/DOF fusion. Real loader flip behavior and GPU speed require testing.

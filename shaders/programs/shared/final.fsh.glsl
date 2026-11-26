@@ -39,18 +39,22 @@ uniform sampler2D colortex4;
 #else
 uniform sampler2D colortex0;
 #define LW_POST_SOURCE colortex0
+#ifdef LW_STATIC_HDR_REUSE
+uniform sampler2D colortex4;
+flat in int lwPostHistory;
+#endif
 #endif
 in vec2 texCoord;
 layout(location = 0) out vec4 outputColor;
 
-void main() {
+void lwFinalScene(sampler2D source) {
     float exposure=float(EXPOSURE)+lwExposureEV();
-    vec3 scene = texture(LW_POST_SOURCE, texCoord).rgb;
+    vec3 scene = texture(source, texCoord).rgb;
 #ifdef LW_FXAA_ACTIVE
-    scene = spatialAntialias(LW_POST_SOURCE, texCoord, scene, exposure);
+    scene = spatialAntialias(source, texCoord, scene, exposure);
 #endif
     if (IMAGE_SHARPENING > 0.0) {
-        scene = sharpenScene(LW_POST_SOURCE, texCoord, scene);
+        scene = sharpenScene(source, texCoord, scene);
     }
 #if DOF_MODE != 0
     float depth=lwDofDepth(texCoord);
@@ -59,12 +63,12 @@ void main() {
 #ifdef LW_DOF_HALF
         scene=lwDofResolve(colortex10,texCoord,scene,depth,focus);
 #else
-        scene=lwDofGather(LW_POST_SOURCE,texCoord,scene,depth,lwCoC(depth,focus),focus);
+        scene=lwDofGather(source,texCoord,scene,depth,lwCoC(depth,focus),focus);
 #endif
     }
 #endif
 #if defined(LW_IDLE_FOCUS) || PERIPHERAL_OPTICS == 1
-    scene=lwLensOptics(LW_POST_SOURCE,texCoord,scene);
+    scene=lwLensOptics(source,texCoord,scene);
 #endif
 #ifdef BLOOM
 #if BLOOM_FILTER == 0
@@ -95,7 +99,7 @@ void main() {
     scene+=bloom*BLOOM_STRENGTH;
 #endif
 #ifdef SOLAR_GLARE
-    scene+=lwSolarGlare(texCoord,vec2(textureSize(LW_POST_SOURCE,0)));
+    scene+=lwSolarGlare(texCoord,vec2(textureSize(source,0)));
 #endif
 #ifdef SHOW_COLOR_CHART
     if (texCoord.y >= 0.90) {
@@ -107,4 +111,12 @@ void main() {
     }
 #endif
     outputColor = vec4(displayColor(gradeRadiance(scene), exposure), 1.0);
+}
+
+void main(){
+#ifdef LW_STATIC_HDR_REUSE
+    if(lwPostHistory!=0) lwFinalScene(colortex4);
+    else
+#endif
+    lwFinalScene(LW_POST_SOURCE);
 }

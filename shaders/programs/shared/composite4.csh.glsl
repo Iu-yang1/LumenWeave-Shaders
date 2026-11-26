@@ -11,11 +11,15 @@ uniform sampler2D colortex4;
 #else
 uniform sampler2D colortex0;
 #define LW_METER_SOURCE colortex0
+#ifdef LW_STATIC_HDR_REUSE
+uniform sampler2D colortex4;
+#endif
 #endif
 uniform float frameTime;
 uniform int frameCounter;
  #if defined(SOLAR_GLARE) && defined(LW_EXPOSURE_METER)
 #include "/lib/post/solar_visibility.glsl"
+#define LW_MOTION_PROJECTION_DECLARED
 #elif defined(LW_EXPOSURE_METER)
 #define LW_POST_DEPTH0_UNIFORM
 uniform sampler2D depthtex0;
@@ -28,16 +32,20 @@ uniform sampler2D depthtex0;
 #define LW_IDLE_PROJECTION_DECLARED
 #endif
 #include "/lib/post/idle_focus.glsl"
+#define LW_MOTION_TRANSFORMS_DECLARED
 #endif
-void main(){
+#if defined(LW_STATIC_HDR_REUSE) && defined(LW_EXPOSURE_METER)
+#include "/lib/post/motion_state.glsl"
+#endif
 #ifdef LW_EXPOSURE_METER
+void lwMeter(sampler2D source){
     float sum=0.0,weight=0.0,terrainSum=0.0,terrainWeight=0.0;
     // Rotate four subcell phases. Sky contributes, but does not drown the terrain meter.
     vec2 phase=vec2(float(frameCounter&1),float((frameCounter>>1)&1))*0.5+0.25;
     for(int y=0;y<9;++y) for(int x=0;x<9;++x) {
         vec2 uv=(vec2(x,y)+phase)/9.0;
         float w=1.0-0.65*length(uv-0.5);
-        float l=clamp(luminance(textureLod(LW_METER_SOURCE,uv,0.0).rgb),0.012,4.0);
+        float l=clamp(luminance(textureLod(source,uv,0.0).rgb),0.012,4.0);
         float logL=log2(l);
         sum+=logL*w;weight+=w;
         float ground=1.0-step(0.999999,lwPostDepth(depthtex0,uv));
@@ -53,10 +61,19 @@ void main(){
     float next=mix(target,old,exp2(-clamp(frameTime,0.0,0.25)/halfLife));
     float glare=0.0;
 #ifdef SOLAR_GLARE
-    float current=solarVisibility(LW_METER_SOURCE).z;
+    float current=solarVisibility(source).z;
     glare=min(current,mix(current,previous.b,exp2(-clamp(frameTime,0.0,0.25)/0.10)));
 #endif
     imageStore(lwExposureState,ivec2(0),vec4(next,old,glare,target));
+}
+#endif
+void main(){
+#ifdef LW_EXPOSURE_METER
+#ifdef LW_STATIC_HDR_REUSE
+    if(lwMotionIsIdentity()) lwMeter(colortex4);
+    else
+#endif
+    lwMeter(LW_METER_SOURCE);
 #endif
 #ifdef LW_AUTO_FOCUS
     imageStore(lwExposureState,ivec2(1,0),lwAdvanceFocus(imageLoad(lwExposureState,ivec2(1,0)),frameTime));

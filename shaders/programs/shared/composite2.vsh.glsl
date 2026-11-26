@@ -29,5 +29,10 @@ void main(){
         || dhProjection!=dhPreviousProjection
 #endif
         )?1:0;
+#ifdef LW_STATIC_HDR_REUSE
+    // No color writes or pixel invocations when the motion filter is identity.
+    // Subsequent consumers use the current TAA resolve instead of colortex0.
+    if(lwMotionActive==0) gl_Position=vec4(2.0,2.0,2.0,1.0);
+#endif
 #endif
 }

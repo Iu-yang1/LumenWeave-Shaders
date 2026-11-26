@@ -241,6 +241,9 @@
 #define LW_TAA_HISTORY_ONLY
 #ifndef MOTION_BLUR
 #define LW_TAA_DIRECT
+#elif DOF_MODE == 0 || DOF_FILTER != 1
+// The mip-assisted DOF path needs one statically selected mip source.
+#define LW_STATIC_HDR_REUSE
 #endif
 #endif
 

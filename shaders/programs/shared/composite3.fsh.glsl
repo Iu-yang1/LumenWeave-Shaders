@@ -9,6 +9,10 @@ uniform sampler2D colortex4;
 #else
 uniform sampler2D colortex0;
 #define LW_POST_SOURCE colortex0
+#ifdef LW_STATIC_HDR_REUSE
+uniform sampler2D colortex4;
+flat in int lwPostHistory;
+#endif
 #endif
 in vec2 texCoord;
 layout(location = 0) out vec4 outputColor;
@@ -23,8 +27,8 @@ const int colortex11Format = RGBA16F;
 const int colortex11Format = R11F_G11F_B10F;
 */
 #endif
-vec3 bloomHighlight(vec2 uv,vec2 texel,float threshold) {
-    vec3 sampleColor=texture(LW_POST_SOURCE,clamp(uv,texel*0.5,1.0-texel*0.5)).rgb;
+vec3 bloomHighlight(sampler2D source,vec2 uv,vec2 texel,float threshold) {
+    vec3 sampleColor=texture(source,clamp(uv,texel*0.5,1.0-texel*0.5)).rgb;
     // Hue-preserving HDR extraction, including saturated red/orange emitters.
     float brightness=max(luminance(sampleColor),0.50*max(sampleColor.r,max(sampleColor.g,sampleColor.b)));
     float contribution=smoothstep(threshold*0.6,threshold*1.4,brightness);
@@ -33,24 +37,36 @@ vec3 bloomHighlight(vec2 uv,vec2 texel,float threshold) {
     float excess=max(brightness-threshold*0.6,0.0);
     return sampleColor*contribution*min(1.0,excess/max(brightness,0.0001));
 }
-void main() {
-    vec2 texel=1.0/vec2(textureSize(LW_POST_SOURCE,0));
+void lwBloom(sampler2D source) {
+    vec2 texel=1.0/vec2(textureSize(source,0));
     float threshold=BLOOM_THRESHOLD*exp2(-float(EXPOSURE)-lwExposureEV());
     vec3 result=vec3(0.0);
 #if BLOOM_FILTER == 2
     for(int y=-1;y<=1;++y) for(int x=-1;x<=1;++x)
-        result+=bloomHighlight(texCoord+vec2(x,y)*texel*2.0,texel,threshold);
+        result+=bloomHighlight(source,texCoord+vec2(x,y)*texel*2.0,texel,threshold);
     result*=1.0/9.0;
 #else
     // Four bilinear taps span the 4x4 source footprint at quarter size.
     // Extract per tap so small bright lights survive downsampling.
     for(int y=0;y<2;++y) for(int x=0;x<2;++x)
-        result+=bloomHighlight(texCoord+(vec2(x,y)*2.0-1.0)*texel,texel,threshold);
+        result+=bloomHighlight(source,texCoord+(vec2(x,y)*2.0-1.0)*texel,texel,threshold);
     result*=0.25;
 #endif
     outputColor=vec4(result,1.0);
 }
+void main(){
+#ifdef LW_STATIC_HDR_REUSE
+    if(lwPostHistory!=0) lwBloom(colortex4);
+    else
+#endif
+    lwBloom(LW_POST_SOURCE);
+}
 #else
 /* RENDERTARGETS: 0 */
-void main(){outputColor=texture(LW_POST_SOURCE,texCoord);}
+void main(){
+#ifdef LW_STATIC_HDR_REUSE
+    if(lwPostHistory!=0) { outputColor=vec4(texture(colortex4,texCoord).rgb,1.0); return; }
+#endif
+    outputColor=texture(LW_POST_SOURCE,texCoord);
+}
 #endif

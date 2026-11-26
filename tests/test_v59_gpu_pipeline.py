@@ -76,3 +76,38 @@ class V59PipelineTests(unittest.TestCase):
             pos = [b+t for b, t in zip(base, f)]
             old = math.hypot(2*(base[0]+x+.5-pos[0]-.5), 2*(base[1]+y+.5-pos[1]-.5))
             self.assertAlmostEqual(old, 2*math.hypot(x-f[0],y-f[1]), places=10)
+
+    def test_subgroup_duplicate_arbitration(self):
+        rng = random.Random(592)
+        for _ in range(4000):
+            first = (rng.randrange(128), rng.randrange(128), rng.randrange(128), rng.randrange(1, 260))
+            submissions = [first] + [first if rng.random() < .5 else
+                (rng.randrange(128), rng.randrange(128), rng.randrange(128), rng.randrange(1, 260))
+                for _ in range(rng.randrange(1, 64))]
+            def key(value):
+                x, y, z, seed = value
+                return x | y << 7 | z << 14 | seed << 21
+            retained = [first] + [v for v in submissions[1:] if key(v) != key(first)]
+            def field(values):
+                result = {}
+                for x, y, z, seed in values:
+                    result[x, y, z] = max(result.get((x, y, z), 0), seed)
+                return result
+            self.assertEqual(field(retained), field(submissions))
+
+    def test_static_hdr_consumer_routing(self):
+        quality = (ROOT / "lib/quality.glsl").read_text()
+        self.assertIn("#define LW_STATIC_HDR_REUSE", quality)
+        vertex = (ROOT / "programs/shared/composite2.vsh.glsl").read_text()
+        self.assertIn("if(lwMotionActive==0) gl_Position=vec4(2.0,2.0,2.0,1.0)", vertex)
+        for name, call in (("final", "lwFinalScene"), ("composite3", "lwBloom"), ("composite5", "lwDofPass")):
+            source = (ROOT / f"programs/shared/{name}.fsh.glsl").read_text()
+            self.assertIn(f"if(lwPostHistory!=0) {call}(colortex4)", source)
+        meter = (ROOT / "programs/shared/composite4.csh.glsl").read_text()
+        self.assertIn("if(lwMotionIsIdentity()) lwMeter(colortex4)", meter)
+        # A copied RGBA16F color and direct history have identical RGB at
+        # pixel centers. The history alpha is never consumed by these effects.
+        for color in ((0.0, .4, 3.0), (.2, 1.2, 20.0)):
+            history = tuple(half(x) for x in color)
+            copied = tuple(half(x) for x in history)
+            self.assertEqual(copied, history)
