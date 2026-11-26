@@ -50,7 +50,8 @@ class AutofocusTests(unittest.TestCase):
     def test_focused_pixel_retains_native_color(self):
         dof=(S/"lib/post/dof.glsl").read_text()
         self.assertIn("blur*smoothstep(0.05,0.65,total)",dof)
-        self.assertIn("if(s.a<depth*0.97)",dof)
+        self.assertIn("float nearLimit=depth*0.97;",dof)
+        self.assertIn("if(s.a<nearLimit)",dof)
         # At optical focus and without a closer blurred donor, native HDR
         # is preserved rather than replaced by a half-resolution sample.
         for native,half in ((.2,.8),(1.5,.3)):

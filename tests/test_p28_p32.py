@@ -99,7 +99,10 @@ class PipelineTests(unittest.TestCase):
                 self.assertEqual(actual,expected)
                 field=actual
         shader=(SHADERS/"lib/voxel/propagate_pair.glsl").read_text()
-        self.assertIn("unpackHalf2x16(packHalf2x16(v.xy))",shader)
+        packed=(SHADERS/"lib/voxel/packed_field.glsl").read_text()
+        self.assertIn("unpackHalf2x16(packHalf2x16(value.xy))",packed)
+        self.assertIn("return lwFieldHalf(v)",shader)
+        self.assertIn("pairMiddle[i]=pairHalf(pairPropagate(seed,incoming))",shader)
         self.assertIn("pairHaloDistance(p)>2",shader)
         self.assertIn("pairHaloDistance(p-1)>1",shader)
 
