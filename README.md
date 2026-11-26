@@ -37,10 +37,10 @@ LumenWeave 是面向 Minecraft Java Edition 的 Iris / OpenGL 光影包,追求�
 
 | 预设 | 主要定位 | 阴影 / 抗锯齿 |
 | --- | --- | --- |
-| 极低 Potato | 核显,低功耗优先 | 无场景阴影 / FXAA |
+| 极低 Potato | 核显 | 无场景阴影 / FXAA |
 | 低 Low | 基础光影,轻量水体 | 1024 硬阴影 / FXAA |
 | 中 Medium | 延迟光照,AO,高级水体 | 1024 硬阴影 / TAA + FXAA |
-| 高 High | 日常画质与性能平衡,推荐起点 | 2048 软阴影 / TAA + FXAA |
+| 高 High | 日常画质与性能平衡 | 2048 软阴影 / TAA + FXAA |
 | 超高 Ultra | 大气,体积效果,SSGI,SSR,彩色体素光照 | 2048 软阴影 / TAA |
 | 极致 Extreme | 最大默认覆盖范围与体素漫反射 | 4096 软阴影 / TAA |
 
