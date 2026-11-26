@@ -2,11 +2,12 @@
 #define LW_WATER_OPTICS
 
 vec3 waterExtinction() {
-    return vec3(0.18, 0.045, 0.018) * WATER_DENSITY + vec3(WATER_TURBIDITY);
+    // Scene-calibrated Beer-Lambert extinction, in inverse blocks.
+    return vec3(0.115, 0.028, 0.012) * WATER_DENSITY + vec3(WATER_TURBIDITY);
 }
 
 vec3 waterScatteringColor(vec3 biome) {
-    return mix(vec3(0.024, 0.105, 0.12), biome * 0.22, WATER_BIOME_TINT);
+    return mix(vec3(0.032, 0.125, 0.145), biome * 0.26, WATER_BIOME_TINT);
 }
 
 float waterFresnel(float cosine, bool submerged) {

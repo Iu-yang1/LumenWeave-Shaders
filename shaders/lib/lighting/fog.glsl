@@ -2,6 +2,7 @@ uniform float fogStart;
 uniform float fogEnd;
 uniform int fogShape;
 uniform int isEyeInWater;
+uniform ivec2 eyeBrightnessSmooth;
 
 #include "/lib/water/optics.glsl"
 #include "/lib/atmosphere/aerial.glsl"
@@ -14,9 +15,14 @@ vec3 applySceneFog(vec3 lit, vec3 viewPosition) {
     float distanceToEye = length(viewPosition);
     if (isEyeInWater == 1) {
         vec3 transmission = exp(-waterExtinction() * distanceToEye);
+        vec3 sun = sunDirection();
+        vec2 eyeLight = clamp(vec2(eyeBrightnessSmooth) / 240.0,0.0,1.0);
+        float skyAccess = smoothstep(0.1,0.8,eyeLight.y);
+        // Clear water exposes the already-lit bottom. In-scattering follows
+        // actual local light, so a sealed underwater cave is not made luminous.
         vec3 scatter = waterScatteringColor(decodeSrgb(fogColor))
-            * (ambientIrradiance(vec2(0.0, 0.7), 1.0, sunDirection())
-                + celestialIrradiance(sunDirection()) * 0.08);
+            * (ambientIrradiance(eyeLight,1.0,sun)
+                + celestialIrradiance(sun) * (0.14 * skyAccess * daylight(sun)));
         return lit * transmission + scatter * (1.0 - transmission);
     }
     if (isEyeInWater == 0 && hasSkylight) {

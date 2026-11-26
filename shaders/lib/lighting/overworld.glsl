@@ -97,9 +97,9 @@ vec3 ambientIrradiance(vec2 light, float up, vec3 sun) {
     if (!hasSkylight) {
         vec3 environment = hasCeiling ? netherEnvironment(up) : endEnvironment(up);
         return (vec3(0.015) + environment) * AMBIENT_STRENGTH
-            + block * vec3(1.12, 0.69, 0.39) * BLOCKLIGHT_STRENGTH;
+            + block * vec3(1.04, 0.76, 0.49) * BLOCKLIGHT_STRENGTH;
     }
     vec3 hemisphere = overworldEnvironment(up, daylight(sun));
     return (vec3(0.015) + sky * hemisphere) * AMBIENT_STRENGTH
-        + block * vec3(1.12, 0.69, 0.39) * BLOCKLIGHT_STRENGTH;
+        + block * vec3(1.04, 0.76, 0.49) * BLOCKLIGHT_STRENGTH;
 }

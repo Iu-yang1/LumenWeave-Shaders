@@ -19,7 +19,7 @@ layout(rgba16f) writeonly uniform image3D lwVoxelFirst;
 void main() {
     ivec3 cell = ivec3(gl_GlobalInvocationID);
     uint seed = imageLoad(lwVoxelOccupancy, cell).r;
-    vec3 source = seed < LW_VOXEL_WALL ? voxelEmission(seed & 7u, seed >> 3u) : vec3(0.0);
+    vec3 source = seed < LW_VOXEL_WALL ? voxelSeedEmission(seed) : vec3(0.0);
 #ifdef LW_VOXEL_INCREMENTAL_ACTIVE
     ivec4 previous = imageLoad(lwVoxelMeta, ivec2(0));
     ivec3 previousLocal = cell + (cameraPositionInt - previous.xyz);

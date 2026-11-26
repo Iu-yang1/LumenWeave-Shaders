@@ -19,7 +19,7 @@ void injectTerrainVoxel(vec3 shadowView) {
     if (!withinVoxelGrid(cell)) {
         return;
     }
-    uint kind = blockId >= 10011 && blockId <= 10014 ? uint(blockId - 10010) : 1u;
-    uint seed = strength > 0u ? (strength << 3u) | kind : LW_VOXEL_WALL | uint(blockId - 10020);
+    uint kind = emitterKind(blockId);
+    uint seed = strength > 0u ? packVoxelEmitter(kind,strength) : LW_VOXEL_WALL | uint(blockId - 10020);
     imageAtomicMax(lwVoxelOccupancy, cell, seed);
 }

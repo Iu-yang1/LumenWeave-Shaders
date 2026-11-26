@@ -26,7 +26,7 @@ void main() {
         imageStore(LW_VOXEL_WRITE, storageCell, vec4(0.0));
         return;
     }
-    vec3 source = voxelEmission(seed & 7u, seed >> 3u);
+    vec3 source = voxelSeedEmission(seed);
     vec3 incoming = vec3(0.0);
     for (int stepIndex = 0; stepIndex < 6; ++stepIndex) {
         ivec3 neighbor = cell + LW_VOXEL_DIRECTIONS[stepIndex];
