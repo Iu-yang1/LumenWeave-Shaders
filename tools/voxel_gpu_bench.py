@@ -48,10 +48,15 @@ def main():
                 source, encoding="utf-8"
             )
         if args.world:
+            numeric_options = "\n".join(re.findall(
+                r"^#define [A-Z_]+ [-+0-9.]+.*$",
+                (root / "lib/quality.glsl").read_text(encoding="utf-8"), re.MULTILINE,
+            )) + "\n"
             screen_gi = (
                 "#version 430 core\n"
                 "uniform sampler2D colortex0, colortex1, colortex2, depthtex0;\n"
                 "uniform mat4 gbufferProjection;\n"
+                + numeric_options
                 + "".join(expand(root, root / f"lib/{library}.glsl") for library in (
                     "lighting/overworld", "materials/vanilla", "materials/geometry_buffer",
                     "coordinates/reconstruct", "lighting/screen_gi",
@@ -131,7 +136,7 @@ void main() {
 """
             )
             (Path(directory) / "screen-gi-spatial.csh").write_text(gi_spatial, encoding="utf-8")
-            taa_options = {**preview_profiles(root)["profile.Standard"], "TEMPORAL_AA": "true"}
+            taa_options = {**preview_profiles(root)["profile.Standard"], "AA_MODE": "2"}
             distant_taa = compiler_source(
                 root, root / "world0/composite.fsh", taa_options, ("DISTANT_HORIZONS",)
             ).replace("#version 330 compatibility", "#version 430 core")
@@ -165,7 +170,8 @@ void main() {
 """
             (Path(directory) / "taa-filter.csh").write_text(history_filter, encoding="utf-8")
             shadow_filter = (
-                "#version 430 core\n#define SOFT_SHADOWS\n#define SHADOW_MAP 2048\n#define SHADOW_RANGE 128.0\n"
+                "#version 430 core\n#define SOFT_SHADOWS\n"
+                + numeric_options
                 + expand(root, root / "lib/lighting/overworld.glsl")
                 + expand(root, root / "lib/lighting/lite_shadows.glsl")
                 + """
@@ -179,7 +185,7 @@ void main() {
 """
             )
             (Path(directory) / "shadow-filter.csh").write_text(shadow_filter, encoding="utf-8")
-            wave_test = "#version 430 core\n" + expand(root, root / "lib/water/waves.glsl") + """
+            wave_test = "#version 430 core\n" + numeric_options + expand(root, root / "lib/water/waves.glsl") + """
 layout(local_size_x = 4) in;
 layout(std430, binding = 0) writeonly buffer Result { vec4 samples[4]; };
 void main() {
@@ -192,8 +198,28 @@ void main() {
 }
 """
             (Path(directory) / "water-waves.csh").write_text(wave_test, encoding="utf-8")
+            wind_test = (
+                "#version 430 core\n#define WAVING_LEAVES\n#define WAVING_GRASS\n"
+                + numeric_options
+                + expand(root, root / "lib/vegetation/wind.glsl")
+                + """
+layout(local_size_x = 7) in;
+layout(std430, binding = 0) writeonly buffer Result { vec4 samples[7]; };
+void main() {
+    uint test = gl_LocalInvocationID.x;
+    int material = test == 0u ? 10031 : test == 1u ? 10032 : test == 2u ? 10033
+        : test == 3u ? 10030 : test == 5u ? 0 : 10031;
+    float tip = test == 0u || test == 2u ? 0.0 : 1.0;
+    float distanceToEye = test == 4u ? 192.0 : 8.0;
+    samples[test] = vec4(vegetationDisplacement(vec3(2.5, 120.0, 3.5), vec2(2.5, 3.5),
+        material, tip, distanceToEye), 1.0);
+}
+"""
+            )
+            (Path(directory) / "vegetation-wind.csh").write_text(wind_test, encoding="utf-8")
             dimension_test = (
                 "#version 430 core\n#define DISTANT_HORIZONS\n"
+                + numeric_options
                 + "".join(expand(root, root / f"lib/{library}.glsl") for library in (
                     "lighting/overworld", "lighting/surface", "lighting/fog", "atmosphere/volume",
                 ))

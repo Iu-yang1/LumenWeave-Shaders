@@ -16,7 +16,7 @@ bool reprojectTerrain(vec3 viewPosition, out vec2 previousUv, out float expected
     }
     expectedDepth = -previousView.z;
     previousUv = previousClip.xy / previousClip.w * 0.5 + 0.5;
-#ifdef TEMPORAL_AA
+#ifdef LW_TAA_ACTIVE
     previousUv += jitterOffset(frameCounter - 1);
 #endif
     return all(greaterThan(previousUv, vec2(0.0))) && all(lessThan(previousUv, vec2(1.0)));

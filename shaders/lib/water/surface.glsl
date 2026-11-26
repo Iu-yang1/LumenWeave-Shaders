@@ -1,8 +1,20 @@
 #include "/lib/water/waves.glsl"
+#include "/lib/water/optics.glsl"
+#include "/lib/coordinates/reconstruct.glsl"
 
 uniform vec3 cameraPosition;
 uniform float frameTimeCounter;
 uniform float frameTime;
+uniform sampler2D depthtex1;
+
+float waterThickness(vec3 viewPosition, vec2 screen) {
+    float depth = texture(depthtex1, screen).r;
+    if (depth >= 1.0) {
+        return 48.0;
+    }
+    vec3 background = reconstructViewPosition(screen, depth);
+    return clamp(dot(background - viewPosition, normalize(viewPosition)), 0.0, 48.0);
+}
 
 vec3 waveNormal(vec3 normal, vec3 position) {
     vec2 footprintX = dFdx(position.xz);
@@ -23,7 +35,8 @@ vec3 waterSunGlint(vec3 normal, vec3 view, vec3 sun, float skyAccess) {
     float normalView = max(dot(normal, view), 0.001);
     float normalHalf = max(dot(normal, halfVector), 0.0);
     float variance = dot(dFdx(normal), dFdx(normal)) + dot(dFdy(normal), dFdy(normal));
-    float alphaSquared = clamp(0.0016 + variance * 0.6, 0.0016, 0.12);
+    float roughnessSquared = WATER_ROUGHNESS * WATER_ROUGHNESS;
+    float alphaSquared = clamp(roughnessSquared * roughnessSquared + variance * 0.6, 0.0004, 0.12);
     float denominator = normalHalf * normalHalf * (alphaSquared - 1.0) + 1.0;
     float distribution = alphaSquared / (LW_PI * denominator * denominator);
     float fresnel = 0.0204 + 0.9796 * pow(1.0 - max(dot(view, halfVector), 0.0), 5.0);

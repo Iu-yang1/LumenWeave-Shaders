@@ -1,2 +1,1 @@
-#version 330 compatibility
-#include "/programs/p5/distant.vsh.glsl"
+#include "/programs/shared/dh_water.vsh.glsl"

@@ -46,6 +46,7 @@ public class VoxelGpuBench {
                 checkHistoryFilter(Path.of(args[0], "taa-filter.csh"));
                 checkShadowFilter(Path.of(args[0], "shadow-filter.csh"));
                 checkWaterWaves(Path.of(args[0], "water-waves.csh"));
+                checkVegetationWind(Path.of(args[0], "vegetation-wind.csh"));
                 checkDimensionLighting(Path.of(args[0], "dimension-lighting.csh"));
                 checkSpatialAa(Path.of(args[0], "spatial-aa.csh"));
             } else {
@@ -526,6 +527,32 @@ public class VoxelGpuBench {
         glDeleteProgram(program);
     }
 
+    private static void checkVegetationWind(Path source) throws IOException {
+        int program = compile(GL_COMPUTE_SHADER, Files.readString(source));
+        glUseProgram(program);
+        float[] first = readShaderOutput(28);
+        glUniform1f(glGetUniformLocation(program, "frameTimeCounter"), 1);
+        float[] second = readShaderOutput(28);
+        float movement = 0;
+        for (int channel = 0; channel < 3; channel++) {
+            movement += Math.abs(first[12 + channel] - second[12 + channel]);
+            if (first[channel] != 0 || first[16 + channel] != 0 || first[20 + channel] != 0
+                    || Math.abs(first[4 + channel] - first[8 + channel]) > 0.000001f) {
+                throw new IllegalStateException("Vegetation roots, distance, material or tall-plant seam");
+            }
+        }
+        for (float value : first) {
+            if (!Float.isFinite(value) || Math.abs(value) > 1) {
+                throw new IllegalStateException("Unbounded vegetation displacement");
+            }
+        }
+        if (movement < 0.00001f || glGetError() != GL_NO_ERROR) {
+            throw new IllegalStateException("Vegetation motion or OpenGL error");
+        }
+        System.out.println("Vegetation: anchored roots, tall-plant seams, leaf motion, material and distance cutoff passed");
+        glDeleteProgram(program);
+    }
+
     private static void checkDimensionLighting(Path source) throws IOException {
         int program = compile(GL_COMPUTE_SHADER, Files.readString(source));
         glUseProgram(program);
@@ -538,7 +565,7 @@ public class VoxelGpuBench {
         glUniform1i(glGetUniformLocation(program, "dhRenderDistance"), 1024);
         float[] fog = {0.13286832f, 0.03310477f, 0.01002283f};
         float[] scene = {0.2f, 0.3f, 0.4f};
-        float[][] ambient = {{0.015f, 0.015f, 0.015f}, {0.152f, 0.0826f, 0.0574f}, {0.175f, 0.145f, 0.255f}};
+        float[][] ambient = {{0.015f, 0.015f, 0.015f}, {0.1346f, 0.0874f, 0.0662f}, {0.155f, 0.145f, 0.205f}};
         for (int dimension = 0; dimension < 3; ++dimension) {
             glUniform1i(glGetUniformLocation(program, "hasSkylight"), dimension == 0 ? GL_TRUE : GL_FALSE);
             glUniform1i(glGetUniformLocation(program, "hasCeiling"), dimension == 1 ? GL_TRUE : GL_FALSE);
@@ -554,9 +581,9 @@ public class VoxelGpuBench {
                 throw new IllegalStateException("Invalid dimension celestial basis: " + dimension);
             }
             for (int channel = 0; channel < 3; ++channel) {
-                float solar = dimension == 0 ? new float[]{4.2f, 3.948f, 3.528f}[channel] : 0;
-                float lunar = dimension == 0 ? new float[]{0.16f, 0.20f, 0.27f}[channel] : 0;
-                float block = new float[]{1.12f, 0.65f, 0.33f}[channel];
+                float solar = dimension == 0 ? new float[]{4.2f, 4.074f, 3.822f}[channel] : 0;
+                float lunar = dimension == 0 ? new float[]{0.16f, 0.19f, 0.24f}[channel] : 0;
+                float block = new float[]{1.12f, 0.69f, 0.39f}[channel];
                 if (Math.abs(result[channel] - solar) > 0.00001f
                         || Math.abs(result[4 + channel] - lunar) > 0.00001f
                         || Math.abs(result[8 + channel] - ambient[dimension][channel]) > 0.00001f

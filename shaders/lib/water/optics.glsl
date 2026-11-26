@@ -1,0 +1,26 @@
+#ifndef LW_WATER_OPTICS
+#define LW_WATER_OPTICS
+
+vec3 waterExtinction() {
+    return vec3(0.18, 0.045, 0.018) * WATER_DENSITY + vec3(WATER_TURBIDITY);
+}
+
+vec3 waterScatteringColor(vec3 biome) {
+    return mix(vec3(0.024, 0.105, 0.12), biome * 0.22, WATER_BIOME_TINT);
+}
+
+float waterFresnel(float cosine, bool submerged) {
+    if (submerged) {
+        float transmittedSineSquared = 1.777 * (1.0 - cosine * cosine);
+        if (transmittedSineSquared >= 1.0) {
+            return 1.0;
+        }
+        cosine = sqrt(1.0 - transmittedSineSquared);
+    }
+    float complement = 1.0 - cosine;
+    float fifth = complement * complement;
+    fifth *= fifth * complement;
+    return 0.0204 + 0.9796 * fifth;
+}
+
+#endif

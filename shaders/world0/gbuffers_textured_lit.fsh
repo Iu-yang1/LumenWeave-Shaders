@@ -1,3 +1,1 @@
-#version 330 compatibility
-#define LW_LIT
-#include "/programs/p1/surface.fsh.glsl"
+#include "/programs/shared/gbuffers_textured_lit.fsh.glsl"

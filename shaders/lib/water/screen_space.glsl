@@ -1,7 +1,4 @@
-#include "/lib/coordinates/reconstruct.glsl"
-
 uniform sampler2D colortex8;
-uniform sampler2D depthtex1;
 uniform mat4 gbufferProjection;
 
 bool insideScreen(vec2 uv) {
@@ -11,14 +8,14 @@ bool insideScreen(vec2 uv) {
 vec4 traceWaterReflection(vec3 origin, vec3 direction) {
     float travel = 0.34;
     float lastDelta = -0.3;
-    for (int tap = 0; tap < 16; ++tap) {
+    for (int tap = 0; tap < WATER_REFLECTION_STEPS; ++tap) {
         vec3 ray = origin + direction * travel;
         if (ray.z > -0.12) {
             break;
         }
         vec4 projected = gbufferProjection * vec4(ray, 1.0);
         vec2 uv = projected.xy / projected.w * 0.5 + 0.5;
-#if defined(TEMPORAL_AA) && defined(DEFERRED_LIGHTING)
+#ifdef LW_TAA_ACTIVE
         uv += jitterOffset(frameCounter);
 #endif
         if (!insideScreen(uv)) {
@@ -49,13 +46,14 @@ vec3 physicalWater(vec3 tint, vec3 originalNormal, vec3 viewPosition, vec3 view,
     vec3 reflected = reflect(-view, normal);
     vec4 hit = traceWaterReflection(viewPosition, toView * reflected);
     vec3 reflection = mix(skyRadiance(reflected, sun), hit.rgb, hit.a);
-    float fresnel = fresnelSchlick(clamp(dot(view, normal), 0.0, 1.0), vec3(0.0204)).r;
+    float fresnel = waterFresnel(clamp(dot(view, normal), 0.0, 1.0), isEyeInWater == 1);
 
     vec2 screen = gl_FragCoord.xy / vec2(textureSize(depthtex1, 0));
     float originalDepth = texture(depthtex1, screen).r;
     vec3 background = reconstructViewPosition(screen, originalDepth);
     float depthGap = max(viewPosition.z - background.z, 0.0);
-    vec2 refractedUv = screen + (toView * (normal - originalNormal)).xy * min(depthGap * 0.012, 0.035);
+    vec2 refractedUv = screen + (toView * (normal - originalNormal)).xy
+        * min(depthGap * 0.008, 0.025) * WATER_REFRACTION;
     if (!insideScreen(refractedUv)) {
         refractedUv = screen;
     }
@@ -63,12 +61,18 @@ vec3 physicalWater(vec3 tint, vec3 originalNormal, vec3 viewPosition, vec3 view,
     vec3 refractedBackground = reconstructViewPosition(refractedUv, sampledDepth);
     if (refractedBackground.z >= viewPosition.z) {
         refractedUv = screen;
+        sampledDepth = originalDepth;
     } else {
         background = refractedBackground;
     }
-    float thickness = clamp(dot(background - viewPosition, normalize(viewPosition)), 0.0, 48.0);
-    vec3 transmission = exp(-vec3(0.31, 0.14, 0.074) * thickness);
-    vec3 scatter = mix(vec3(0.015, 0.055, 0.07), tint * 0.28, 0.42);
+    float thickness = sampledDepth >= 1.0 ? 48.0
+        : clamp(dot(background - viewPosition, normalize(viewPosition)), 0.0, 48.0);
+    if (isEyeInWater == 1) {
+        thickness = 0.0;
+    }
+    vec3 transmission = exp(-waterExtinction() * thickness);
+    vec3 scatter = waterScatteringColor(tint)
+        * (ambientIrradiance(vec2(0.0, skyAccess), 1.0, sun) + celestialIrradiance(sun) * 0.16);
     vec3 through = mix(scatter, texture(colortex8, refractedUv).rgb, transmission);
 #ifdef SCENE_SHADOWS
     skyAccess *= sceneShadow(position - cameraPosition, originalNormal, sun.y >= 0.0 ? sun : -sun);

@@ -1,6 +1,6 @@
 #include "/lib/quality.glsl"
 
-#if defined(TEMPORAL_AA) && defined(DEFERRED_LIGHTING)
+#ifdef LW_TAA_ACTIVE
 #include "/lib/temporal/jitter.glsl"
 #endif
 
@@ -12,7 +12,7 @@ out vec4 vertexColor;
 void main() {
     vec4 position = gl_ModelViewMatrix * gl_Vertex;
     gl_Position = gl_ProjectionMatrix * position;
-#if defined(TEMPORAL_AA) && defined(DEFERRED_LIGHTING)
+#ifdef LW_TAA_ACTIVE
     gl_Position.xy += 2.0 * jitterOffset(frameCounter) * gl_Position.w;
 #endif
     viewPosition = position.xyz;

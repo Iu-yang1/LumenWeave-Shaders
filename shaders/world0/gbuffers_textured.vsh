@@ -1,2 +1,1 @@
-#version 330 compatibility
-#include "/programs/p1/surface.vsh.glsl"
+#include "/programs/shared/gbuffers_textured.vsh.glsl"

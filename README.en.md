@@ -1,5 +1,7 @@
 # LumenWeave Shaders
 
+[Development roadmap and current progress (Chinese)](ROADMAP.md), updated 2026-11-26.
+
 [简体中文](README.md)
 
 LumenWeave is a Minecraft Java shader pack for Iris/OpenGL. The P5 preview provides linear HDR lighting with Lite forward and Standard hybrid deferred paths across all three vanilla dimensions. Standard supports LabPBR and screen-space water. Six quality presets range from Potato to Extreme. Potato and Low use fast spatial anti-aliasing. Ultra and Extreme enable experimental lighting. The tested stack is Minecraft 1.21.1, Fabric Loader 0.16.5, Iris 1.8.8, Sodium 0.6.13, and Java 21.
@@ -7,6 +9,21 @@ LumenWeave is a Minecraft Java shader pack for Iris/OpenGL. The P5 preview provi
 Run `python tools/package.py` and place `dist/LumenWeave-Shaders-P5-Preview.zip` in the instance's `shaderpacks` folder. New installations default to High, with shadows, advanced water, and TAA enabled. Iris retains existing settings: select High or Extreme to test the full effects. Natural remains an early comparison preset without shadows. Use `python tools/package.py --p0` for the separate Neutral and Soft baseline pack.
 
 Ultra and Extreme enable an optional temporal filter for the sky and sunlight bounce in screen-space GI. You can toggle it independently of temporal anti-aliasing in Shader Pack Settings.
+
+### Water, vegetation, and post processing
+
+Water generates its own wave normals without multiplying vanilla water textures or inheriting vanilla water alpha. The deferred path uses depth-dependent absorption, scattering, Fresnel reflection, and refraction. Shallow water retains the bottom's detail; color changes with the optical path. The Lite path keeps depth-based absorption and alpha blending while avoiding screen-space reflection tracing. Underwater fog uses the same optical parameters. Glass retains its resource-pack texture and transparency.
+
+Settings are grouped into Lighting, Atmosphere, Water, Vegetation, Post Processing, Performance, Advanced, and Debug. Water contains Surface, Optics, and Reflections; Post Processing contains Anti-aliasing, Color, Camera, and Bloom. Controls include biome tint contribution, density, turbidity, wave strength and speed, roughness, refraction, and reflection steps.
+
+- Anti-aliasing offers Off, Fast Spatial, TAA, and TAA plus Spatial. TAA requires deferred lighting; selecting it on the forward path uses spatial anti-aliasing.
+- Leaves, grass, flowers, and crops move with a shared gust field. Grass roots remain anchored, tall plants share seam displacement, and shadows use the same deformation. Leaf and grass animation can be toggled independently and fades at distance.
+- Camera motion blur exposes shutter fraction and sample count, caps streak length, and rejects depth edges. It currently uses camera motion only, without independent entity motion vectors.
+- HDR bloom uses a buffer at one quarter of each screen dimension, with strength and threshold controls. Sharpening, saturation, contrast, and white balance are independent. Motion blur, bloom, and sharpening default to off.
+
+Potato and Low reduce wave layers, shadow filtering, and AO samples. Non-vegetation vertices skip wind calculations; water bypasses ordinary material shading. Compile-time branches and disabled passes remove work for effects that are off. HD 630 remains a target rather than verified hardware: runtime checks in this iteration use an RTX 4070 Laptop.
+
+Dimension entry points live in `shaders/world0/`, `shaders/world-1/`, and `shaders/world1/`. Shared stages live in `shaders/programs/shared/`, while environment lighting lives in `shaders/lib/dimensions/`. The old `TEMPORAL_AA` and `SPATIAL_AA` settings are replaced by `AA_MODE`; select an anti-aliasing mode again after upgrading.
 
 Screen-space diffuse bounce requires deferred lighting. Voxel diffuse bounce also requires colored voxel light. Voxel grid size is independently selectable between 32³, 64³, 96³, and 128³. Ultra defaults to 96³ and Extreme to 128³. High selects 64³ while leaving colored voxel light disabled. The voxel path requires loader support for compute shaders, custom images, the block emission attribute, and reversed shadow culling.
 

@@ -14,7 +14,7 @@ ScreenBounce screenBounceRay(vec3 origin, vec3 direction, mat3 toView, vec3 sun)
         }
         vec4 clip = gbufferProjection * vec4(position, 1.0);
         vec2 uv = clip.xy / clip.w * 0.5 + 0.5;
-#ifdef TEMPORAL_AA
+#ifdef LW_TAA_ACTIVE
         uv += jitterOffset(frameCounter);
 #endif
         vec2 edge = min(uv, 1.0 - uv);

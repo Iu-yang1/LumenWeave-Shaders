@@ -5,7 +5,7 @@ from tempfile import TemporaryDirectory
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "tools"))
 
-from check_shaders import check_iris_directives, expand, preview_profiles
+from check_shaders import DIMENSIONS, check_iris_directives, expand, menu_options, preview_profiles
 from package import P0_CONFIG, PREVIEW
 
 
@@ -44,19 +44,19 @@ class ShaderToolsTests(unittest.TestCase):
                 "LITE_LIGHTING": "false", "SCENE_SHADOWS": "false",
                 "DEFERRED_LIGHTING": "false", "SCREEN_AO": "false", "SOFT_SHADOWS": "false",
                 "ADVANCED_WATER": "false",
-                "TEMPORAL_AA": "false", "VOLUME_EFFECTS": "false", "VOXEL_LIGHTING": "false",
+                "AA_MODE": "0", "VOLUME_EFFECTS": "false", "VOXEL_LIGHTING": "false",
                 "SCREEN_GI": "false", "SCREEN_GI_HISTORY": "false", "SCREEN_GI_SPATIAL": "false",
                 "VOXEL_GI": "false", "VOXEL_GRID_SIZE": "32",
                 "SHADOW_MAP": "0", "SHADOW_RANGE": "48.0",
-                "SPATIAL_AA": "false",
+                "WATER_WAVE_DETAIL": "4", "SHADOW_FILTER_TAPS": "4", "AO_SLICES": "2",
             },
         )
         self.assertEqual(profiles["profile.LowExposure"]["EXPOSURE"], "-1")
         self.assertEqual(profiles["profile.HighExposure"]["EXPOSURE"], "1")
         self.assertEqual(profiles["profile.Potato"]["SCENE_SHADOWS"], "false")
         self.assertEqual(profiles["profile.Low"]["SCENE_SHADOWS"], "true")
-        self.assertEqual(profiles["profile.Potato"]["SPATIAL_AA"], "true")
-        self.assertEqual(profiles["profile.Low"]["SPATIAL_AA"], "true")
+        self.assertEqual(profiles["profile.Potato"]["AA_MODE"], "1")
+        self.assertEqual(profiles["profile.Low"]["AA_MODE"], "1")
         self.assertEqual(profiles["profile.Standard"]["DEFERRED_LIGHTING"], "true")
         self.assertEqual(
             [name for name, options in profiles.items() if options["SCREEN_GI_HISTORY"] == "true"],
@@ -72,6 +72,28 @@ class ShaderToolsTests(unittest.TestCase):
         expanded = expand(PREVIEW, PREVIEW / "world0/final.vsh")
         self.assertTrue(expanded.startswith("#version 330 compatibility\n"))
         self.assertNotIn("#include", expanded)
+
+    def test_nested_menus_reject_missing_screens_and_cycles(self):
+        self.assertEqual(
+            menu_options({"screen": "<profile> [WATER] [POST]", "screen.WATER": "WAVES",
+                          "screen.POST": "[AA]", "screen.AA": "AA_MODE"})[0],
+            {"WAVES", "AA_MODE"},
+        )
+        with self.assertRaisesRegex(ValueError, "Missing settings menu"):
+            menu_options({"screen": "[MISSING]"})
+        with self.assertRaisesRegex(ValueError, "cycle"):
+            menu_options({"screen": "[POST]", "screen.POST": "[AA]", "screen.AA": "[POST]"})
+
+    def test_dimension_entry_points_are_complete(self):
+        expected = {path.name for path in (PREVIEW / "world0").iterdir()}
+        for dimension in DIMENSIONS:
+            self.assertEqual({path.name for path in (PREVIEW / dimension).iterdir()}, expected)
+            for entry in (PREVIEW / dimension).iterdir():
+                self.assertTrue(expand(PREVIEW, entry).startswith("#version "))
+
+    def test_personal_effects_are_independent_of_quality_profiles(self):
+        for profile in preview_profiles(PREVIEW).values():
+            self.assertFalse({"MOTION_BLUR", "BLOOM", "WAVING_LEAVES", "WAVING_GRASS"} & profile.keys())
 
     def test_relative_includes_and_cycles(self):
         with TemporaryDirectory() as directory:

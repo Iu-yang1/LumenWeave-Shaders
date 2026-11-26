@@ -46,7 +46,7 @@ float softShadow(vec3 receiver) {
     vec2 texel = 1.0 / vec2(resolution);
     float sum = 0.0;
     float count = 0.0;
-    for (int index = 0; index < 8; ++index) {
+    for (int index = 0; index < SHADOW_FILTER_TAPS; ++index) {
         float depth = shadowDepth(receiver.xy + taps[index] * texel * 3.5, resolution);
         if (depth < receiver.z) {
             sum += depth;
@@ -59,10 +59,10 @@ float softShadow(vec3 receiver) {
     float separation = (receiver.z - sum / count) * (2.0 / abs(shadowProjection[2][2]));
     float radius = clamp(separation * 0.018 / (2.0 * shadowDistance * texel.x), 1.0, 8.0);
     float samples = filteredShadow(receiver.xy, receiver.z, resolution);
-    for (int index = 0; index < 8; ++index) {
+    for (int index = 0; index < SHADOW_FILTER_TAPS; ++index) {
         samples += filteredShadow(receiver.xy + taps[index] * texel * radius, receiver.z, resolution);
     }
-    return samples / 9.0;
+    return samples / float(SHADOW_FILTER_TAPS + 1);
 }
 #endif
 

@@ -45,7 +45,15 @@ flat in int blockId;
 void main() {
     vec4 base = vertexColor;
 #ifndef LW_BASIC
+#ifdef LW_WATER
+    if (blockId != 10004) {
+        base *= texture(gtexture, texCoord);
+    } else {
+        base.a = 1.0;
+    }
+#else
     base *= texture(gtexture, texCoord);
+#endif
 #endif
     if (base.a <= 0.0 || renderStage == MC_RENDER_STAGE_SUN) {
         discard;
@@ -72,28 +80,33 @@ void main() {
     gl_FragData[2] = vec4(gl_FragCoord.z, float(blockId), mappedMaterial);
 #else
     vec3 sun = sunDirection();
-    Material material = vanillaMaterial(blockId, radiance);
-    radiance = surfaceRadiance(radiance, material, normal, view, sun, lightLevels, viewPosition);
 #ifdef LW_WATER
     if (blockId == 10004) {
 #if defined(ADVANCED_WATER) && defined(DEFERRED_LIGHTING)
-        if (isEyeInWater == 0) {
-            vec3 water = physicalWater(decodeSrgb(base.rgb), normal, viewPosition, view, sun,
-                smoothstep(0.56, 1.0, lightLevels.y));
-            gl_FragData[0] = vec4(applySceneFog(water, viewPosition), 1.0);
-            return;
-        }
-#endif
+        vec3 water = physicalWater(radiance, normal, viewPosition, view, sun,
+            smoothstep(0.56, 1.0, lightLevels.y));
+        gl_FragData[0] = vec4(applySceneFog(water, viewPosition), 1.0);
+        return;
+#else
         vec3 position = (gbufferModelViewInverse * vec4(viewPosition, 1.0)).xyz + cameraPosition;
         normal = waveNormal(normal, position);
-        float fresnel = fresnelSchlick(clamp(dot(normal, view), 0.0, 1.0), vec3(0.02)).r;
+        float fresnel = waterFresnel(clamp(dot(normal, view), 0.0, 1.0), isEyeInWater == 1);
         vec3 reflection = skyRadiance(reflect(-view, normal), sun);
-        float opacity = base.a * 0.72;
-        base.a = mix(opacity, 1.0, fresnel);
-        radiance = (mix(radiance * opacity, reflection, fresnel)
+        float thickness = isEyeInWater == 1 ? 0.0
+            : waterThickness(viewPosition, gl_FragCoord.xy / vec2(textureSize(depthtex1, 0)));
+        float opacity = 1.0 - luminance(exp(-waterExtinction() * thickness));
+        vec3 scatter = waterScatteringColor(radiance)
+            * (ambientIrradiance(lightLevels, 1.0, sun) + celestialIrradiance(sun) * 0.16);
+        base.a = max(mix(opacity, 1.0, fresnel), 0.001);
+        radiance = (scatter * opacity * (1.0 - fresnel) + reflection * fresnel
             + waterSunGlint(normal, view, sun, smoothstep(0.56, 1.0, lightLevels.y))) / base.a;
+        gl_FragData[0] = vec4(applySceneFog(radiance, viewPosition), base.a);
+        return;
+#endif
     }
 #endif
+    Material material = vanillaMaterial(blockId, radiance);
+    radiance = surfaceRadiance(radiance, material, normal, view, sun, lightLevels, viewPosition);
 #endif
 #elif defined(LW_LIT)
     radiance *= ambientIrradiance(lightLevels, 0.35, sunDirection());

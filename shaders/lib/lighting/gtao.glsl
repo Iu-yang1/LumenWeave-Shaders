@@ -33,8 +33,8 @@ float groundTruthOcclusion(vec2 uv, vec3 position, vec3 normal) {
     vec2 projectionScale = 0.5 * vec2(gbufferProjection[0][0], gbufferProjection[1][1]);
     float visible = 0.0;
     float unoccluded = 0.0;
-    for (int slice = 0; slice < 3; ++slice) {
-        float angle = (float(slice) + 0.5) * (LW_PI / 3.0);
+    for (int slice = 0; slice < AO_SLICES; ++slice) {
+        float angle = (float(slice) + 0.5) * (LW_PI / float(AO_SLICES));
         vec2 axis = vec2(cos(angle), sin(angle));
         vec3 sliceAxis = vec3(axis, 0.0);
         sliceAxis = normalize(sliceAxis - dot(sliceAxis, observer) * observer);
@@ -51,5 +51,6 @@ float groundTruthOcclusion(vec2 uv, vec3 position, vec3 normal) {
         unoccluded += weight * (visibleArc(LW_PI, gamma) + visibleArc(LW_PI, -gamma));
     }
     float visibility = clamp(visible / max(unoccluded, 0.0001), 0.0, 1.0);
+    visibility = 1.0 - clamp((1.0 - visibility) * AO_STRENGTH, 0.0, 1.0);
     return mix(visibility, 1.0, smoothstep(20.0, 52.0, -position.z));
 }

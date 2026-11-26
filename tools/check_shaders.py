@@ -26,6 +26,31 @@ VOXEL_PASSES = ("begin", "prepare", "prepare1", "prepare2", "prepare3", "prepare
 VOXEL_DIFFUSE_PASS = "prepare5"
 VOXEL_IMAGES = {"image.lwVoxelOccupancy", "image.lwVoxelFirst", "image.lwVoxelSecond"}
 VOXEL_GRID_SIZES = (32, 64, 96, 128)
+DIMENSIONS = ("world0", "world-1", "world1")
+
+
+def menu_options(config):
+    options = set()
+    screens = set()
+
+    def visit(name, ancestry=()):
+        if name in ancestry:
+            raise ValueError(f"Settings menu cycle: {' -> '.join((*ancestry, name))}")
+        if name not in config:
+            raise ValueError(f"Missing settings menu: {name}")
+        if name in screens:
+            return
+        screens.add(name)
+        for token in config[name].split():
+            if token in {"<profile>", "<empty>"}:
+                continue
+            if token.startswith("[") and token.endswith("]"):
+                visit(f"screen.{token[1:-1]}", (*ancestry, name))
+            else:
+                options.add(token)
+
+    visit("screen")
+    return options, screens - {"screen"}
 
 
 def read_source(path):
@@ -86,9 +111,9 @@ def preview_profiles(root, config_root=None):
     config_root = config_root or root
     path = config_root / "shaders.properties"
     config = properties(path, "\n".join(
-        line for line in read_source(path).splitlines() if line.startswith(("profile.", "screen "))
+        line for line in read_source(path).splitlines() if line.startswith(("profile.", "screen"))
     ))
-    options = set(config["screen"].split()) - {"<profile>"}
+    options, screens = menu_options(config)
     sources = "\n".join(
         read_source(path)
         for path in root.rglob("*")
@@ -121,12 +146,13 @@ def preview_profiles(root, config_root=None):
             if option in settings or selection not in choices.get(option, set()):
                 raise ValueError(f"Invalid option in {name}: {token}")
             settings[option] = selection
-        if set(settings) != options:
-            raise ValueError(f"{name} must specify each preview option exactly once")
         profiles[name] = settings
     if not profiles:
         raise ValueError("No preview profiles")
-    expected = set(profiles) | {f"option.{option}" for option in options}
+    quality_options = set(next(iter(profiles.values())))
+    if any(set(settings) != quality_options for settings in profiles.values()):
+        raise ValueError("Profiles must specify the same quality options")
+    expected = set(profiles) | {f"option.{option}" for option in options} | screens
     english = set(properties(config_root / "lang/en_us.lang"))
     chinese = set(properties(config_root / "lang/zh_cn.lang"))
     if english != chinese or expected - english:
@@ -192,6 +218,11 @@ def check_voxel_properties(compiler, path):
                 **{f"program.world0/{program}.enabled": None if voxel_active else "false"
                    for program in VOXEL_PASSES},
             }
+            for dimension in DIMENSIONS[1:]:
+                expected.update({
+                    key.replace("world0/", dimension + "/"): value
+                    for key, value in tuple(expected.items()) if "world0/" in key
+                })
             images = {key for key in config if key.startswith("image.lwVoxel")}
             if any(config.get(key) != value for key, value in expected.items()) or (
                 images != (VOXEL_IMAGES if voxel_active else set())
@@ -203,8 +234,8 @@ def check_voxel_properties(compiler, path):
 
 
 def check_voxel_dispatch(compiler):
-    for size, stage in product(VOXEL_GRID_SIZES, (*VOXEL_PASSES, VOXEL_DIFFUSE_PASS)):
-        path = PREVIEW / "world0" / f"{stage}.csh"
+    for size, stage, dimension in product(VOXEL_GRID_SIZES, (*VOXEL_PASSES, VOXEL_DIFFUSE_PASS), DIMENSIONS):
+        path = PREVIEW / dimension / f"{stage}.csh"
         text = compiler_source(PREVIEW, path, {"VOXEL_GRID_SIZE": str(size)}, ())
         with TemporaryDirectory(prefix="lumenweave-dispatch-") as directory:
             source = Path(directory) / "dispatch.comp"
@@ -233,7 +264,7 @@ def compiler_source(root, source, options, environment):
             replacement,
             text,
         )
-    if root != PREVIEW or source.parent.name != "world0":
+    if root != PREVIEW or source.parent.name not in DIMENSIONS:
         return text
     version, newline, body = text.partition("\n")
     macros = "".join(
@@ -294,15 +325,27 @@ def main():
         check_voxel_properties(args.compiler, PREVIEW / "shaders.properties")
         check_voxel_dispatch(args.compiler)
         print("Shadow and voxel capability matrix: 384 configurations OK")
-        print("Voxel dispatch: 28 stage/size combinations OK")
+        print("Voxel dispatch: 84 dimension/stage/size combinations OK")
         profiles["color-chart"] = {**profiles["profile.Natural"], "SHOW_COLOR_CHART": "true"}
-        profiles["temporal"] = {**profiles["profile.Standard"], "TEMPORAL_AA": "true"}
+        profiles["temporal"] = {**profiles["profile.Standard"], "AA_MODE": "2"}
         profiles["volume"] = {**profiles["temporal"], "VOLUME_EFFECTS": "true"}
         profiles["screen-gi"] = {**profiles["profile.Standard"], "SCREEN_AO": "false", "SCREEN_GI": "true"}
         profiles["screen-gi-history-no-taa-water"] = {
             **profiles["screen-gi"], "SCREEN_GI_HISTORY": "true", "ADVANCED_WATER": "false"
         }
         profiles["screen-gi-spatial"] = {**profiles["screen-gi"], "SCREEN_GI_SPATIAL": "true"}
+        profiles["post-camera-bloom"] = {
+            **profiles["profile.High"], "AA_MODE": "3", "MOTION_BLUR": "true",
+            "BLOOM": "true", "IMAGE_SHARPENING": "0.3", "COLOR_CONTRAST": "1.05",
+        }
+        profiles["forward-post"] = {
+            **profiles["profile.Low"], "AA_MODE": "2", "MOTION_BLUR": "true", "BLOOM": "true",
+            "WAVING_LEAVES": "false", "WAVING_GRASS": "false",
+        }
+        profiles["no-aa-no-wind"] = {
+            **profiles["profile.High"], "AA_MODE": "0",
+            "WAVING_LEAVES": "false", "WAVING_GRASS": "false", "WATER_REFLECTION_STEPS": "0",
+        }
         compile_pack(args.compiler, PREVIEW, profiles)
         compile_pack(
             args.compiler, PREVIEW, {"lab-pbr": profiles["profile.Standard"]},
