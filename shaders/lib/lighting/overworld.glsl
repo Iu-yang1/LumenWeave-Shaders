@@ -69,10 +69,13 @@ vec3 skyRadiance(vec3 direction, vec3 sun) {
     if (!hasSkylight) {
         vec3 fog = decodeSrgb(fogColor);
         if (hasCeiling) {
-            return mix(fog, vec3(0.14, 0.032, 0.012), 0.18);
+            // Preserve biome identity, with a warmer lower horizon and darker ceiling.
+            float lower = 1.0-smoothstep(-0.25,0.65,direction.y);
+            return mix(fog,vec3(0.14,0.032,0.012),0.10+0.13*lower)*mix(0.68,1.0,lower);
         }
-        vec3 horizon = mix(fog, vec3(0.040, 0.023, 0.083), 0.55);
-        return mix(horizon, vec3(0.004, 0.003, 0.012), smoothstep(0.0, 0.85, direction.y));
+        vec3 horizon = mix(fog,vec3(0.052,0.023,0.105),0.60);
+        vec3 zenith = vec3(0.006,0.004,0.019);
+        return mix(horizon,zenith,smoothstep(0.0,0.85,abs(direction.y)));
     }
     float height = max(direction.y, 0.0);
     float cosine = max(dot(direction, sun), 0.0);
