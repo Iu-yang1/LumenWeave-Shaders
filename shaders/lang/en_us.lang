@@ -361,6 +361,6 @@ option.MULTIRATE_VOLUME.comment=Reduce distant cloud and weak shaft samples; nea
 option.SSR_FOOTPRINT=Projected reflection budget
 option.SSR_FOOTPRINT.comment=Reduce rough, low-contribution or subpixel reflection sampling; sharp mirrors retain their ceiling.
 option.LOW_FREQ_CACHE=Low-frequency spatial reuse
-option.LOW_FREQ_CACHE.comment=Dominant geometry-compatible half-resolution GI donors can bypass other reads.
+option.LOW_FREQ_CACHE.comment=Two dominant, mutually compatible half-resolution GI donors can bypass the remaining reads.
 option.DIFFUSE_SH=First-order diffuse SH
 option.DIFFUSE_SH.comment=Evaluate the existing axisymmetric diffuse environment as a first-order SH expansion. Does not replace colored local or screen-space GI.

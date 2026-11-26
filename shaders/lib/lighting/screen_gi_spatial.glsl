@@ -17,26 +17,29 @@ ScreenBounce spatialScreenBounce(vec3 viewPosition, vec3 normal, vec3 sun, vec2 
     float tolerance = max(0.12, sceneDepth * 0.022);
     float coverage = 0.0;
 #if LOW_FREQ_CACHE == 1
-    // Existing half-grid GI is a spatial cache, not an additional texture.
-    // A dominant donor may replace the other three when geometry agrees.
-    ivec2 nearest=clamp(ivec2(floor(samplePosition+0.5)),ivec2(0),traceSize-1);
-    vec2 dominance=1.0-abs(samplePosition-vec2(nearest));
-    if(dominance.x*dominance.y>0.80){
-        vec4 sky=texelFetch(colortex9,nearest,0);
-        ivec2 owner=clamp(ivec2((vec2(nearest)+0.5)*vec2(fullSize)/vec2(traceSize)),ivec2(0),fullSize-1);
-        if(sky.a>0.0 && abs(sky.a-sceneDepth)<tolerance*0.35 && dot(normal,decodeNormal(texelFetch(colortex1,owner,0).xy))>0.96){
-            bounce.sky=sky.rgb;
+    // Order by bilinear weight. At an exact 2x upscale, the first two
+    // donors carry 75% (not 80% for a single donor), so this path is usable.
+    ivec2 nearestOffset=ivec2(greaterThanEqual(fraction,vec2(0.5)));
+    vec2 dominant=max(fraction,1.0-fraction);
+    ivec2 minorAxis=dominant.x<dominant.y?ivec2(1,0):ivec2(0,1);
+    vec3 firstSky=vec3(0.0);
 #ifdef LW_VOXEL_DIFFUSE_ACTIVE
-            vec4 block=texelFetch(colortex10,nearest,0);
-            bounce.block=block.rgb;bounce.blockConfidence=block.a;
+    vec4 firstBlock=vec4(0.0);
 #endif
-            return bounce;
-        }
-    }
-#endif
+    bool coherent=true;
+    int accepted=0;
+    for(int donorIndex=0;donorIndex<4;++donorIndex){
+        ivec2 offset=nearestOffset;
+        if(donorIndex==1) offset=ivec2(notEqual(offset,minorAxis));
+        if(donorIndex==2) offset=ivec2(notEqual(offset,ivec2(1)-minorAxis));
+        if(donorIndex==3) offset=ivec2(1)-offset;
+        ivec2 texel=base+offset;
+        int column=offset.x,row=offset.y;
+#else
     for (int row = 0; row < 2; ++row) {
         for (int column = 0; column < 2; ++column) {
             ivec2 texel = base + ivec2(column, row);
+#endif
             if (any(lessThan(texel, ivec2(0))) || any(greaterThanEqual(texel, traceSize))) {
                 continue;
             }
@@ -49,7 +52,8 @@ ScreenBounce spatialScreenBounce(vec3 viewPosition, vec3 normal, vec3 sun, vec2 
             }
             ivec2 pixel = ivec2((vec2(texel) + 0.5) * vec2(fullSize) / vec2(traceSize));
             vec3 donorNormal = decodeNormal(texelFetch(colortex1, pixel, 0).xy);
-            if (dot(normal, donorNormal) <= 0.82) {
+            float alignment=dot(normal,donorNormal);
+            if (alignment <= 0.82) {
                 continue;
             }
             float weight = weights.x * weights.y * (1.0 - smoothstep(0.35, 1.0, depthDifference / tolerance));
@@ -60,8 +64,27 @@ ScreenBounce spatialScreenBounce(vec3 viewPosition, vec3 normal, vec3 sun, vec2 
             bounce.block += block.rgb * weight;
             bounce.blockConfidence += block.a * weight;
 #endif
+#if LOW_FREQ_CACHE == 1
+            coherent=coherent && depthDifference<tolerance*0.35 && alignment>0.96;
+            if(accepted==0){
+                firstSky=sky.rgb;
+#ifdef LW_VOXEL_DIFFUSE_ACTIVE
+                firstBlock=block;
+#endif
+            }else{
+                coherent=coherent && all(lessThanEqual(abs(sky.rgb-firstSky),vec3(0.002)+max(abs(sky.rgb),abs(firstSky))*0.04));
+#ifdef LW_VOXEL_DIFFUSE_ACTIVE
+                coherent=coherent && all(lessThanEqual(abs(block-firstBlock),vec4(0.002)+max(abs(block),abs(firstBlock))*0.04));
+#endif
+            }
+            ++accepted;
+            if(accepted>=2 && donorIndex==1 && coherent && coverage>=0.72)
+                return ScreenBounce(bounce.sky/coverage,bounce.block/coverage,bounce.blockConfidence/coverage);
+#endif
         }
+#if LOW_FREQ_CACHE == 0
     }
+#endif
 #if APPROX_REUSE == 1
     // Reuse only depth/normal-compatible donors. A genuine disocclusion
     // uses two opposed rays rather than four full retraces.

@@ -361,6 +361,6 @@ option.MULTIRATE_VOLUME.comment=减少远云与低贡献光束采样，近处保
 option.SSR_FOOTPRINT=投影面积反射预算
 option.SSR_FOOTPRINT.comment=减少粗糙、低贡献或小投影反射采样，镜面保留原上限。
 option.LOW_FREQ_CACHE=低频空间复用
-option.LOW_FREQ_CACHE.comment=几何兼容且占主导权重的半分辨率 GI 样本可跳过其它读取。
+option.LOW_FREQ_CACHE.comment=两个占主导权重、彼此光照及几何一致的半分辨率 GI 样本可跳过其余读取。
 option.DIFFUSE_SH=一阶球谐漫反射
 option.DIFFUSE_SH.comment=使用一阶球谐表达现有轴对称漫反射环境，不替代彩色局部光照与屏幕空间 GI。

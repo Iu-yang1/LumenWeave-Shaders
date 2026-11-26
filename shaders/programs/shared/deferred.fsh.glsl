@@ -174,7 +174,7 @@ void main() {
         priorGI=old.rgb;
     }
     if(canReduce){
-        int phase=(frameCounter+giTile.x)&1;
+        int phase=(frameCounter+(frameCounter/2)+giTile.x)&1;
         bounce=screenDiffuseBouncePair(viewPosition,normal,sun,2,phase);
         vec3 discrepancy=abs(bounce.sky-priorGI)/max(max(bounce.sky,priorGI),vec3(0.015));
         bool changed=any(greaterThan(discrepancy,vec3(PERCEPTUAL_GI==2?0.30:0.18)));
