@@ -6,8 +6,8 @@ public final class CoreRegression {
     static void check(boolean ok,String message){if(!ok)throw new AssertionError(message);}
     static SectionStore.Key key(int x,int y,int z){return new SectionStore.Key(x,y,z);}
     public static void main(String[] args){
-        sections(); drawLists(); shadows(); pages(); backend(); randomized();
-        System.out.println("Renderer core: 6 regression groups passed");
+        sections(); drawLists(); shadows(); pages(); backend(); randomized(); atlas();
+        System.out.println("Renderer core: 7 regression groups passed");
     }
     static void sections(){
         var store=new SectionStore();var a=key(-1,0,0);var b=key(0,0,0);
@@ -73,6 +73,17 @@ public final class CoreRegression {
         var gpu=new RendererBackend.Capabilities(RendererBackend.Api.OPENGL,Set.of(RendererBackend.Feature.SECTION_SEEDS),0);
         check(RendererBackend.mayUseNormalCulling(d,new RendererBackend.Receipt(d.generation(),d.epoch(),d.window(),true,true,true),gpu),"exact ack");
         check(!RendererBackend.mayUseNormalCulling(d,new RendererBackend.Receipt(d.generation(),d.epoch()-1,d.window(),true,true,true),gpu),"stale ack");
+    }
+    static void atlas(){
+        // Full section uploads are disjoint even for an unaligned 128-block window.
+        for(int start=-300;start<300;start++){
+            var slots=new HashSet<Integer>();
+            int lo=Math.floorDiv(start,16),hi=Math.floorDiv(start+127,16);
+            for(int section=lo;section<=hi;section++)
+                check(slots.add(SeedAtlasLayout.sectionAddress(section)),"no section alias");
+            for(int x=start;x<start+128;x++)
+                check(SeedAtlasLayout.address(x)==SeedAtlasLayout.sectionAddress(Math.floorDiv(x,16))+Math.floorMod(x,16),"negative ring address");
+        }
     }
     static void randomized(){
         var rng=new Random(6201);var cache=new ShadowTileCache();

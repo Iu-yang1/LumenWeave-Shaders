@@ -21,9 +21,9 @@ public final class ShadowTileCache {
     private Plan pending;
     public Plan plan(Basis next,Set<Tile> required,Collection<Bounds> oldAndNewCasterBounds,Set<Tile> dynamic){
         // Invalidation is immediate even if a render fails or a frame is skipped.
+        Set<Tile> release=new HashSet<>(valid);release.removeAll(required);
         if(!Objects.equals(basis,next)){valid.clear();basis=next;}
         valid.removeIf(t->oldAndNewCasterBounds.stream().anyMatch(b->b.contains(t)));
-        Set<Tile> release=new HashSet<>(valid);release.removeAll(required);
         valid.retainAll(required);
         Set<Tile> draw=new HashSet<>(required);draw.removeAll(valid);
         Set<Tile> moving=new HashSet<>(dynamic);moving.retainAll(required);

@@ -3,7 +3,10 @@ plugins {
 }
 version = '0.1.0-alpha.1'
 group = 'io.lumenweave'
-repositories { mavenCentral() }
+repositories {
+    mavenCentral()
+    maven { url = 'https://maven.caffeinemc.net/releases' }
+}
 loom {
     splitEnvironmentSourceSets()
     mods {
@@ -16,6 +19,7 @@ loom {
 dependencies {
     minecraft 'com.mojang:minecraft:26.1.2'
     implementation 'net.fabricmc:fabric-loader:0.19.3'
+    compileOnly 'net.caffeinemc:sodium-fabric:0.9.2+mc26.1.2'
 }
 java {
     toolchain.languageVersion = JavaLanguageVersion.of(25)

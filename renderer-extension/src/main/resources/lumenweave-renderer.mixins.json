@@ -1,10 +1,11 @@
 {
   "required": true,
   "package": "io.lumenweave.renderer.client.mixin",
-  "compatibilityLevel": "JAVA_21",
+  "compatibilityLevel": "JAVA_25",
   "client": [
     "SodiumSectionMixin",
-    "ClientTickMixin"
+    "ClientTickMixin",
+    "IrisPipelineMixin"
   ],
   "injectors": {
     "defaultRequire": 1

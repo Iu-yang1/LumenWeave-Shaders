@@ -5,7 +5,9 @@ import net.fabricmc.api.ClientModInitializer;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.world.level.block.state.BlockState;
-import net.minecraft.world.level.chunk.ChunkStatus;
+import org.joml.Vector3d;
+import org.lwjgl.opengl.GL;
+import java.util.Set;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -25,12 +27,17 @@ public final class RendererExtension implements ClientModInitializer {
     private static Field settingsField;
     private static Method materialMethod;
     private static long ticks;
+    private static final boolean GPU_PROBE=Boolean.getBoolean("lumenweave.renderer.seedProbe");
+    private static OpenGlSeedAtlas atlas;
+    private static long probeFrames;
+    private static Method cameraMethod;
     private static SectionStore.Delta latest;
     @Override public void onInitializeClient(){
         try{
             Class<?> settings=Class.forName("net.irisshaders.iris.shaderpack.materialmap.WorldRenderingSettings");
             settingsField=settings.getField("INSTANCE");
             materialMethod=settings.getMethod("getBlockStateIds");
+            cameraMethod=Class.forName("net.irisshaders.iris.uniforms.CameraUniforms").getMethod("getUnshiftedCameraPosition");
         }catch(ReflectiveOperationException e){
             LOG.info("Iris material map unavailable; independent seed observation inactive");
         }
@@ -55,7 +62,7 @@ public final class RendererExtension implements ClientModInitializer {
     public static SectionStore.Delta latest(){return latest;}
     public static void tick(){
         Minecraft mc=Minecraft.getInstance();
-        if(world==null||mc.level!=world||mc.player==null||materialMethod==null)return;
+        if(world==null||mc.level!=world||mc.player==null||materialMethod==null||GPU_PROBE)return;
         Map<?,?> ids;
         try{ids=(Map<?,?>)materialMethod.invoke(settingsField.get(null));}
         catch(ReflectiveOperationException e){LOG.warn("Iris material map read failed; producer disabled",e);materialMethod=null;return;}
@@ -69,8 +76,40 @@ public final class RendererExtension implements ClientModInitializer {
         if(++ticks%200==0)LOG.info("Seed observation: resident={}, missing={}, upserts={}, epoch={}",
             latest.resident(),latest.missing().size(),latest.upserts().size(),latest.epoch());
     }
+    // Called after Iris shadow production and before prepare. The optional
+    // probe uses Iris camera coordinates and the real occupancy texture size.
+    public static void afterShadow(Set<?> images){
+        if(!GPU_PROBE||world==null||Minecraft.getInstance().level!=world||cameraMethod==null||materialMethod==null)return;
+        if(!GL.getCapabilities().OpenGL45)return;
+        try{
+            int occupancy=0;
+            for(Object image:images){
+                if("lwVoxelOccupancy".equals(image.getClass().getMethod("getName").invoke(image))){
+                    occupancy=(int)image.getClass().getMethod("getId").invoke(image);break;
+                }
+            }
+            if(occupancy==0)return;
+            int n=OpenGlSeedAtlas.width(occupancy);
+            if(n!=32&&n!=64&&n!=96&&n!=128)return;
+            Map<?,?> ids=(Map<?,?>)materialMethod.invoke(settingsField.get(null));
+            if(ids==null)return;
+            if(ids!=materialIds){materialIds=ids;STORE.invalidateMaterials();}
+            Vector3d pos=(Vector3d)cameraMethod.invoke(null);
+            var window=new SectionStore.Window((int)Math.floor(pos.x)-n/2,(int)Math.floor(pos.y)-n/2,(int)Math.floor(pos.z)-n/2,n);
+            if(atlas==null)atlas=new OpenGlSeedAtlas();
+            latest=STORE.update(window,RendererExtension::snapshot);
+            REFERENCE.uploadSeeds(latest);
+            atlas.uploadSeeds(latest);
+            if(++probeFrames%120==0){
+                var diff=atlas.compare(occupancy,window);
+                LOG.info("GPU seed probe: grid={}, complete={}, missing={}, differing={}, referenceNonzero={}, candidateNonzero={}",
+                    n,latest.complete(),latest.missing().size(),diff.differing(),diff.referenceNonzero(),diff.candidateNonzero());
+            }
+        }catch(ReflectiveOperationException e){LOG.warn("Iris seed probe contract changed",e);cameraMethod=null;}
+    }
+    public static void closeProbe(){if(atlas!=null){atlas.close();atlas=null;}}
     private static int[] snapshot(SectionStore.Key key){
-        var chunk=world.getChunkSource().getChunk(key.x(),key.z(),ChunkStatus.FULL,false);
+        var chunk=world.getChunkSource().getChunkNow(key.x(),key.z());
         if(chunk==null)return null;
         int index=world.getSectionIndexFromSectionY(key.y());
         var sections=chunk.getSections();
