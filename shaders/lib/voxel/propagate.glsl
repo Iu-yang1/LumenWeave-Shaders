@@ -26,13 +26,18 @@ void main() {
         imageStore(LW_VOXEL_WRITE, storageCell, vec4(0.0));
         return;
     }
-    vec3 source = voxelSeedEmission(seed);
+    vec3 source = seed == 0u ? vec3(0.0) : voxelSeedEmission(seed);
     vec3 incoming = vec3(0.0);
     for (int stepIndex = 0; stepIndex < 6; ++stepIndex) {
         ivec3 neighbor = cell + LW_VOXEL_DIRECTIONS[stepIndex];
         if (withinVoxelGrid(neighbor)) {
 #ifdef LW_VOXEL_INCREMENTAL_ACTIVE
-            incoming = max(incoming,imageLoad(LW_VOXEL_READ,voxelCacheCell(neighbor)).rgb);
+            // A valid local neighbour differs by one cell. Wrap only this
+            // storage offset rather than rebuilding the camera origin.
+            ivec3 wrapped = storageCell + LW_VOXEL_DIRECTIONS[stepIndex];
+            wrapped += ivec3(lessThan(wrapped,ivec3(0))) * LW_GRID_SIZE;
+            wrapped -= ivec3(greaterThanEqual(wrapped,ivec3(LW_GRID_SIZE))) * LW_GRID_SIZE;
+            incoming = max(incoming,imageLoad(LW_VOXEL_READ,wrapped).rgb);
 #else
             incoming = max(incoming, imageLoad(LW_VOXEL_READ, neighbor).rgb);
 #endif
