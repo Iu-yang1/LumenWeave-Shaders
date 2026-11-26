@@ -27,13 +27,13 @@ vec3 surfaceRadiance(vec3 albedo, Material material, vec3 normal, vec3 view, vec
 #endif
     // Shadowed surfaces still receive sky light; direct occlusion moderately reduces its diffuse approximation.
     vec3 skyAmbient = ambientIrradiance(vec2(0.0, lightLevels.y), normal.y, sun);
-    float occludedSky = mix(1.0, mix(0.58, 1.0, shadow), daylight(sun) * (1.0 - rainStrength));
+    float occludedSky = mix(1.0, mix(0.40, 1.0, shadow), daylight(sun) * (1.0 - rainStrength));
     skyAmbient *= occludedSky;
-    vec3 blockAmbient = lightLevels.x * lightLevels.x * vec3(1.04, 0.76, 0.49) * BLOCKLIGHT_STRENGTH;
+    vec3 blockAmbient = blockLightIrradiance(lightLevels.x);
 #ifdef LW_VOXEL_ACTIVE
     vec3 coloredLight = voxelIrradiance(position, normal) * BLOCKLIGHT_STRENGTH;
     float influence = smoothstep(0.025, 0.65, max(coloredLight.r, max(coloredLight.g, coloredLight.b)));
-    blockAmbient = mix(blockAmbient, coloredLight, influence);
+    blockAmbient = mix(blockAmbient, coloredLight * 1.45, influence);
 #endif
     vec3 diffuse = albedo * (1.0 - material.metallic) * (1.0 - f0);
     vec3 ambient = (skyAmbient + blockAmbient) * material.occlusion;
@@ -57,13 +57,13 @@ vec3 surfaceRadiance(vec3 albedo, Material material, vec3 normal, vec3 view, vec
         environmentContribution = f0 * mix(0.27, 0.50, material.roughness) * ambient;
         indirect += environmentContribution;
     }
+    specularEnvironment = vec4(environmentContribution,1.0);
 #ifdef LW_MATERIAL_SSR_ACTIVE
     // The screen ray has its own visibility; do not attenuate it by sky access.
     // Store the exact existing fallback separately, including indoor materials.
     if (material.roughness < 0.65) {
         vec3 reflectance = fresnelSchlick(clamp(dot(normal,view),0.0,1.0),f0) * material.occlusion;
         specularMetadata = vec4(reflectance,material.roughness);
-        specularEnvironment = vec4(environmentContribution,1.0);
     }
 #endif
 #endif
