@@ -29,7 +29,7 @@ void main(){
             }
         }
     }
-    imageStore(lwVoxelFirst,ivec3(column,2*LW_GRID_SIZE+2),vec4(top,float(upper+1),float(lower),0.0));
+    imageStore(lwVoxelFirst,ivec3(column,LW_RAIN_COLUMN_SLICE),vec4(top,float(upper+1),float(lower),0.0));
 }
 #else
 void main(){}

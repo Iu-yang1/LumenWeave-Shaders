@@ -318,6 +318,9 @@ def check_modern_properties(compiler, path):
         if config["image.lwVoxelFirst"].split()[-3:]!=[str(size),str(size),str(2*size+3)]:
             raise ValueError("Smoothed voxel slab dimensions incorrect")
         weather=preprocess_properties(compiler,path,{**flags,"SMOOTH_LIGHTING":"1","WET_SURFACES":"1","VOXEL_GRID_SIZE":str(size)})
+        wet_only=preprocess_properties(compiler,path,{**flags,"WET_SURFACES":"1","VOXEL_GRID_SIZE":str(size)})
+        if wet_only["image.lwVoxelFirst"].split()[-3:]!=[str(size),str(size),str(size+1)]:
+            raise ValueError("Rain columns must not depend on lighting smoothing")
         if weather.get("program.world0/prepare7.enabled")=="false" or weather.get("program.world-1/prepare7.enabled")!="false":
             raise ValueError("Rain column stage dimension gate incorrect")
         diffuse=preprocess_properties(compiler,path,{**flags,"SMOOTH_LIGHTING":"1","VOXEL_GRID_SIZE":str(size),"VOXEL_GI":"1"})

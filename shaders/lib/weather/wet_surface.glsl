@@ -30,23 +30,23 @@ vec2 wetWorldXZ(vec3 viewPosition) {
 }
 vec2 wetFilmAndPuddle(vec3 normal,vec2 lightLevels,vec3 viewPosition) {
     if(!hasSkylight || wetness<=0.001) return vec2(0.0);
-    vec2 geometry=rainGeometry(viewPosition,normal);
+    vec3 geometry=rainGeometry(viewPosition,normal);
     float exposed=smoothstep(0.80,0.99,lightLevels.y)*geometry.x;
     float film=wetness*exposed*(0.25+0.75*smoothstep(-0.1,0.85,normal.y));
     if(film<=0.001 || normal.y<0.91) return vec2(film,0.0);
     float noise=smoothstep(0.46,0.72,wetNoise(wetWorldXZ(viewPosition)*0.23));
-    float basin=geometry.y<0.0?noise:mix(noise*0.25,1.0,geometry.y)*geometry.y;
+    float basin=mix(noise,mix(noise*0.25,1.0,geometry.y)*geometry.y,geometry.z);
     float puddle=film*film*smoothstep(0.91,0.995,normal.y)*basin*PUDDLE_STRENGTH;
     return vec2(film,puddle);
 }
 float wetPuddle(vec3 normal,vec2 lightLevels,vec3 viewPosition) {
     return wetFilmAndPuddle(normal,lightLevels,viewPosition).y;
 }
-vec3 wetRippleNormal(vec3 normal,vec2 lightLevels,vec3 viewPosition,Material material) {
+vec3 wetRippleNormalFromResponse(vec3 normal,vec3 viewPosition,Material material,vec2 response) {
 #if RAIN_RIPPLES > 0
     if(rainStrength<=0.001 || material.metallic>0.5 || material.roughness<0.18 || normal.y<0.91 ||
         max(material.emission.r,max(material.emission.g,material.emission.b))>0.001) return normal;
-    float puddle=wetPuddle(normal,lightLevels,viewPosition)*smoothstep(0.18,0.45,material.roughness);
+    float puddle=response.y*smoothstep(0.18,0.45,material.roughness);
     if(puddle>0.001) {
         float footprint=length(viewPosition)*0.002;
         vec2 ripple=rainRippleSlope(wetWorldXZ(viewPosition),lwWeatherTime,footprint);
@@ -55,9 +55,11 @@ vec3 wetRippleNormal(vec3 normal,vec2 lightLevels,vec3 viewPosition,Material mat
 #endif
     return normal;
 }
-void wetSurface(inout vec3 albedo,inout Material material,vec3 normal,vec2 lightLevels,vec3 viewPosition) {
+vec3 wetRippleNormal(vec3 normal,vec2 lightLevels,vec3 viewPosition,Material material) {
+    return wetRippleNormalFromResponse(normal,viewPosition,material,wetFilmAndPuddle(normal,lightLevels,viewPosition));
+}
+void wetSurfaceFromResponse(inout vec3 albedo,inout Material material,vec2 response) {
     if(!hasSkylight || wetness<=0.001 || material.metallic>0.5 || max(material.emission.r,max(material.emission.g,material.emission.b))>0.001) return;
-    vec2 response=wetFilmAndPuddle(normal,lightLevels,viewPosition);
     float film=response.x;
     if(film<=0.001) return;
     float puddle=response.y;
@@ -68,6 +70,10 @@ void wetSurface(inout vec3 albedo,inout Material material,vec3 normal,vec2 light
     puddle*=smoothstep(0.18,0.45,material.roughness);
     material.roughness=mix(material.roughness,min(material.roughness,0.38),film);
     material.roughness=mix(material.roughness,min(material.roughness,0.10),puddle);
+}
+
+void wetSurface(inout vec3 albedo,inout Material material,vec3 normal,vec2 lightLevels,vec3 viewPosition) {
+    wetSurfaceFromResponse(albedo,material,wetFilmAndPuddle(normal,lightLevels,viewPosition));
 }
 
 #endif

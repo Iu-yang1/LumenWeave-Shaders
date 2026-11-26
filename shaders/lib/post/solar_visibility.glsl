@@ -11,6 +11,9 @@ uniform sampler2D dhDepthTex0;
 #endif
 #ifdef LW_CELESTIAL_VOLUME_SPATIAL
 uniform sampler2D colortex9;
+#ifdef LW_SCENE_TAAU
+#include "/lib/temporal/scene_grid.glsl"
+#endif
 #endif
 vec4 solarVisibility(sampler2D source){
 #if defined(LW_DIMENSION_NETHER) || defined(LW_DIMENSION_END)
@@ -36,7 +39,13 @@ vec4 solarVisibility(sampler2D source){
 #endif
         visible+=openSky;
 #ifdef LW_CELESTIAL_VOLUME_SPATIAL
-        light+=openSky*clamp(textureLod(colortex9,sampleUv,0.0).a,0.0,1.0);
+        vec2 cloudUv=sampleUv;
+#ifdef LW_SCENE_TAAU
+        ivec2 fullSize=textureSize(colortex9,0);
+        ivec2 active=lwSceneRenderSize(fullSize);
+        cloudUv=clamp(sampleUv*vec2(active),vec2(0.5),vec2(active)-0.5)/vec2(fullSize);
+#endif
+        light+=openSky*clamp(textureLod(colortex9,cloudUv,0.0).a,0.0,1.0);
 #else
         light+=openSky*smoothstep(0.9,4.0,dot(textureLod(source,sampleUv,0.0).rgb,vec3(0.2126,0.7152,0.0722)));
 #endif

@@ -16,8 +16,9 @@ vec3 surfaceRadiance(vec3 albedo, Material material, vec3 normal, vec3 view, vec
     specularMetadata = vec4(0.0);
     specularEnvironment = vec4(0.0);
     #ifdef WET_SURFACES
-    vec3 wetNormal=wetRippleNormal(normal,lightLevels,viewPosition,material);
-    wetSurface(albedo,material,normal,lightLevels,viewPosition);
+    vec2 wetResponse=wetFilmAndPuddle(normal,lightLevels,viewPosition);
+    vec3 wetNormal=wetRippleNormalFromResponse(normal,viewPosition,material,wetResponse);
+    wetSurfaceFromResponse(albedo,material,wetResponse);
     normal=wetNormal;
     #endif
     vec3 f0 = material.f0;

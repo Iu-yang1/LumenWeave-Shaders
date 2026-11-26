@@ -35,7 +35,7 @@ class RenderingEfficiencyTests(unittest.TestCase):
         self.assertIn("terrainWeight",source)
         self.assertIn("return state.g",(S/"lib/post/exposure.glsl").read_text())
         self.assertIn("LW_EXPOSURE_FINAL",(S/"programs/shared/final.fsh.glsl").read_text())
-        self.assertIn("colortex9,sampleUv,0.0).a",(S/"lib/post/solar_visibility.glsl").read_text())
+        self.assertIn("colortex9,cloudUv,0.0).a",(S/"lib/post/solar_visibility.glsl").read_text())
 
     def test_dof_near_coverage_and_hand_depth(self):
         src=(S/"lib/post/dof.glsl").read_text()
@@ -110,7 +110,7 @@ class RenderingEfficiencyTests(unittest.TestCase):
 
     def test_rain_columns_and_local_relief(self):
         stage=(S/"programs/shared/prepare7.csh.glsl").read_text()
-        self.assertIn("2*LW_GRID_SIZE+2",stage)
+        self.assertIn("LW_RAIN_COLUMN_SLICE",stage)
         self.assertIn("LW_VOXEL_WALL",stage)
         src=(S/"lib/weather/column_height.glsl").read_text()
         self.assertIn("c.x-cell.y",src)
@@ -147,3 +147,9 @@ class RenderingEfficiencyTests(unittest.TestCase):
         self.assertIn("lwSceneLowCoord(stableUv",resolve)
         self.assertIn("donorWater!=water",resolve)
         self.assertIn("lwSceneRenderSize(size)",resolve)
+
+    def test_scene_taau_scales_volume_grid_and_readers(self):
+        for name,reader in (("composite_a","scatter_upsample"),("composite_b","volume_spatial")):
+            self.assertIn("size=lwSceneRenderSize(size)",(S/f"programs/shared/{name}.csh.glsl").read_text())
+            self.assertIn("size=lwSceneRenderSize(size)",(S/f"lib/atmosphere/{reader}.glsl").read_text())
+        self.assertIn("cloudUv=clamp",(S/"lib/post/solar_visibility.glsl").read_text())

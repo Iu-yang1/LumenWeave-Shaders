@@ -1,3 +1,6 @@
+#ifdef LW_SCENE_TAAU
+#include "/lib/temporal/scene_grid.glsl"
+#endif
 // Reconstruct the affine celestial volume transfer, not already-lit scene RGB.
 vec4 celestialVolumeTransfer(vec3 direction,float distanceToSurface) {
     vec3 sun=sunDirection();
@@ -13,6 +16,9 @@ uniform sampler2D colortex3;
 #endif
 vec4 upsampleCelestialVolume(vec2 uv,vec3 direction,float distanceToSurface) {
     ivec2 size=textureSize(colortex9,0);
+#ifdef LW_SCENE_TAAU
+    size=lwSceneRenderSize(size);
+#endif
     vec2 coordinate=uv*vec2(size)-0.5;
     ivec2 base=ivec2(floor(coordinate));
     vec2 f=fract(coordinate);

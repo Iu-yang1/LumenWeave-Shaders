@@ -1,6 +1,19 @@
 #include "/lib/quality.glsl"
 layout(local_size_x=8,local_size_y=8) in;
+#if defined(LW_SCENE_TAAU) && SCENE_TAAU_SCALE == 50
+const vec2 workGroupsRender=vec2(0.25,0.25);
+#elif defined(LW_SCENE_TAAU) && SCENE_TAAU_SCALE == 67
+const vec2 workGroupsRender=vec2(0.335,0.335);
+#elif defined(LW_SCENE_TAAU) && SCENE_TAAU_SCALE == 75
+const vec2 workGroupsRender=vec2(0.375,0.375);
+#elif defined(LW_SCENE_TAAU) && SCENE_TAAU_SCALE == 85
+const vec2 workGroupsRender=vec2(0.425,0.425);
+#else
 const vec2 workGroupsRender=vec2(0.5,0.5);
+#endif
+#ifdef LW_SCENE_TAAU
+#include "/lib/temporal/scene_grid.glsl"
+#endif
 #ifdef LW_CELESTIAL_VOLUME_SPATIAL
 #include "/lib/lighting/overworld.glsl"
 #include "/lib/atmosphere/volume_depth.glsl"
@@ -19,6 +32,9 @@ layout(rg16f) writeonly uniform image2D colorimg3;
 void main() {
     ivec2 p=ivec2(gl_GlobalInvocationID.xy);
     ivec2 size=imageSize(colorimg9);
+#ifdef LW_SCENE_TAAU
+    size=lwSceneRenderSize(size);
+#endif
     if(any(greaterThanEqual(p,size))) return;
     vec4 result=vec4(0.0,0.0,0.0,1.0);
     float distanceToSurface=0.0;

@@ -24,6 +24,8 @@ def resource_budget(options, width, height):
     if voxel_bytes and enabled("INCREMENTAL_VOXELS"):
         voxel_bytes += (18 if options.get("VOXEL_FUSION", "1") == "1" else 34) * size ** 3 + 128 * 32 * 32 + 16
     smooth_bytes=8*size**2*(size+3) if voxel_bytes and enabled("INCREMENTAL_VOXELS") and enabled("SMOOTH_LIGHTING") else 0
+    rain_column_bytes=8*size**2 if voxel_bytes and enabled("INCREMENTAL_VOXELS") and enabled("WET_SURFACES") and not smooth_bytes else 0
+    voxel_bytes+=rain_column_bytes
     diffuse_smooth_bytes=8*size**3 if smooth_bytes and enabled("VOXEL_GI") and enabled("DEFERRED_LIGHTING") else 0
     voxel_bytes+=smooth_bytes+diffuse_smooth_bytes
     legacy_full=bool(voxel_bytes and enabled("INCREMENTAL_VOXELS") and options.get("VOXEL_FUSION")=="0" and enabled("PHYSICAL_ATMOSPHERE") and options.get("ATMO_PREBAKED")=="0")
@@ -55,6 +57,7 @@ def resource_budget(options, width, height):
         "voxel_mib": voxel_bytes / MIB,
         "voxel_smooth_mib": smooth_bytes / MIB,
         "voxel_diffuse_smooth_mib": diffuse_smooth_bytes / MIB,
+        "rain_column_extra_mib":rain_column_bytes/MIB,
         "atmosphere_mib": atmo_bytes / MIB,
         "extra_color_single_mib": extra_color_bytes / MIB,
         "extra_color_double_mib": 2 * extra_color_bytes / MIB,
