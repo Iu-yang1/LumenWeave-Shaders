@@ -16,25 +16,45 @@ uniform float frameTime;
 shared ivec4 previous;
 shared ivec3 origin;
 shared uint occupied;
+shared uint transitioning;
+shared uint previousSupport;
 shared bool skipTile;
 shared ivec3 tileMeta;
+vec4 settleHistory(vec4 value,vec4 target,vec4 old,bool wall,out bool pending){
+    if(wall) { pending=false;return vec4(0.0); }
+    // Compare representable half-float values; snap a sub-quantum tail
+    // so a converged tile cannot remain active indefinitely.
+    vec4 tolerance=max(abs(target)*0.0015,vec4(0.0005));
+    bvec4 close=lessThanEqual(abs(value-target),tolerance);
+    value=mix(value,target,close);
+    vec4 quantized=vec4(unpackHalf2x16(packHalf2x16(value.xy)),unpackHalf2x16(packHalf2x16(value.zw)));
+    if(all(equal(quantized,old))) quantized=target;
+    pending=any(notEqual(quantized,target));
+    return quantized;
+}
 void main(){
     if(gl_LocalInvocationIndex==0u){
         previous=imageLoad(lwVoxelMeta,ivec2(0));
         origin=voxelCacheOrigin();
         occupied=0u;
+        transitioning=0u;
         ivec3 tile=ivec3(gl_WorkGroupID);
         int side=LW_GRID_SIZE/4;
         int index=tile.x+side*(tile.y+side*tile.z);
         tileMeta=ivec3(index%LW_GRID_SIZE,(index/LW_GRID_SIZE)%LW_GRID_SIZE,2*LW_GRID_SIZE+index/(LW_GRID_SIZE*LW_GRID_SIZE));
         bool stationary=previous.w==frameCounter-1 && all(equal(cameraPositionInt,previous.xyz));
         skipTile=false;
-        if(stationary && (imageLoad(lwVoxelDirtyTiles,tile+ivec3(96,0,0)).r&4u)==0u)
-            skipTile=imageLoad(lwVoxelFirst,tileMeta).r==0.0;
+        vec4 prior=imageLoad(lwVoxelFirst,tileMeta);
+        previousSupport=uint(prior.r);
+        uint mask=imageLoad(lwVoxelDirtyTiles,tile+ivec3(96,0,0)).r;
+        // Only skip on an unchanged world-local tile with a settled history.
+        // Dirty radius-two covers both direct and diffuse target changes.
+        if(stationary && (mask&3u)==0u && prior.g==0.0)
+            skipTile=true;
     }
     barrier();
     if(skipTile) {
-        if(gl_LocalInvocationIndex==0u) imageStore(lwVoxelDirtyTiles,ivec3(gl_WorkGroupID),uvec4(0u));
+        if(gl_LocalInvocationIndex==0u) imageStore(lwVoxelDirtyTiles,ivec3(gl_WorkGroupID),uvec4(previousSupport));
         return;
     }
     ivec3 local=ivec3(gl_GlobalInvocationID);
@@ -49,7 +69,9 @@ void main(){
     // New opaque walls must never retain old light. Quantize tiny tails to zero.
     bool wall=imageLoad(lwVoxelOccupancy,local).r>=LW_VOXEL_WALL;
     if(wall) value=vec4(0.0);
-    if(max(value.r,max(value.g,value.b))<0.0005) value=vec4(0.0);
+    bool pending;
+    value=settleHistory(value,target,old,wall,pending);
+    if(pending) atomicOr(transitioning,1u);
     if(!valid || any(notEqual(value,old))) imageStore(lwVoxelFirst,historyCell,value);
     if(max(max(target.r,max(target.g,target.b)),max(value.r,max(value.g,value.b)))>0.0) atomicOr(occupied,1u);
 #ifdef LW_VOXEL_DIFFUSE_SMOOTH
@@ -60,7 +82,9 @@ void main(){
     float diffuseHalf=dot(diffuseTarget.rgb,vec3(0.2126,0.7152,0.0722))>dot(diffuseOld.rgb,vec3(0.2126,0.7152,0.0722))?DIFFUSE_RISE_HALF:DIFFUSE_FALL_HALF;
     vec4 diffuseValue=mix(diffuseTarget,diffuseOld,exp2(-clamp(frameTime,0.0,0.25)/diffuseHalf));
     if(wall) diffuseValue=vec4(0.0);
-    if(max(diffuseValue.r,max(diffuseValue.g,diffuseValue.b))<0.0005) diffuseValue=vec4(0.0);
+    bool diffusePending;
+    diffuseValue=settleHistory(diffuseValue,diffuseTarget,diffuseOld,wall,diffusePending);
+    if(diffusePending) atomicOr(transitioning,2u);
     if(!valid || any(notEqual(diffuseValue,diffuseOld))) imageStore(lwVoxelSecond,historyCell,diffuseValue);
     // Union support ensures the tile cannot be skipped while diffuse tails remain.
     if(max(max(diffuseTarget.r,max(diffuseTarget.g,diffuseTarget.b)),max(diffuseValue.r,max(diffuseValue.g,diffuseValue.b)))>0.0) atomicOr(occupied,2u);
@@ -69,7 +93,7 @@ void main(){
     // The original dirty seed slab is no longer needed by propagation.
     if(gl_LocalInvocationIndex==0u) {
         imageStore(lwVoxelDirtyTiles,ivec3(gl_WorkGroupID),uvec4(occupied));
-        imageStore(lwVoxelFirst,tileMeta,vec4(float(occupied),0.0,0.0,0.0));
+        imageStore(lwVoxelFirst,tileMeta,vec4(float(occupied),float(transitioning),0.0,0.0));
     }
 }
 #else

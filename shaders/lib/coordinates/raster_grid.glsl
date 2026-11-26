@@ -26,6 +26,11 @@ uniform float viewWidth;
 uniform float viewHeight;
 #endif
 vec2 lwGeometryJitter(int frame,ivec2 activeSize){
+// Fixed is a real zero-jitter geometry mode, not just a native-grid flag.
+// Auto chooses stable geometry for the advanced lighting paths.
+#if PROJECTION_JITTER == 1 || (PROJECTION_JITTER == 0 && (defined(VOLUME_EFFECTS) || defined(SCREEN_GI) || defined(VOXEL_LIGHTING) || defined(MATERIAL_SSR)))
+    return vec2(0.0);
+#else
     const vec2 sequence[8] = vec2[8](
         vec2(0.0, -0.16667), vec2(-0.25, 0.16667),
         vec2(0.25, -0.38889), vec2(-0.375, -0.05556),
@@ -35,6 +40,7 @@ vec2 lwGeometryJitter(int frame,ivec2 activeSize){
     // Center the finite sequence, not only its theoretical Halton distribution.
     const vec2 mean = vec2(-0.0546875, 0.0);
     return (sequence[frame&7]-mean)/vec2(max(activeSize,ivec2(1)));
+#endif
 }
 #endif
 vec2 lwPostDepthUv(sampler2D source,vec2 uv){

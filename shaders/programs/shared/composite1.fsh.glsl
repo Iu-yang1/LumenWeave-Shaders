@@ -165,6 +165,22 @@ vec3 temporalColor(vec3 current, vec3 viewPosition, vec2 normal, ivec2 pixel, ma
         }
     }
 #endif
+#ifdef LW_GEOMETRY_TAAU
+    // Native output history is not indexed by the reduced geometry pixel.
+    // Only reuse the exact output pixel for stationary, matching geometry
+    // and color. Disagreement still goes through bilateral history/clipping.
+    if(!water && !distant && length((previousUv-texCoord)*size)<0.20) {
+        ivec2 outputPixel=ivec2(gl_FragCoord.xy);
+        vec4 history=texelFetch(colortex4,outputPixel,0);
+        vec4 metadata=texelFetch(colortex5,outputPixel,0);
+        if(metadata.z>0.0 && metadata.w>0.0 && history.a>0.0 &&
+            all(lessThanEqual(abs(metadata.zw-vec2(lwRasterExtent(ivec2(size)))),vec2(1.0))) &&
+            matchesHistoryDepth(history.a,expectedDepth) &&
+            dot(decodeNormal(normal),decodeNormal(metadata.xy))>0.96 &&
+            all(lessThanEqual(abs(history.rgb-current),vec3(0.001)+abs(current)*0.008)))
+            return mix(current,history.rgb,0.92);
+    }
+#endif
     vec4 historySample = filteredHistory(previousUv, expectedDepth, normal, water, distant, false);
     if (historySample.a <= 0.0) {
         return current;
@@ -289,6 +305,11 @@ vec3 resolveCurrent(ivec2 pixel, vec2 stableUv, vec3 position, vec2 normal, bool
         vec3 p;vec2 n;mat4 prev;bool donorWater;
         vec2 w=mix(1.0-fraction,fraction,vec2(x,y));float weight=w.x*w.y;
         if(weight<=0.00001) continue;
+        if(all(equal(donor,pixel))) {
+            result+=texelFetch(colortex0,donor,0).rgb*weight;
+            weightSum+=weight;
+            continue;
+        }
         if(!temporalGeometry(donor,uv,p,n,prev,donorWater) || donorWater!=water ||
             (texelFetch(depthtex0,donor,0).r>=1.0)!=distant ||
             abs(p.z-position.z)>max(0.10,-position.z*0.035) ||

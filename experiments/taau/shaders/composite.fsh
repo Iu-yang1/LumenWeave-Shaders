@@ -19,12 +19,14 @@ uniform vec3 previousCameraPositionFract;
 /* RENDERTARGETS: 4,5 */
 layout(location=0) out vec4 historyColor;
 layout(location=1) out vec4 historyGeometry;
-const int colortex4Format=RGBA16F;
-const int colortex5Format=RGBA32F;
-const bool colortex4Clear=false;
-const bool colortex5Clear=false;
-const vec4 colortex4ClearColor=vec4(0.0,0.0,0.0,0.0);
-const vec4 colortex5ClearColor=vec4(0.0,0.0,0.0,0.0);
+/*
+const int colortex4Format = RGBA16F;
+const int colortex5Format = RGBA32F;
+const bool colortex4Clear = false;
+const bool colortex5Clear = false;
+const vec4 colortex4ClearColor = vec4(0.0,0.0,0.0,0.0);
+const vec4 colortex5ClearColor = vec4(0.0,0.0,0.0,0.0);
+*/
 vec3 viewAt(ivec2 p,float depth){
     vec4 v=gbufferProjectionInverse*vec4(outputUvAt(vec2(p))*2.0-1.0,depth*2.0-1.0,1.0);
     return v.xyz/v.w;

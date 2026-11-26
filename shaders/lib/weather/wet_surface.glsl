@@ -30,8 +30,10 @@ vec2 wetWorldXZ(vec3 viewPosition) {
 }
 vec2 wetFilmAndPuddle(vec3 normal,vec2 lightLevels,vec3 viewPosition) {
     if(!hasSkylight || wetness<=0.001) return vec2(0.0);
+    float skyExposure=smoothstep(0.80,0.99,lightLevels.y);
+    if(skyExposure<=0.0) return vec2(0.0);
     vec3 geometry=rainGeometry(viewPosition,normal);
-    float exposed=smoothstep(0.80,0.99,lightLevels.y)*geometry.x;
+    float exposed=skyExposure*geometry.x;
     float film=wetness*exposed*(0.25+0.75*smoothstep(-0.1,0.85,normal.y));
     if(film<=0.001 || normal.y<0.91) return vec2(film,0.0);
     float noise=smoothstep(0.46,0.72,wetNoise(wetWorldXZ(viewPosition)*0.23));

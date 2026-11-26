@@ -455,9 +455,9 @@ def check_projection_sampling(compiler, profiles):
                 spatial_shift = bool(re.search(r"stableUv\s*\+\s*jitterOffset\s*\(",result.stdout))
                 if spatial_shift == stable_path:
                     raise ValueError(f"Current radiance grid mismatch: {label}/{dimension}")
-    for scale,dimension,stage in product(("50","67","75","85"),DIMENSIONS,stages):
+    for scale,mode,dimension,stage in product(("50","67","75","85"),("1","2"),DIMENSIONS,stages):
         path=PREVIEW/dimension/stage
-        options={**profiles["profile.Extreme"],"GEOMETRY_TAAU_SCALE":scale}
+        options={**profiles["profile.Extreme"],"GEOMETRY_TAAU_SCALE":scale,"PROJECTION_JITTER":mode}
         shader=compiler_source(PREVIEW,path,options,(*VOXEL_FEATURES,"DISTANT_HORIZONS"))
         with TemporaryDirectory(prefix="lumenweave-geometry-") as directory:
             target=Path(directory)/("geometry"+STAGES[path.suffix])
@@ -465,11 +465,14 @@ def check_projection_sampling(compiler, profiles):
             result=subprocess.run([compiler,"-E",str(target)],capture_output=True,text=True)
         if result.returncode or "lwGeometryJitter" not in result.stdout:
             raise ValueError(f"Geometry jitter contract: {scale}/{dimension}/{stage}: {result.stderr}")
+        function=re.search(r"vec2\s+lwGeometryJitter\s*\([^)]*\)\s*\{([^}]+)\}",result.stdout)
+        if not function or (("sequence" in function.group(1))!=(mode=="2")):
+            raise ValueError(f"Geometry fixed/dynamic sampling mismatch: {scale}/{mode}/{dimension}/{stage}")
         if stage.endswith(".vsh") and "lwRasterClip" not in result.stdout:
             raise ValueError(f"Missing scaled geometry viewport: {dimension}/{stage}")
         if stage=="composite1.fsh" and "lwRasterSize" not in result.stdout:
             raise ValueError("Missing active raster reconstruction")
-    print(f"Projection sampling: {len(cases) * len(DIMENSIONS) * len(stages)} native entry points and 72 geometry entry points OK")
+    print(f"Projection sampling: {len(cases) * len(DIMENSIONS) * len(stages)} native entry points and 144 geometry entry points OK")
 
 
 def compile_shard(root, name, program, environment, count):
@@ -540,6 +543,7 @@ def main():
             names = {"prepare5","prepare6","prepare6_a","prepare7","prepare8","deferred","deferred_a","deferred1","deferred2","deferred2_a","composite","composite_a","composite_b","composite1","composite2","composite3","composite4","composite5","final","gbuffers_terrain","gbuffers_water","gbuffers_weather","dh_terrain","dh_water"}
             sources = [p for p in PREVIEW.rglob("*") if p.suffix in STAGES and p.stem in names]
             variants = {
+                "v5-geometry-dynamic": {**profiles["profile.Extreme"],"GEOMETRY_TAAU_SCALE":"75","PROJECTION_JITTER":"2"},
                 "v5-native": {**profiles["profile.Ultra"],"GEOMETRY_TAAU_SCALE":"100"},
                 "v5-geometry-half": {**profiles["profile.Extreme"],"GEOMETRY_TAAU_SCALE":"50","DOF_MODE":"2","MOTION_BLUR":"true"},
                 "v5-geometry-full-hiz": {**profiles["profile.Ultra"],"GEOMETRY_TAAU_SCALE":"67","HIZ_MODE":"2","GI_REUSE_MODE":"2"},
@@ -554,6 +558,7 @@ def main():
             }
             compile_matrix(args.compiler, PREVIEW, variants, sources=sources, environment=(*VOXEL_FEATURES,"DISTANT_HORIZONS","MC_TEXTURE_FORMAT_LAB_PBR_1_3"))
             compile_matrix(args.compiler, PREVIEW, {"v4-fallback":profiles["profile.High"]}, sources=sources)
+            compile_matrix(args.compiler,TAAU_PROBE,{f"taau-{scale}":{"TAAU_SCALE":scale} for scale in ("0.5","0.67","0.75","0.85","1.0")})
             print("Focused V4 capability and shader matrix: OK")
             return
         if args.shard_index == 0:

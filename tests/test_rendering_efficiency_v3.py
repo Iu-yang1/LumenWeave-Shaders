@@ -82,7 +82,8 @@ class RenderingEfficiencyTests(unittest.TestCase):
         source=(S/"programs/shared/prepare6.csh.glsl").read_text()
         self.assertIn("if(skipTile)",source)
         self.assertIn("previous.w==frameCounter-1 && all(equal(cameraPositionInt,previous.xyz))",source)
-        self.assertIn("imageLoad(lwVoxelFirst,tileMeta).r==0.0",source)
+        self.assertIn("(mask&3u)==0u && prior.g==0.0",source)
+        self.assertIn("uvec4(previousSupport)",source)
 
     def test_taau_grid_contract(self):
         for width,height in ((1920,1080),(1919,1079),(3840,2160)):
@@ -200,3 +201,21 @@ class RenderingEfficiencyTests(unittest.TestCase):
         for name in ("composite_a","composite_b"):
             source=(S/f"programs/shared/{name}.csh.glsl").read_text()
             self.assertEqual(source.count("const vec2 workGroupsRender"),5)
+
+    def test_fixed_geometry_jitter_and_settled_tiles(self):
+        source=(S/"lib/coordinates/raster_grid.glsl").read_text()
+        self.assertIn("PROJECTION_JITTER == 1",source)
+        self.assertIn("return vec2(0.0);",source)
+        stage=(S/"programs/shared/prepare6.csh.glsl").read_text()
+        self.assertIn("float(transitioning)",stage)
+        self.assertIn("atomicOr(transitioning,2u)",stage)
+        self.assertIn("packHalf2x16",stage)
+        self.assertIn("uvec4(previousSupport)",stage)
+        for changed in (0,1,2,3):
+            for pending in (0,1,2,3):
+                for stationary in (False,True):
+                    skip=stationary and not changed and not pending
+                    self.assertEqual(skip,stationary and changed==pending==0)
+        resolve=(S/"programs/shared/composite1.fsh.glsl").read_text()
+        self.assertIn("ivec2 outputPixel=ivec2(gl_FragCoord.xy)",resolve)
+        self.assertIn("all(equal(donor,pixel))",resolve)

@@ -9,8 +9,10 @@ uniform sampler2D gtexture;
 /* RENDERTARGETS: 0,1 */
 layout(location=0) out vec4 color;
 layout(location=1) out vec4 normal;
-const int colortex0Format=RGBA16F;
-const int colortex1Format=RGBA16F;
+/*
+const int colortex0Format = RGBA16F;
+const int colortex1Format = RGBA16F;
+*/
 void main(){
     if(any(greaterThanEqual(gl_FragCoord.xy,renderSize()))) discard;
     vec4 base=vertexColor;
