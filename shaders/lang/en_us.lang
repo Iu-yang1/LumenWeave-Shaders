@@ -129,4 +129,4 @@ value.PROJECTION_JITTER.2=Dynamic subpixel sampling
 option.PHYSICAL_ATMOSPHERE=Experimental physical atmosphere LUTs
 option.PHYSICAL_ATMOSPHERE.comment=GPU spherical atmosphere with spectral transmission, multiple scattering, sky and aerial perspective. Uses a clear-air base with approximate rain blending.
 option.INCREMENTAL_VOXELS=Experimental incremental voxel light
-option.INCREMENTAL_VOXELS.comment=Retain finite propagation stages and recompute dirty tiles on edits. Integer camera-grid movement rebuilds the field. Extra GPU memory required.
+option.INCREMENTAL_VOXELS.comment=Retain propagation stages in a world-aligned rolling cache. Recompute edited tiles, entering and departing boundaries on camera movement. Extra GPU memory required.
