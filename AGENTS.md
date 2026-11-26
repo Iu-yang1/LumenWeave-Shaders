@@ -7,3 +7,5 @@
 - Keep MakeUp references pinned and record file-level origin and attribution before importing external code.
 - Keep work logs local under `.codex/`. Obtain explicit approval before pushing or publishing.
 - Run game tests on isolated background desktops with `soundCategory_master:0.0`. Keep the user's foreground desktop and game settings untouched.
+
+- The `develop` branch owns AGENTS.md, tests, tools, experiments and technical audit notes. `main` is the distributed player-facing source. Publish only the public source tree and release archives; do not blindly merge development-only paths back into main. Run the complete validation suite before release. Iris parsing tests are mandatory in addition to GLSL compilation.

@@ -2,7 +2,7 @@ name: Version compatibility packs
 on:
   pull_request:
   push:
-    branches: [main]
+    branches: [develop]
   workflow_dispatch:
 permissions:
   contents: read
@@ -11,6 +11,7 @@ concurrency:
   cancel-in-progress: true
 jobs:
   build:
+    if: github.event_name != 'workflow_dispatch' || github.ref == 'refs/heads/develop'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

@@ -80,12 +80,16 @@ vec4 cloudVolumeTransfer(vec3 origin, vec3 direction, vec3 sun, float maxDistanc
     if (!hasSkylight) {
         return vec4(0.0,0.0,0.0,1.0);
     }
-    if (abs(direction.y) <= 0.003) {
-        return vec4(0.0,0.0,0.0,1.0);
+    // Intersect the actual cloud slab, including horizontal rays inside it.
+    float start=0.0;
+    float end=min(maxDistance,640.0);
+    if(direction.y==0.0) {
+        if(origin.y<=156.0 || origin.y>=174.0) return vec4(0.0,0.0,0.0,1.0);
+    } else {
+        vec2 distances=(vec2(156.0,174.0)-origin.y)/direction.y;
+        start=max(min(distances.x,distances.y),0.0);
+        end=min(end,max(distances.x,distances.y));
     }
-    vec2 distances = (vec2(156.0, 174.0) - origin.y) / direction.y;
-    float start = max(min(distances.x, distances.y), 0.0);
-    float end = min(max(distances.x, distances.y), min(maxDistance, 640.0));
     if (end <= start || start >= 630.0) {
         return vec4(0.0,0.0,0.0,1.0);
     }

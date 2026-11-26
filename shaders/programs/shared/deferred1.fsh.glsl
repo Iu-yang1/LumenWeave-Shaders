@@ -257,7 +257,10 @@ void main() {
     vec3 sun = sunDirection();
 #ifdef LW_MATERIAL_SSR_ACTIVE
     vec3 lit = surfaceRadiance(scene.rgb, material, normal, eyeDirection, sun, geometry.zw, viewPosition, specularMetadata, specularEnvironment);
-    specularMetadata.rgb*=smoothstep(0.025,0.10,visibleWeight);
+    // Fade both terms of the SSR replacement, not just reflected radiance.
+    float reflectionFade=smoothstep(0.025,0.10,visibleWeight);
+    specularMetadata.rgb*=reflectionFade;
+    specularEnvironment.rgb*=reflectionFade;
 #else
     vec3 lit = surfaceRadiance(scene.rgb, material, normal, eyeDirection, sun, geometry.zw, viewPosition);
 #endif
