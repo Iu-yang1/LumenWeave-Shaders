@@ -5,6 +5,10 @@ import net.fabricmc.api.ClientModInitializer;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.chunk.LevelChunk;
+import net.minecraft.core.BlockPos;
+import net.minecraft.world.level.ChunkPos;
 import org.joml.Vector3d;
 import org.lwjgl.opengl.GL;
 import java.util.Set;
@@ -46,6 +50,21 @@ public final class RendererExtension implements ClientModInitializer {
     public static void attach(Object manager,ClientLevel level){
         if(owner==manager)return;
         STORE.reset();REFERENCE.close();owner=manager;world=level;materialIds=null;latest=null;
+    }
+    // Packet replacement may replace data without creating a new Sodium section.
+    public static void chunkLoaded(LevelChunk chunk){
+        if(chunk==null||world==null||chunk.getLevel()!=world)return;
+        var pos=chunk.getPos();
+        for(int i=0;i<chunk.getSections().length;i++)
+            STORE.added(new SectionStore.Key(pos.x,world.getSectionYFromSectionIndex(i),pos.z));
+    }
+    public static void chunkUnloaded(ClientLevel level,ChunkPos pos){
+        if(world!=level)return;
+        for(int y=level.getMinSectionY();y<=level.getMaxSectionY();y++)
+            STORE.removed(new SectionStore.Key(pos.x,y,pos.z));
+    }
+    public static void blockChanged(Level level,BlockPos pos){
+        if(world==level)STORE.changed(new SectionStore.Key(Math.floorDiv(pos.getX(),16),Math.floorDiv(pos.getY(),16),Math.floorDiv(pos.getZ(),16)));
     }
     public static void added(Object manager,ClientLevel level,int x,int y,int z){
         attach(manager,level);STORE.added(new SectionStore.Key(x,y,z));
@@ -96,10 +115,11 @@ public final class RendererExtension implements ClientModInitializer {
             if(ids!=materialIds){materialIds=ids;STORE.invalidateMaterials();}
             Vector3d pos=(Vector3d)cameraMethod.invoke(null);
             var window=new SectionStore.Window((int)Math.floor(pos.x)-n/2,(int)Math.floor(pos.y)-n/2,(int)Math.floor(pos.z)-n/2,n);
-            if(atlas==null)atlas=new OpenGlSeedAtlas();
+            boolean newAtlas=atlas==null;
+            if(newAtlas)atlas=new OpenGlSeedAtlas();
             latest=STORE.update(window,RendererExtension::snapshot);
             REFERENCE.uploadSeeds(latest);
-            atlas.uploadSeeds(latest);
+            atlas.uploadSeeds(newAtlas?STORE.fullSnapshot():latest);
             if(++probeFrames%120==0){
                 var diff=atlas.compare(occupancy,window);
                 LOG.info("GPU seed probe: grid={}, complete={}, missing={}, differing={}, referenceNonzero={}, candidateNonzero={}",

@@ -5,7 +5,9 @@
   "client": [
     "SodiumSectionMixin",
     "ClientTickMixin",
-    "IrisPipelineMixin"
+    "IrisPipelineMixin",
+    "ClientChunkCacheMixin",
+    "LevelChunkMixin"
   ],
   "injectors": {
     "defaultRequire": 1

@@ -1,7 +1,7 @@
 plugins {
     id 'net.fabricmc.fabric-loom' version '1.15.4'
 }
-version = '0.1.0-alpha.1'
+version = '0.1.0-alpha.3'
 group = 'io.lumenweave'
 repositories {
     mavenCentral()
@@ -39,3 +39,7 @@ tasks.register('coreRegression', JavaExec) {
     mainClass = 'io.lumenweave.renderer.core.CoreRegression'
 }
 check.dependsOn coreRegression
+
+// The dependency-free suite is a JavaExec main, not a JUnit class.
+// check still requires coreRegression; an empty JUnit discovery is expected.
+tasks.named('test') { failOnNoDiscoveredTests = false }

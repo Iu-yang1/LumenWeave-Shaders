@@ -32,6 +32,7 @@ public final class SectionStore {
     private final Map<Key,Snapshot> resident = new HashMap<>();
     private final Set<Key> removed = new HashSet<>();
     private Window previous;
+    private Set<Key> lastMissing=Set.of();
     private long generation=1, epoch;
     public void added(Key key) { loaded.add(key); dirty.add(key); }
     public void changed(Key key) { if(loaded.contains(key)) dirty.add(key); }
@@ -42,7 +43,7 @@ public final class SectionStore {
     public void invalidateMaterials() { dirty.addAll(loaded); }
     public void reset() {
         loaded.clear(); dirty.clear(); resident.clear(); removed.clear();
-        previous=null; generation++; epoch=0;
+        previous=null; lastMissing=Set.of(); generation++; epoch=0;
     }
     public Delta update(Window window, Source source) {
         // Iterate only the 8-9 sections per axis intersecting the active volume,
@@ -69,13 +70,18 @@ public final class SectionStore {
             Snapshot next=new Snapshot(k,++epoch,seed);
             resident.put(k,next);writes.add(next);
         }
-        previous=window;
+        previous=window;lastMissing=Set.copyOf(missing);
         // A replacement wins over a pending deletion in the same transaction.
         for(Snapshot s:writes) removed.remove(s.key);
         if(!removed.isEmpty()) ++epoch;
         Delta delta=new Delta(generation,epoch,window,writes,removed,missing,resident.size());
         removed.clear();
         return delta;
+    }
+    /** Rehydrate a newly created backend without depending on the last incremental delta. */
+    public Delta fullSnapshot(){
+        if(previous==null)throw new IllegalStateException("no active window");
+        return new Delta(generation,epoch,previous,new ArrayList<>(resident.values()),Set.of(),lastMissing,resident.size());
     }
     public static int seed(int materialId,int light) {
         int strength=Math.max(0,Math.min(15,light));

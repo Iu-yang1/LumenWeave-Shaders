@@ -18,6 +18,7 @@ public final class CoreRegression {
         check(first.complete()&&first.upserts().size()==1&&reads[0]==1,"first");
         seed[0]=0;check(first.upserts().getFirst().entries()[0]!=0,"immutable");
         check(store.update(window,source).upserts().isEmpty()&&reads[0]==1,"stationary");
+        check(store.fullSnapshot().upserts().size()==1&&store.fullSnapshot().epoch()==first.epoch(),"backend rehydration");
         store.changed(a);seed[0]=SectionStore.entry(1,1,1,17);
         check(store.update(window,source).upserts().size()==1,"change");
         store.removed(a);var removed=store.update(window,source);
