@@ -24,7 +24,12 @@ const vec4 colortex6ClearColor = vec4(0.0, 0.0, 0.0, 0.0);
 */
 #ifdef ADVANCED_WATER
 layout(location = 3) out vec4 opaqueScene;
+#ifdef LW_MATERIAL_SSR_ACTIVE
+layout(location = 4) out vec4 specularMetadata;
+/* RENDERTARGETS: 0,6,7,8,12 */
+#else
 /* RENDERTARGETS: 0,6,7,8 */
+#endif
 /*
 const int colortex8Format = RGBA16F;
 */
@@ -34,13 +39,24 @@ const int colortex8Format = RGBA16F;
 #else
 #if defined(ADVANCED_WATER) && defined(DEFERRED_LIGHTING)
 layout(location = 1) out vec4 opaqueScene;
+#ifdef LW_MATERIAL_SSR_ACTIVE
+layout(location = 2) out vec4 specularMetadata;
+/* RENDERTARGETS: 0,8,12 */
+#else
 /* RENDERTARGETS: 0,8 */
+#endif
 /*
 const int colortex8Format = RGBA16F;
 */
 #else
 /* RENDERTARGETS: 0 */
 #endif
+#endif
+
+#ifdef LW_MATERIAL_SSR_ACTIVE
+/*
+const int colortex12Format = RGBA16F;
+*/
 #endif
 
 #ifdef DEFERRED_LIGHTING
@@ -105,6 +121,9 @@ void main() {
     skyBounceHistory = vec4(0.0);
     bounceNormalHistory = vec2(0.0);
 #endif
+#ifdef LW_MATERIAL_SSR_ACTIVE
+    specularMetadata = vec4(0.0);
+#endif
     if (depth >= 1.0 || abs(depth - materialDepth.x) > 0.00000012) {
         writeScene(scene);
         return;
@@ -122,7 +141,11 @@ void main() {
     material.occlusion *= mix(0.23, 1.0, groundTruthOcclusion(texCoord, viewPosition, normalInView));
 #endif
     vec3 sun = sunDirection();
+#ifdef LW_MATERIAL_SSR_ACTIVE
+    vec3 lit = surfaceRadiance(scene.rgb, material, normal, eyeDirection, sun, geometry.zw, viewPosition, specularMetadata);
+#else
     vec3 lit = surfaceRadiance(scene.rgb, material, normal, eyeDirection, sun, geometry.zw, viewPosition);
+#endif
 #if defined(SCREEN_GI) || defined(LW_VOXEL_DIFFUSE_ACTIVE)
     vec3 diffuse = scene.rgb * (1.0 - material.metallic) * (1.0 - material.f0);
     vec3 bounce = vec3(0.0);

@@ -8,6 +8,8 @@
 #define SOFT_SHADOWS
 #define ADVANCED_WATER
 #define AA_MODE 2 // [0 1 2 3]
+//#define MATERIAL_SSR
+//#define DH_SHADOWS
 //#define VOLUME_EFFECTS
 //#define VOXEL_LIGHTING
 //#define SCREEN_GI
@@ -51,6 +53,12 @@
 #define SHADOW_FILTER_TAPS 8 // [4 8]
 #define AO_SLICES 3 // [2 3 4]
 #define AO_STRENGTH 1.0 // [0.0 0.5 0.75 1.0 1.25]
+
+#ifdef MATERIAL_SSR
+#if defined(DEFERRED_LIGHTING) && defined(ADVANCED_WATER) && !defined(LITE_LIGHTING)
+#define LW_MATERIAL_SSR_ACTIVE
+#endif
+#endif
 
 #if AA_MODE >= 2 && defined(DEFERRED_LIGHTING)
 #define LW_TAA_ACTIVE

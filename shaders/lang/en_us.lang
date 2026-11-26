@@ -119,3 +119,5 @@ option.SHADOW_FILTER_TAPS=Shadow filter samples
 option.AO_SLICES=AO direction slices
 option.AO_STRENGTH=Ambient occlusion strength
 option.AERIAL_DENSITY=Aerial perspective density
+option.MATERIAL_SSR=Experimental material SSR
+option.DH_SHADOWS=Experimental DH shadows

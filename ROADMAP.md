@@ -180,3 +180,8 @@ Actions 生成可安装 ZIP，运行时仍由 Iris 针对实际 GPU 编译。每
 - Resolve volume using the geometry sample ray before TAA, blend half-resolution GI and full-resolution fallback continuously, and expand compile/test coverage. No preset disables TAA, volumes, or voxel lighting.
 - Runtime A/B matrix: fixed camera 64+ frames, native/DH edges and moving camera, windowed/fullscreen/resized, 720p/1080p/1440p/4K; isolate VOLUME_EFFECTS, SCREEN_GI_HISTORY, SCREEN_GI_SPATIAL and VOXEL_LIGHTING independently; measure image shift and p95/p99 frame time. Actual runtime acceptance pending.
 - Next gated implementation sequence: physical atmospheric transmittance/multiple-scattering/sky-view/aerial LUTs; shared depth-aware material SSR; DH shadow caster and receiver integration; incremental world-aligned voxel cache with dirty-region propagation and deletion correctness. Keep changes isolated until the stability regression is accepted.
+
+### Advanced rendering research — isolated branch
+- Material SSR: opt-in deferred2 pass, reuse the water ray tracer, retain the exact environment specular weight/occlusion in an RGBA16F attachment, replace rather than double-add the sky reflection. Native opaque terrain and LabPBR only; no offscreen/DH hit tracing, no roughness-prefiltered history yet.
+- DH shadows: opt-in dh_shadow caster and DH receiver shadow sampling. Normal Iris shadow projection and radius still bound the covered area, no kilometer-scale cascaded shadows. DH water is excluded from the caster via Iris mini-ID. Actual pinned-loader compatibility and LOD transition performance remain to be measured.
+- Both settings default off; the normal V2.2 stability branch remains unchanged. No new quality defaults until runtime validation.

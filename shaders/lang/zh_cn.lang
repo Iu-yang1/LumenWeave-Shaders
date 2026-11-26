@@ -119,3 +119,5 @@ option.SHADOW_FILTER_TAPS=阴影滤波采样数
 option.AO_SLICES=环境遮蔽方向数
 option.AO_STRENGTH=环境遮蔽强度
 option.AERIAL_DENSITY=大气透视浓度
+option.MATERIAL_SSR=实验性材质屏幕空间反射
+option.DH_SHADOWS=实验性远景阴影

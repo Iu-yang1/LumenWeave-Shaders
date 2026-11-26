@@ -8,7 +8,8 @@
 #include "/lib/lighting/lite_shadows.glsl"
 #endif
 
-vec3 surfaceRadiance(vec3 albedo, Material material, vec3 normal, vec3 view, vec3 sun, vec2 lightLevels, vec3 viewPosition) {
+vec3 surfaceRadiance(vec3 albedo, Material material, vec3 normal, vec3 view, vec3 sun, vec2 lightLevels, vec3 viewPosition, out vec4 specularMetadata) {
+    specularMetadata = vec4(0.0);
     vec3 f0 = material.f0;
     float skyAccess = smoothstep(0.56, 1.0, lightLevels.y);
     vec3 light = sun.y >= 0.0 ? sun : -sun;
@@ -45,9 +46,11 @@ vec3 surfaceRadiance(vec3 albedo, Material material, vec3 normal, vec3 view, vec
         vec3 fresnel = fresnelSchlick(clamp(dot(normal, view), 0.0, 1.0), f0);
         vec3 environment = mix(skyRadiance(reflected, sun), skyAmbient,
             material.roughness * material.roughness);
-        indirect += environment * fresnel * (lightLevels.y * lightLevels.y)
+        vec3 specularWeight = fresnel * (lightLevels.y * lightLevels.y)
             * material.occlusion * smoothstep(-0.12, 0.08, reflected.y)
             * mix(0.55, 1.0, shadow);
+        indirect += environment * specularWeight;
+        specularMetadata = vec4(specularWeight, shadow);
     } else {
         indirect += f0 * mix(0.27, 0.50, material.roughness) * ambient;
     }
@@ -61,4 +64,9 @@ vec3 surfaceRadiance(vec3 albedo, Material material, vec3 normal, vec3 view, vec
     vec3 directResponse = directBrdf(albedo, material, normal, view, light, f0);
 #endif
     return indirect + material.emission + directResponse * celestialIrradiance(sun) * (skyAccess * visibility * shadow);
+}
+
+vec3 surfaceRadiance(vec3 albedo, Material material, vec3 normal, vec3 view, vec3 sun, vec2 lightLevels, vec3 viewPosition) {
+    vec4 unusedMetadata;
+    return surfaceRadiance(albedo, material, normal, view, sun, lightLevels, viewPosition, unusedMetadata);
 }

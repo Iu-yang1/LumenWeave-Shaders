@@ -2,6 +2,9 @@
 #include "/lib/color/scene.glsl"
 #include "/lib/lighting/overworld.glsl"
 #include "/lib/lighting/fog.glsl"
+#if defined(DH_SHADOWS) && defined(SCENE_SHADOWS)
+#include "/lib/lighting/lite_shadows.glsl"
+#endif
 #ifdef LW_DH_WATER
 #include "/lib/water/surface.glsl"
 #endif
@@ -37,7 +40,14 @@ void main() {
     vec3 direct = celestialIrradiance(sun);
     float lighting = smoothstep(0.0, 0.18, abs(sun.y)) * mix(1.0, 0.19, rainStrength);
     lighting *= max(dot(normal, light), 0.0) * smoothstep(0.56, 1.0, lightLevels.y);
-    vec3 lit = albedo * (ambientIrradiance(lightLevels, normal.y, sun) + direct * lighting / LW_PI);
+    float shadow = 1.0;
+#if defined(DH_SHADOWS) && defined(SCENE_SHADOWS)
+    if (hasSkylight && lighting > 0.0) {
+        vec3 shadowPosition = (gbufferModelViewInverse * vec4(viewPosition, 1.0)).xyz;
+        shadow = volumeShadow(shadowPosition + normal * 0.06);
+    }
+#endif
+    vec3 lit = albedo * (ambientIrradiance(lightLevels, normal.y, sun) + direct * lighting * shadow / LW_PI);
 #ifdef LW_DH_WATER
     vec3 eyeDirection = normalize(worldDirection(-viewPosition));
     vec3 position = (gbufferModelViewInverse * vec4(viewPosition, 1.0)).xyz + cameraPosition;
@@ -51,7 +61,7 @@ void main() {
         lit = mix(air, lit, fresnel);
     } else {
         lit = mix(lit, skyRadiance(reflected, sun), fresnel)
-            + waterSunGlint(normal, eyeDirection, sun, smoothstep(0.56, 1.0, lightLevels.y));
+            + waterSunGlint(normal, eyeDirection, sun, smoothstep(0.56, 1.0, lightLevels.y) * shadow);
     }
 #endif
     outputColor = vec4(applySceneFog(lit, viewPosition), vertexColor.a);
