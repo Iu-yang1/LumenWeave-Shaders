@@ -32,19 +32,32 @@ void main() {
         scene = sharpenScene(colortex0, texCoord, scene);
     }
 #ifdef BLOOM
-    vec2 bloomTexel = 1.0 / vec2(textureSize(colortex11, 0));
-    vec3 bloom = vec3(0.0);
-    float bloomWeight = 0.0;
-    for (int row = -1; row <= 1; ++row) {
-        for (int column = -1; column <= 1; ++column) {
-            float weight = float((2 - abs(row)) * (2 - abs(column)));
-            vec2 uv = clamp(texCoord + vec2(column, row) * bloomTexel * 2.0,
-                bloomTexel * 0.5, 1.0 - bloomTexel * 0.5);
-            bloom += texture(colortex11, uv).rgb * weight;
-            bloomWeight += weight;
-        }
+#if BLOOM_FILTER == 0
+    // The quarter-resolution buffer already provides a four-pixel footprint.
+    vec3 bloom=texture(colortex11,texCoord).rgb;
+#else
+    vec2 bloomTexel=1.0/vec2(textureSize(colortex11,0));
+    vec3 bloom=vec3(0.0);
+#if BLOOM_FILTER == 1
+    // Four bilinear samples form a normalized soft footprint, without
+    // a second full-resolution blur pass or nine texture queries.
+    for(int y=0;y<2;++y) for(int x=0;x<2;++x) {
+        vec2 uv=clamp(texCoord+(vec2(x,y)*2.0-1.0)*bloomTexel,
+            bloomTexel*0.5,1.0-bloomTexel*0.5);
+        bloom+=texture(colortex11,uv).rgb;
     }
-    scene += bloom * (BLOOM_STRENGTH / bloomWeight);
+    bloom*=0.25;
+#else
+    for(int y=-1;y<=1;++y) for(int x=-1;x<=1;++x) {
+        float weight=float((2-abs(y))*(2-abs(x)));
+        vec2 uv=clamp(texCoord+vec2(x,y)*bloomTexel*2.0,
+            bloomTexel*0.5,1.0-bloomTexel*0.5);
+        bloom+=texture(colortex11,uv).rgb*weight;
+    }
+    bloom*=1.0/16.0;
+#endif
+#endif
+    scene+=bloom*BLOOM_STRENGTH;
 #endif
 #ifdef SHOW_COLOR_CHART
     if (texCoord.y >= 0.90) {

@@ -54,6 +54,10 @@ class ShaderToolsTests(unittest.TestCase):
                 "DH_SHADOWS": "false", "INCREMENTAL_VOXELS": "false",
                 "MATERIAL_REFLECTION_STEPS": "8", "CLOUD_STEPS": "12",
                 "SHAFT_STEPS": "6", "DH_SHADOW_STEPS": "14", "PROJECTION_JITTER": "0",
+                "ADAPTIVE_SHADING": "true", "ADAPTIVE_SHADOWS": "true", "TEMPORAL_REUSE": "true",
+                "GI_REUSE_MODE": "1", "HIZ_MODE": "1", "EMISSION_STRENGTH": "1.5",
+                "LOCAL_GLOW_STRENGTH": "1.7", "DARK_AMBIENT": "0.65",
+                "BLOOM": "false", "BLOOM_STRENGTH": "0.04", "BLOOM_THRESHOLD": "1.5", "BLOOM_FILTER": "0",
             },
         )
         self.assertEqual(profiles["profile.LowExposure"]["EXPOSURE"], "-1")
@@ -99,7 +103,7 @@ class ShaderToolsTests(unittest.TestCase):
 
     def test_personal_effects_are_independent_of_quality_profiles(self):
         for profile in preview_profiles(PREVIEW).values():
-            self.assertFalse({"MOTION_BLUR", "BLOOM", "WAVING_LEAVES", "WAVING_GRASS"} & profile.keys())
+            self.assertFalse({"MOTION_BLUR", "WAVING_LEAVES", "WAVING_GRASS"} & profile.keys())
 
     def test_relative_includes_and_cycles(self):
         with TemporaryDirectory() as directory:

@@ -61,8 +61,9 @@
 //#define MOTION_BLUR
 #define MOTION_BLUR_STRENGTH 0.5 // [0.25 0.5 0.75 1.0]
 #define MOTION_BLUR_SAMPLES 8 // [4 8 12]
+#define BLOOM_FILTER 1 // [0 1 2]
 //#define BLOOM
-#define BLOOM_STRENGTH 0.08 // [0.02 0.04 0.08 0.12 0.2]
+#define BLOOM_STRENGTH 0.08 // [0.02 0.04 0.08 0.12 0.16 0.2]
 #define BLOOM_THRESHOLD 1.5 // [0.5 1.0 1.5 2.0 3.0 4.0]
 #define COLOR_SATURATION 1.0 // [0.7 0.85 1.0 1.1 1.2]
 #define COLOR_CONTRAST 1.0 // [0.85 0.95 1.0 1.05 1.15]

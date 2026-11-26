@@ -428,6 +428,7 @@ def main():
             **profiles["profile.High"], "AA_MODE": "3", "MOTION_BLUR": "true",
             "BLOOM": "true", "IMAGE_SHARPENING": "0.3", "COLOR_CONTRAST": "1.05",
         }
+        profiles["bloom-wide"] = {**profiles["profile.High"], "BLOOM": "true", "BLOOM_FILTER": "2"}
         profiles["forward-post"] = {
             **profiles["profile.Low"], "AA_MODE": "2", "MOTION_BLUR": "true", "BLOOM": "true",
             "WAVING_LEAVES": "false", "WAVING_GRASS": "false",
