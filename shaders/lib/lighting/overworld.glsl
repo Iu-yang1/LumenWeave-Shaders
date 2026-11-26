@@ -155,15 +155,33 @@ float ambientFloor() {
     return (hasSkylight ? 0.010 : 0.008) * DARK_AMBIENT * AMBIENT_STRENGTH;
 }
 
+// Real SH Y00 and Y10 evaluated in a folded coefficient representation.
+// For the existing affine, axisymmetric diffuse lobe, l<=1 is exact:
+// c00*Y00+c10*Y10 = constant + up*slope. No per-pixel quadrature.
+vec3 diffuseSH1(vec3 amplitude,float constantTerm,float verticalTerm,float up){
+    return amplitude*(constantTerm+verticalTerm*up);
+}
 vec3 ambientIrradiance(vec2 light, float up, vec3 sun) {
     float sky = light.y * light.y * mix(DARK_AMBIENT,1.0,light.y);
     if (!hasSkylight) {
+#if DIFFUSE_SH == 1
+        vec3 environment=hasCeiling ?
+            diffuseSH1(mix(vec3(0.038,0.022,0.016),vec3(0.14,0.085,0.06),clamp(ambientLight*8.0,0.0,1.0))*NETHER_AMBIENT,0.775,0.225,up):
+            diffuseSH1(vec3(0.075,0.065,0.115)*END_AMBIENT,0.775,0.225,up);
+#else
         vec3 environment = hasCeiling ? netherEnvironment(up) : endEnvironment(up);
+#endif
         return vec3(ambientFloor()) + environment * (hasCeiling ? 0.48 : 0.38) * DARK_AMBIENT * AMBIENT_STRENGTH
             + blockLightIrradiance(light.x);
     }
-    vec3 hemisphere = overworldEnvironment(up, daylight(sun));
-    hemisphere = mix(hemisphere, mix(vec3(0.025,0.031,0.041),vec3(0.30,0.34,0.39),daylight(sun)),rainStrength*0.62);
+    float day=daylight(sun);
+#if DIFFUSE_SH == 1
+    vec3 amplitude=mix(vec3(0.037,0.045,0.067),vec3(0.19,0.25,0.34),day)*mix(1.0,1.20,rainStrength*day);
+    vec3 hemisphere=diffuseSH1(amplitude,0.62,0.38,up);
+#else
+    vec3 hemisphere=overworldEnvironment(up,day);
+#endif
+    hemisphere = mix(hemisphere, mix(vec3(0.025,0.031,0.041),vec3(0.30,0.34,0.39),day),rainStrength*0.62);
     return vec3(ambientFloor()) + sky * hemisphere * 0.82 * AMBIENT_STRENGTH
         + blockLightIrradiance(light.x);
 }

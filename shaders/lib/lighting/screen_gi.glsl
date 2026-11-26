@@ -129,7 +129,7 @@ ScreenBounce screenBounceRay(vec3 origin, vec3 direction, mat3 toView, vec3 sun,
 }
 
 #include "/lib/lighting/scene_budget.glsl"
-ScreenBounce screenDiffuseBounceBudget(vec3 viewPosition, vec3 normal, vec3 sun,int rayBudget) {
+ScreenBounce screenDiffuseBouncePair(vec3 viewPosition, vec3 normal, vec3 sun,int rayBudget,int pairPhase) {
     float distanceFade = 1.0 - smoothstep(12.0, 30.0, -viewPosition.z);
     ScreenBounce bounce = ScreenBounce(vec3(0.0), vec3(0.0), 0.0);
     if (distanceFade <= 0.0) {
@@ -160,7 +160,7 @@ ScreenBounce screenDiffuseBounceBudget(vec3 viewPosition, vec3 normal, vec3 sun,
     vec3 direct=celestialIrradiance(sun);
     const vec2 rayBasis[4]=vec2[4](vec2(1,1),vec2(-1,1),vec2(-1,-1),vec2(1,-1));
     for (int ray = 0; ray < rayCount; ++ray) {
-        vec2 basis=rayBasis[ray*stride]*0.7071067812;
+        vec2 basis=rayBasis[rayCount==4?ray:((ray*stride+pairPhase)&3)]*0.7071067812;
         vec3 direction=normalize(normal+tangent*basis.x+bitangent*basis.y);
         ScreenBounce hit = screenBounceRay(origin, toView * direction, toView, sun, direct);
         bounce.sky += hit.sky;
@@ -173,4 +173,5 @@ ScreenBounce screenDiffuseBounceBudget(vec3 viewPosition, vec3 normal, vec3 sun,
     return bounce;
 }
 
+ScreenBounce screenDiffuseBounceBudget(vec3 viewPosition,vec3 normal,vec3 sun,int rayBudget){return screenDiffuseBouncePair(viewPosition,normal,sun,rayBudget,0);}
 ScreenBounce screenDiffuseBounce(vec3 viewPosition,vec3 normal,vec3 sun){return screenDiffuseBounceBudget(viewPosition,normal,sun,4);}

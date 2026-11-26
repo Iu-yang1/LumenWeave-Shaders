@@ -49,6 +49,14 @@ uniform sampler2D colortex10;
 const int colortex9Format = RGBA16F;
 const vec4 colortex9ClearColor = vec4(0.0, 0.0, 0.0, 0.0);
 */
+#if PERCEPTUAL_GI > 0 && defined(SCREEN_GI_HISTORY) && defined(LW_TAA_ACTIVE) && !defined(LW_DYNAMIC_JITTER) && PROJECTION_JITTER != 2
+#define LW_PERCEPTUAL_GI
+uniform sampler2D colortex6;
+#ifndef LW_GI_REUSE
+#include "/lib/temporal/reproject.glsl"
+uniform sampler2D colortex7;
+#endif
+#endif
 #ifdef LW_GI_REUSE
 const bool colortex9Clear = false;
 #endif
@@ -141,7 +149,49 @@ void main() {
         }
     }
 #endif
-    ScreenBounce bounce = screenDiffuseBounce(viewPosition, normal, sunDirection());
+    vec3 sun=sunDirection();
+    ScreenBounce bounce;
+#ifdef LW_PERCEPTUAL_GI
+    // A fresh opposed pair is always evaluated. Only the second pair's
+    // refresh frequency is reduced on geometry-compatible, slowly changing GI.
+    ivec2 giTile=ivec2(gl_FragCoord.xy);
+    int period=PERCEPTUAL_GI==2?4:2;
+    bool scheduled=((giTile.x+giTile.y+frameCounter)%period)==0;
+    vec2 priorUv;float priorDepth;
+    bool canReduce=false;vec3 priorGI=vec3(0.0);
+    if(!scheduled && viewDepth>3.0 &&
+#ifdef LW_GEOMETRY_TAAU
+        reprojectTerrain(viewPosition,priorUv,priorDepth) &&
+#else
+        reprojectStableTerrain(viewPosition,priorUv,priorDepth,gbufferPreviousProjection) &&
+#endif
+        length((priorUv-sampleUv)*vec2(fullSize))<1.5){
+        ivec2 p=clamp(ivec2(priorUv*vec2(fullSize)),ivec2(0),fullSize-1);
+        vec4 old=texelFetch(colortex6,p,0),meta=texelFetch(colortex7,p,0);
+        canReduce=matchesHistoryDepth(old.a,priorDepth) &&
+            all(lessThanEqual(abs(meta.zw-vec2(fullSize)),vec2(1.0))) &&
+            dot(normal,decodeNormal(meta.xy))>0.94;
+        priorGI=old.rgb;
+    }
+    if(canReduce){
+        int phase=(frameCounter+giTile.x)&1;
+        bounce=screenDiffuseBouncePair(viewPosition,normal,sun,2,phase);
+        vec3 discrepancy=abs(bounce.sky-priorGI)/max(max(bounce.sky,priorGI),vec3(0.015));
+        bool changed=any(greaterThan(discrepancy,vec3(PERCEPTUAL_GI==2?0.30:0.18)));
+#ifdef LW_VOXEL_DIFFUSE_ACTIVE
+        // Local block lighting has no independent full-res history; retain
+        // both pairs where the first has substantial colored contribution.
+        changed=changed || bounce.blockConfidence>0.10;
+#endif
+        if(changed){
+            ScreenBounce other=screenDiffuseBouncePair(viewPosition,normal,sun,2,1-phase);
+            bounce=ScreenBounce((bounce.sky+other.sky)*0.5,(bounce.block+other.block)*0.5,
+                (bounce.blockConfidence+other.blockConfidence)*0.5);
+        }
+    }else bounce=screenDiffuseBounce(viewPosition,normal,sun);
+#else
+    bounce=screenDiffuseBounce(viewPosition,normal,sun);
+#endif
     skyTrace = vec4(bounce.sky, -viewPosition.z);
 #ifdef LW_VOXEL_DIFFUSE_ACTIVE
     blockTrace = vec4(bounce.block, bounce.blockConfidence);

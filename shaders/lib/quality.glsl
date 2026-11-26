@@ -18,6 +18,11 @@
 #define HIZ_MODE 1 // [0 1 2]
 #define ADAPTIVE_SHADING
 #define APPROX_REUSE 1 // [0 1]
+#define PERCEPTUAL_GI 1 // [0 1 2]
+#define MULTIRATE_VOLUME 1 // [0 1 2]
+#define SSR_FOOTPRINT 1 // [0 1 2]
+#define LOW_FREQ_CACHE 1 // [0 1]
+#define DIFFUSE_SH 1 // [0 1]
 #define SCENE_BUDGET 1 // [0 1]
 #define SKY_ENV_REUSE 1 // [0 1]
 #define WATER_PHASE_LUT 0 // [0 1]

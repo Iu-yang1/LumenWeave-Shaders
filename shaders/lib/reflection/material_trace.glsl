@@ -92,8 +92,22 @@ vec4 traceMaterialCorrectionBudget(ivec2 pixel,vec3 viewPosition,vec3 normal,vec
     // display resolution / narrow FOV where the same distance is more visible.
     float pixelsPerBlock=0.5*abs(gbufferProjection[1][1])
         *float(lwRasterSize(depthtex0).y)/max(-viewPosition.z,0.1);
+#if SSR_FOOTPRINT > 0
+    // Approximate screen-space footprint of a one-block material patch.
+    // Sharp mirrors retain the selected ceiling; rough lobes and small
+    // projected patches spend fewer taps. Avoid crossing the short-ray
+    // range switch (<=8) unless the caller explicitly asked for that budget.
+    float lobe=smoothstep(0.20,0.55,roughness);
+    float small=1.0-smoothstep(8.0,40.0,pixelsPerBlock);
+    float reflectance=max(metadata.r,max(metadata.g,metadata.b))*smoothness;
+    float weak=1.0-smoothstep(0.008,0.05,reflectance);
+    float reduction=lobe*max(small,weak)* (SSR_FOOTPRINT==2?0.60:0.42);
+    int reduced=max(min(9,steps),int(ceil(float(steps)*(1.0-reduction))));
+    steps=min(steps,reduced);
+#else
     if((-viewPosition.z>36.0 && pixelsPerBlock<14.0) || roughness>0.38)
         steps=min(steps,max(9,steps/2));
+#endif
 #endif
     vec2 hitUv;float travel;int hitKind;
     vec4 hit=traceScreenReflection(viewPosition+toView*traceNormal*0.07,toView*reflected,steps,hitUv,travel,hitKind);

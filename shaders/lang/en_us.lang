@@ -352,3 +352,15 @@ option.DOF_FILTER.comment=Disk is the reference. Mip-assisted and separable are 
 value.DOF_FILTER.0=Disk
 value.DOF_FILTER.1=Mip-assisted
 value.DOF_FILTER.2=Separable
+
+screen.PERCEPTUAL=Perceptual rendering
+option.PERCEPTUAL_GI=Adaptive GI refresh
+option.PERCEPTUAL_GI.comment=0: reference; 1: alternating opposed ray pairs with regular full refresh; 2: longer full-refresh interval. Fresh pair is tested against prior GI.
+option.MULTIRATE_VOLUME=Multirate volume integration
+option.MULTIRATE_VOLUME.comment=Reduce distant cloud and weak shaft samples; near layers retain the ceiling.
+option.SSR_FOOTPRINT=Projected reflection budget
+option.SSR_FOOTPRINT.comment=Reduce rough, low-contribution or subpixel reflection sampling; sharp mirrors retain their ceiling.
+option.LOW_FREQ_CACHE=Low-frequency spatial reuse
+option.LOW_FREQ_CACHE.comment=Dominant geometry-compatible half-resolution GI donors can bypass other reads.
+option.DIFFUSE_SH=First-order diffuse SH
+option.DIFFUSE_SH.comment=Evaluate the existing axisymmetric diffuse environment as a first-order SH expansion. Does not replace colored local or screen-space GI.

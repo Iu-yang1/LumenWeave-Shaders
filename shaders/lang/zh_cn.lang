@@ -352,3 +352,15 @@ option.DOF_FILTER.comment=圆盘为参考路径。Mipmap 与分离式是实验�
 value.DOF_FILTER.0=圆盘
 value.DOF_FILTER.1=Mipmap 辅助
 value.DOF_FILTER.2=分离式
+
+screen.PERCEPTUAL=感知驱动渲染
+option.PERCEPTUAL_GI=自适应 GI 更新
+option.PERCEPTUAL_GI.comment=0 为参考；1 为交替对向射线并定期全量刷新；2 延长完整刷新周期。新射线与历史 GI 比较。
+option.MULTIRATE_VOLUME=多速率体积积分
+option.MULTIRATE_VOLUME.comment=减少远云与低贡献光束采样，近处保持上限。
+option.SSR_FOOTPRINT=投影面积反射预算
+option.SSR_FOOTPRINT.comment=减少粗糙、低贡献或小投影反射采样，镜面保留原上限。
+option.LOW_FREQ_CACHE=低频空间复用
+option.LOW_FREQ_CACHE.comment=几何兼容且占主导权重的半分辨率 GI 样本可跳过其它读取。
+option.DIFFUSE_SH=一阶球谐漫反射
+option.DIFFUSE_SH.comment=使用一阶球谐表达现有轴对称漫反射环境，不替代彩色局部光照与屏幕空间 GI。

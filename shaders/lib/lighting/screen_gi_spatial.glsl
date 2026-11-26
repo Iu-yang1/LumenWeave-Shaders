@@ -16,6 +16,24 @@ ScreenBounce spatialScreenBounce(vec3 viewPosition, vec3 normal, vec3 sun, vec2 
     vec2 fraction = fract(samplePosition);
     float tolerance = max(0.12, sceneDepth * 0.022);
     float coverage = 0.0;
+#if LOW_FREQ_CACHE == 1
+    // Existing half-grid GI is a spatial cache, not an additional texture.
+    // A dominant donor may replace the other three when geometry agrees.
+    ivec2 nearest=clamp(ivec2(floor(samplePosition+0.5)),ivec2(0),traceSize-1);
+    vec2 dominance=1.0-abs(samplePosition-vec2(nearest));
+    if(dominance.x*dominance.y>0.80){
+        vec4 sky=texelFetch(colortex9,nearest,0);
+        ivec2 owner=clamp(ivec2((vec2(nearest)+0.5)*vec2(fullSize)/vec2(traceSize)),ivec2(0),fullSize-1);
+        if(sky.a>0.0 && abs(sky.a-sceneDepth)<tolerance*0.35 && dot(normal,decodeNormal(texelFetch(colortex1,owner,0).xy))>0.96){
+            bounce.sky=sky.rgb;
+#ifdef LW_VOXEL_DIFFUSE_ACTIVE
+            vec4 block=texelFetch(colortex10,nearest,0);
+            bounce.block=block.rgb;bounce.blockConfidence=block.a;
+#endif
+            return bounce;
+        }
+    }
+#endif
     for (int row = 0; row < 2; ++row) {
         for (int column = 0; column < 2; ++column) {
             ivec2 texel = base + ivec2(column, row);

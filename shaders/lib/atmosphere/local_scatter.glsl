@@ -34,6 +34,10 @@ vec3 integrateLocalScatter(vec3 direction, float surfaceDistance) {
 #if defined(LW_DIMENSION_NETHER)
             farStep=2.0;
 #endif
+#if MULTIRATE_VOLUME > 0
+            // Broaden only the far interval; keep the near eight samples.
+            if(region==1) farStep*=MULTIRATE_VOLUME==2?1.50:1.20;
+#endif
             steps=region==0 ? 8 : clamp(int(ceil((end-12.0)/farStep)),1,16);
         }
         float stepSize = (regionEnd-regionStart) / float(steps);

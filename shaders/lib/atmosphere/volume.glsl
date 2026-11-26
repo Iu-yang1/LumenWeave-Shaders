@@ -110,6 +110,13 @@ vec4 cloudVolumeTransfer(vec3 origin, vec3 direction, vec3 sun, float maxDistanc
     // Inside/near the layer, never reduce the existing maximum.
     steps=start<18.0 ? CLOUD_STEPS : clamp(int(ceil(span/targetStep)),min(4,CLOUD_STEPS),CLOUD_STEPS);
 #endif
+#if MULTIRATE_VOLUME > 0 && LW_DIMENSION_BUDGET != 0
+    // Distant, smoothly varying density needs fewer quadrature points.
+    // Near/inside cloud layers keep the original budget.
+    float farRate=smoothstep(64.0,192.0,start);
+    float fraction=mix(1.0,MULTIRATE_VOLUME==2?0.50:0.75,farRate);
+    steps=min(steps,max(min(4,CLOUD_STEPS),int(ceil(float(steps)*fraction))));
+#endif
     float stepSize = span / float(steps);
     float day = daylight(sun);
     vec3 tint = sunTint(sun);
@@ -221,6 +228,14 @@ vec3 applyLightShafts(vec3 scene, vec3 origin, vec3 direction, vec3 sun, float m
     // Strong rays retain the original base taps. Refine only when the
     // user's cap still has spare comparisons.
     extraSamples=max(0,SHAFT_STEPS-steps);
+#endif
+#if MULTIRATE_VOLUME > 0 && LW_DIMENSION_BUDGET != 0
+    // Weak forward-scattering term: reduce quadrature while still sampling
+    // current shadows. Strong shafts and near occluders remain unchanged.
+    if(span>18.0 && phase*day<0.055){
+        steps=max(min(2,SHAFT_STEPS),steps-(MULTIRATE_VOLUME==2?2:1));
+        extraSamples=0;
+    }
 #endif
     float stepSize=span/float(steps);
     float density=0.0;
