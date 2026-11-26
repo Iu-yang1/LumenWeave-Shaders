@@ -1,5 +1,6 @@
 #version 430 core
 
+#include "/lib/quality.glsl"
 #include "/lib/voxel/grid.glsl"
 
 #include "/lib/voxel/dispatch.glsl"
@@ -33,7 +34,16 @@ vec3 gatherFace(ivec3 cell, ivec3 direction, vec3 localLight) {
     return vec3(0.0);
 }
 
+#ifdef LW_VOXEL_INCREMENTAL_ACTIVE
+#include "/lib/voxel/dirty_tiles.glsl"
+#endif
+
 void main() {
+#ifdef LW_VOXEL_INCREMENTAL_ACTIVE
+    if (!voxelTileNeedsUpdate(2)) {
+        return;
+    }
+#endif
     ivec3 cell = ivec3(gl_GlobalInvocationID);
     vec3 bounce = vec3(0.0);
     if (imageLoad(lwVoxelOccupancy, cell).r < LW_VOXEL_WALL) {

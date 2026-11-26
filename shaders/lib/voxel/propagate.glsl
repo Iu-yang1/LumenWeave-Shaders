@@ -4,7 +4,16 @@ layout(r32ui) readonly uniform uimage3D lwVoxelOccupancy;
 layout(rgba16f) readonly uniform image3D LW_VOXEL_READ;
 layout(rgba16f) writeonly uniform image3D LW_VOXEL_WRITE;
 
+#ifdef LW_VOXEL_INCREMENTAL_ACTIVE
+#include "/lib/voxel/dirty_tiles.glsl"
+#endif
+
 void main() {
+#ifdef LW_VOXEL_INCREMENTAL_ACTIVE
+    if (!voxelTileNeedsUpdate(1)) {
+        return;
+    }
+#endif
     ivec3 cell = ivec3(gl_GlobalInvocationID);
     uint seed = imageLoad(lwVoxelOccupancy, cell).r;
     if (seed >= LW_VOXEL_WALL) {

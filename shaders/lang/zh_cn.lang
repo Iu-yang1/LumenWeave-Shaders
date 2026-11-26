@@ -128,3 +128,5 @@ value.PROJECTION_JITTER.1=固定像素中心
 value.PROJECTION_JITTER.2=动态亚像素采样
 option.PHYSICAL_ATMOSPHERE=实验性物理大气 LUT
 option.PHYSICAL_ATMOSPHERE.comment=GPU 球形大气光谱透射、多重散射、天空及大气透视；晴空物理模型与近似雨天混合。
+option.INCREMENTAL_VOXELS=实验性增量体素光照
+option.INCREMENTAL_VOXELS.comment=保留各传播阶段缓存，方块变化时重新计算脏区；整数相机网格移动时完整重建。需要额外显存。

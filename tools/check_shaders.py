@@ -423,8 +423,9 @@ def main():
         compile_pack(args.compiler, PREVIEW, {"world-voxels-fallback": voxel_profiles["world-voxels"]})
         compile_pack(args.compiler, PREVIEW, {
             "research-ssr": {**profiles["profile.High"], "MATERIAL_SSR": "true"},
-            "research-ssr-gi": {**profiles["profile.Extreme"], "MATERIAL_SSR": "true", "DH_SHADOWS": "true", "PHYSICAL_ATMOSPHERE": "true"},
+            "research-ssr-gi": {**profiles["profile.Extreme"], "MATERIAL_SSR": "true", "DH_SHADOWS": "true", "PHYSICAL_ATMOSPHERE": "true", "INCREMENTAL_VOXELS": "true"},
             "research-atmosphere": {**profiles["profile.High"], "PHYSICAL_ATMOSPHERE": "true"},
+            "research-incremental": {**profiles["profile.Ultra"], "INCREMENTAL_VOXELS": "true"},
         }, environment=(*VOXEL_FEATURES, "DISTANT_HORIZONS", "MC_TEXTURE_FORMAT_LAB_PBR_1_3"))
         compile_pack(
             args.compiler, PREVIEW, preview_profiles(PREVIEW, P0_CONFIG),
