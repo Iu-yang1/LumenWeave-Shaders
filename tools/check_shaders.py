@@ -554,6 +554,8 @@ def main():
             sources = [p for p in PREVIEW.rglob("*") if p.suffix in STAGES and p.stem in names]
             variants = {
                 "v5-geometry-dynamic": {**profiles["profile.Extreme"],"GEOMETRY_TAAU_SCALE":"75","PROJECTION_JITTER":"2"},
+                "camera-mipmap": {**profiles["profile.Ultra"],"DOF_MODE":"1","DOF_MIPMAP":"1"},
+                "reference-reuse": {**profiles["profile.Extreme"],"APPROX_REUSE":"0"},
                 "camera-focus-only": {**profiles["profile.Ultra"],"AUTO_EXPOSURE":"false","DOF_MODE":"1","DOF_QUALITY":"0"},
                 "camera-focus-cinematic": {**profiles["profile.Extreme"],"DOF_MODE":"3","DOF_QUALITY":"2"},
                 "v5-native": {**profiles["profile.Ultra"],"GEOMETRY_TAAU_SCALE":"100"},

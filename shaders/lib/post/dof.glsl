@@ -49,6 +49,25 @@ vec3 lwDofGather(sampler2D source,vec2 uv,vec3 center,float depth,float coc,floa
 #else
     const int count=8;
 #endif
+#ifdef LW_DOF_MIP_ASSIST
+    // Four cardinal depth probes reject common silhouettes before sampling
+    // a coarse HDR mip. Thin geometry may still alias: opt-in experiment.
+    if(abs(coc)>3.0){
+        bool compatible=true;
+        for(int i=0;i<4;++i){
+            vec2 probe=clamp(uv+taps[i]*texel*abs(coc),texel*0.5,1.0-texel*0.5);
+            float z=lwDofDepth(probe);
+            compatible=compatible && z>0.0 && abs(z-depth)<max(0.06,depth*0.035);
+        }
+        if(compatible){
+            float lod=clamp(log2(abs(coc))-1.4,0.0,3.5);
+            vec2 offset=vec2(0.36,0.27)*texel*abs(coc);
+            vec3 mipColor=0.5*(textureLod(source,clamp(uv-offset,texel*0.5,1.0-texel*0.5),lod).rgb+
+                textureLod(source,clamp(uv+offset,texel*0.5,1.0-texel*0.5),lod).rgb);
+            return mix(center,mipColor,smoothstep(3.0,5.0,abs(coc)));
+        }
+    }
+#endif
     vec3 farSum=center,nearSum=vec3(0.0);
     float farTotal=1.0,nearTotal=0.0;
     // A smooth radius and weight avoid the old hard 0.65-pixel switch.

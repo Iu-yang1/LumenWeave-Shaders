@@ -42,6 +42,7 @@
 #define DOF_AF_SPEED 0.22 // [0.10 0.16 0.22 0.35 0.50]
 #define DOF_AF_AREA 1.0 // [0.5 1.0 1.5 2.0]
 #define DOF_QUALITY 1 // [0 1 2]
+#define DOF_MIPMAP 0 // [0 1]
 #define SOLAR_GLARE
 #define GLARE_STRENGTH 0.25 // [0.1 0.25 0.5 0.75 1.0]
 //#define LENS_GHOSTS

@@ -14,6 +14,14 @@ layout(location=0) out vec4 outputColor;
 /*
 const int colortex10Format = RGBA16F;
 */
+#if DOF_MIPMAP == 1
+#define LW_DOF_MIP_ASSIST
+#ifdef LW_TAA_DIRECT
+const bool colortex4MipmapEnabled = true;
+#else
+const bool colortex0MipmapEnabled = true;
+#endif
+#endif
 #include "/lib/post/dof.glsl"
 void main(){
     float focus=lwFocusDepth();

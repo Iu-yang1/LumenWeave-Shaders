@@ -129,7 +129,7 @@ class ShaderToolsTests(unittest.TestCase):
 
     def test_personal_effects_are_independent_of_quality_profiles(self):
         for profile in preview_profiles(PREVIEW).values():
-            self.assertFalse({"MOTION_BLUR", "WAVING_LEAVES", "WAVING_GRASS", "DOF_MODE", "DOF_FOCUS", "DOF_STRENGTH", "DOF_AF_SPEED", "DOF_AF_AREA", "DOF_QUALITY", "LENS_GHOSTS", "LENS_STAR"} & profile.keys())
+            self.assertFalse({"MOTION_BLUR", "WAVING_LEAVES", "WAVING_GRASS", "DOF_MODE", "DOF_FOCUS", "DOF_STRENGTH", "DOF_AF_SPEED", "DOF_AF_AREA", "DOF_QUALITY", "DOF_MIPMAP", "LENS_GHOSTS", "LENS_STAR"} & profile.keys())
 
     def test_compile_matrix_shards_cover_each_link_once(self):
         programs = [PREVIEW / dim / name for dim in DIMENSIONS
