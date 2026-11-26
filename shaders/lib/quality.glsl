@@ -15,6 +15,16 @@
 //#define MATERIAL_SSR
 #define HIZ_MODE 1 // [0 1 2]
 #define ADAPTIVE_SHADING
+#define OVERWORLD_BUDGET 1 // [0 1 2]
+#define NETHER_BUDGET 1 // [0 1 2]
+#define END_BUDGET 1 // [0 1 2]
+#if defined(LW_DIMENSION_NETHER)
+#define LW_DIMENSION_BUDGET NETHER_BUDGET
+#elif defined(LW_DIMENSION_END)
+#define LW_DIMENSION_BUDGET END_BUDGET
+#else
+#define LW_DIMENSION_BUDGET OVERWORLD_BUDGET
+#endif
 #define TEMPORAL_REUSE
 #define GI_REUSE_MODE 1 // [0 1 2]
 #ifdef TEMPORAL_REUSE

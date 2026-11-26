@@ -419,6 +419,8 @@ def main():
         profiles["ultra-no-spatial"] = {**profiles["profile.Ultra"], "SCREEN_GI_SPATIAL": "false"}
         profiles["ultra-dynamic-projection"] = {**profiles["profile.Ultra"], "PROJECTION_JITTER": "2"}
         profiles["ultra-legacy-voxel"] = {**profiles["profile.Ultra"], "VOXEL_FUSION": "0"}
+        profiles["dimension-performance"] = {**profiles["profile.Ultra"], "OVERWORLD_BUDGET": "2", "NETHER_BUDGET": "2", "END_BUDGET": "2"}
+        profiles["dimension-full"] = {**profiles["profile.Ultra"], "OVERWORLD_BUDGET": "0", "NETHER_BUDGET": "0", "END_BUDGET": "0"}
         profiles["ultra-original-hdr"] = {**profiles["profile.Ultra"], "HDR_REUSE": "0", "VOLUME_RECONSTRUCTION": "0"}
         profiles["ultra-full-ao"] = {**profiles["profile.Ultra"], "AO_RECONSTRUCTION": "0"}
         profiles["high-fixed-projection"] = {**profiles["profile.High"], "PROJECTION_JITTER": "1"}

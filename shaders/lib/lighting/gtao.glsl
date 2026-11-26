@@ -1,6 +1,12 @@
 float horizonCosine(vec2 originUv, vec2 stepUv, vec3 position, vec3 observer, vec3 normal) {
     float horizon = -1.0;
+#if LW_DIMENSION_BUDGET == 0
+    int taps=4;
+#elif LW_DIMENSION_BUDGET == 2
+    int taps=-position.z>24.0 ? 2 : 4;
+#else
     int taps=-position.z>32.0 ? 2 : 4;
+#endif
     for (int tap = 1; tap <= taps; ++tap) {
         vec2 uv = originUv + stepUv * (float(tap * tap) / float(taps * taps));
         if (any(lessThanEqual(uv, vec2(0.0))) || any(greaterThanEqual(uv, vec2(1.0)))) {

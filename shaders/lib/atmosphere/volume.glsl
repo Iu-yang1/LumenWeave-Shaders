@@ -55,7 +55,13 @@ vec4 cloudVolumeTransfer(vec3 origin, vec3 direction, vec3 sun, float maxDistanc
     float span=end-start;
     // A short visible segment or distant subpixel cloud layer does not need
     // all configured taps. Long nearby visible paths retain the full budget.
+#if LW_DIMENSION_BUDGET == 0
+    int steps=CLOUD_STEPS;
+#elif LW_DIMENSION_BUDGET == 2
+    int steps=start<128.0 ? CLOUD_STEPS : clamp(int(ceil(span/3.5)),min(4,CLOUD_STEPS),CLOUD_STEPS);
+#else
     int steps=start<128.0 ? CLOUD_STEPS : clamp(int(ceil(span/2.5)),min(4,CLOUD_STEPS),CLOUD_STEPS);
+#endif
     float stepSize = span / float(steps);
     float day = daylight(sun);
     vec3 tint = sunTint(sun);

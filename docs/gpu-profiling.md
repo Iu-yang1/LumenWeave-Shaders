@@ -41,3 +41,13 @@ No real Minecraft GPU capture has been obtained in the chat/CI environment.
 The exporter is an integration tool, not evidence of measured performance.
 
 For TEMPORAL_REUSE, include Iris final copy-back events in the A/B mapping (e.g. `history_copy`). The persistent half-resolution GI target adds a copy in Ultra and two in Extreme. This is a loader cost, not a zero-cost history reuse. For the disabled option the buffers revert to normal clear behavior.
+
+## P32 per-dimension calibration
+
+Each dimension exposes budget 0 (full), 1 (balanced default), 2 (performance, earlier far-only reductions). Keep the rest of Extreme unchanged. Collect comparable images and actual GPU whole-frame times (not sums of RenderDoc pass durations), plus at least three matched pass-counter frames per mode. Record three separate runs for manual repeatability; for the selector provide a representative comparable run of each tested mode. Mark quality accepted only after screenshot/motion comparison. Create a JSON manifest with GPU, driver, Minecraft, Iris, Sodium, resolution, shader_commit, profile and dimensions. Example shape (paths are placeholders, not actual captures):
+
+```json
+{"gpu":"actual GPU","driver":"actual driver","minecraft":"actual version","iris":"actual version","sodium":"actual version","resolution":"1920x1080","shader_commit":"actual SHA","profile":"Extreme","dimensions":{"overworld":{"scene":"fixed scene ID","runs":[{"mode":1,"scene":"fixed scene ID","source":"measured_gpu","quality_accepted":true,"frame_csv":"balanced-frames.csv","pass_csv":"balanced-passes.csv"},{"mode":2,"scene":"fixed scene ID","source":"measured_gpu","quality_accepted":true,"frame_csv":"performance-frames.csv","pass_csv":"performance-passes.csv"}]}}}
+```
+
+Run `python tools/dimension_budget.py manifest.json --target-gpu-ms 5 --output dimension-budget.json`. It chooses the highest quality accepted mode reaching the GPU p95 target; if none meets it, reports fastest measured approved mode and target_met=false. Unmeasured worlds are explicitly unknown. Apply recommended options in Performance > Dimension-specific budgets. Actual presentation FPS depends on CPU and frame pacing too; 5 ms GPU time does not itself establish 200 FPS. GLSL has no real per-pass timer query interface, so this is measured offline calibration, not a live automatic controller. No GPU captures available in CI.

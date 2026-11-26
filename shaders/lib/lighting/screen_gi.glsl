@@ -141,7 +141,13 @@ ScreenBounce screenDiffuseBounce(vec3 viewPosition, vec3 normal, vec3 sun) {
     vec3 origin = viewPosition + 0.07 * (toView * normal);
     // Far GI is already fading to zero at 30 blocks. Two opposed rays
     // retain the average energy while near surfaces keep the four-ray basis.
+#if LW_DIMENSION_BUDGET == 0
+    int rayCount=4;
+#elif LW_DIMENSION_BUDGET == 2
+    int rayCount=-viewPosition.z>16.0 ? 2 : 4;
+#else
     int rayCount=-viewPosition.z>22.0 ? 2 : 4;
+#endif
     int stride=rayCount==4 ? 1 : 2;
     vec3 direct=celestialIrradiance(sun);
     const vec2 rayBasis[4]=vec2[4](vec2(1,1),vec2(-1,1),vec2(-1,-1),vec2(1,-1));
