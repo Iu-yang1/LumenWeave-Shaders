@@ -35,8 +35,9 @@ float emitterRadiance(uint kind) {
     // Magma and redstone indicator surfaces are intentionally dimmer.
     if (kind==4u) return 1.1;
     if (kind==14u) return 0.8;
-    if (kind==5u) return 3.6;
-    if (kind==1u || kind==2u || kind==15u) return 2.4;
-    return 2.8;
+    if (kind==5u) return 7.2;
+    if (kind==6u || kind==8u || kind==9u || kind==10u || kind==11u || kind==12u || kind==13u) return 5.2;
+    if (kind==1u || kind==2u || kind==15u) return 3.4;
+    return 3.8;
 }
 #endif
