@@ -12,7 +12,7 @@ ScreenBounce screenBounceRay(vec3 origin, vec3 direction, mat3 toView, vec3 sun)
 #if defined(LW_HIZ_ACTIVE) && HIZ_MODE == 2
     ivec2 candidate;float candidateTravel,candidateDelta;
     int status=hizTrace(depthtex0,gbufferProjection,gbufferProjectionInverse,
-        origin,direction,travel,3.9,8,false,false,candidate,candidateTravel,candidateDelta);
+        origin,direction,travel,3.9,48,false,false,candidate,candidateTravel,candidateDelta);
     if(status==0) return ScreenBounce(vec3(0),vec3(0),0.0);
     if(status==1) travel=candidateTravel;
 #endif

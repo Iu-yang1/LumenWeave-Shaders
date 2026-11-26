@@ -87,7 +87,7 @@ vec4 traceScreenReflection(vec3 origin,vec3 direction,int steps,out vec2 hitUv,o
     const bool dhFallback=false;
 #endif
     int status=hizTrace(LW_REFLECTION_DEPTH,gbufferProjection,gbufferProjectionInverse,
-        origin,direction,travel,maxTravel,steps,dhFallback,true,
+        origin,direction,travel,maxTravel,max(32,steps*8),dhFallback,true,
         candidate,candidateTravel,candidateDelta);
     if(status==1) {
         float thickness=0.20+candidateTravel*0.035;
