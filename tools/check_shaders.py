@@ -184,7 +184,7 @@ def preview_profiles(root, config_root=None):
 
 def preprocess_properties(compiler, path, defines):
     rows = {}
-    values = {"MC_VERSION": "12101", "HIZ_MODE": "1", "AO_RECONSTRUCTION": "1", "PROJECTION_JITTER": "0", "VOXEL_FUSION": "1", "ATMO_PREBAKED": "1", "ATMO_UPDATE_MODE": "1", "CLOUD_DENSITY_CACHE": "1", "CLOUD_NOISE_MODE": "1", "VOLUME_RECONSTRUCTION": "1", "GI_REUSE_MODE": "1", "AA_MODE": "2", **(defines if isinstance(defines, dict) else dict.fromkeys(defines, "1"))}
+    values = {"MC_VERSION": "12101", "HIZ_MODE": "1", "AO_RECONSTRUCTION": "1", "PROJECTION_JITTER": "0", "VOXEL_FUSION": "1", "ATMO_PREBAKED": "1", "ATMO_UPDATE_MODE": "1", "CLOUD_DENSITY_CACHE": "1", "CLOUD_NOISE_MODE": "1", "VOLUME_RECONSTRUCTION": "1", "GI_REUSE_MODE": "1", "AA_MODE": "2", "SCENE_TAAU_SCALE": "100", **(defines if isinstance(defines, dict) else dict.fromkeys(defines, "1"))}
     source = ["#version 330", *(f"#define {name} {value}" for name, value in values.items())]
     for index, line in enumerate(read_source(path).splitlines()):
         directive = line.strip()
@@ -488,11 +488,27 @@ def main():
         "--compiler",
         default=shutil.which("glslangValidator") or shutil.which("glslang"),
     )
+    parser.add_argument("--v4-focused", action="store_true", help="Compile the changed V4 program families across feature paths")
     args = parser.parse_args()
     if not args.compiler:
         parser.error("install glslang or supply --compiler")
     try:
         profiles = preview_profiles(PREVIEW)
+        if args.v4_focused:
+            check_modern_properties(args.compiler, PREVIEW / "shaders.properties")
+            names = {"prepare5","prepare6","prepare6_a","prepare7","prepare8","deferred","deferred_a","deferred1","deferred2","deferred2_a","composite","composite_a","composite_b","composite1","composite2","composite3","composite4","composite5","final","gbuffers_terrain","gbuffers_water","gbuffers_weather","dh_terrain","dh_water"}
+            sources = [p for p in PREVIEW.rglob("*") if p.suffix in STAGES and p.stem in names]
+            variants = {
+                "v4-native": profiles["profile.Ultra"],
+                "v4-taau-diffuse": {**profiles["profile.Extreme"], "SCENE_TAAU_SCALE":"75", "DOF_MODE":"1"},
+                "v4-taau-wet-no-smooth": {**profiles["profile.Ultra"], "SCENE_TAAU_SCALE":"67", "SMOOTH_LIGHTING":"false"},
+                "v4-taau-dynamic": {**profiles["profile.High"], "SCENE_TAAU_SCALE":"85", "PROJECTION_JITTER":"2", "MOTION_BLUR":"true"},
+                "v4-taau-history": {**profiles["profile.Extreme"], "SCENE_TAAU_SCALE":"50", "GI_REUSE_MODE":"2", "DOF_MODE":"3"},
+            }
+            compile_pack(args.compiler, PREVIEW, variants, sources=sources, environment=(*VOXEL_FEATURES,"DISTANT_HORIZONS","MC_TEXTURE_FORMAT_LAB_PBR_1_3"))
+            compile_pack(args.compiler, PREVIEW, {"v4-fallback":profiles["profile.High"]}, sources=sources)
+            print("Focused V4 capability and shader matrix: OK")
+            return
         check_voxel_properties(args.compiler, PREVIEW / "shaders.properties")
         check_modern_properties(args.compiler, PREVIEW / "shaders.properties")
         check_voxel_dispatch(args.compiler)

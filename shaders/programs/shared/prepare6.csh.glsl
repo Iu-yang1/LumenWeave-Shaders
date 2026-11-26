@@ -47,7 +47,8 @@ void main(){
     float halfLife=dot(target.rgb,vec3(0.2126,0.7152,0.0722))>dot(old.rgb,vec3(0.2126,0.7152,0.0722))?0.10:0.18;
     vec4 value=mix(target,old,exp2(-clamp(frameTime,0.0,0.25)/halfLife));
     // New opaque walls must never retain old light. Quantize tiny tails to zero.
-    if(imageLoad(lwVoxelOccupancy,local).r>=LW_VOXEL_WALL) value=vec4(0.0);
+    bool wall=imageLoad(lwVoxelOccupancy,local).r>=LW_VOXEL_WALL;
+    if(wall) value=vec4(0.0);
     if(max(value.r,max(value.g,value.b))<0.0005) value=vec4(0.0);
     if(!valid || any(notEqual(value,old))) imageStore(lwVoxelFirst,historyCell,value);
     if(max(max(target.r,max(target.g,target.b)),max(value.r,max(value.g,value.b)))>0.0) atomicOr(occupied,1u);
@@ -58,7 +59,7 @@ void main(){
     vec4 diffuseOld=valid?imageLoad(lwVoxelSecond,historyCell):diffuseTarget;
     float diffuseHalf=dot(diffuseTarget.rgb,vec3(0.2126,0.7152,0.0722))>dot(diffuseOld.rgb,vec3(0.2126,0.7152,0.0722))?0.16:0.28;
     vec4 diffuseValue=mix(diffuseTarget,diffuseOld,exp2(-clamp(frameTime,0.0,0.25)/diffuseHalf));
-    if(imageLoad(lwVoxelOccupancy,local).r>=LW_VOXEL_WALL) diffuseValue=vec4(0.0);
+    if(wall) diffuseValue=vec4(0.0);
     if(max(diffuseValue.r,max(diffuseValue.g,diffuseValue.b))<0.0005) diffuseValue=vec4(0.0);
     if(!valid || any(notEqual(diffuseValue,diffuseOld))) imageStore(lwVoxelSecond,historyCell,diffuseValue);
     // Union support ensures the tile cannot be skipped while diffuse tails remain.

@@ -47,7 +47,8 @@ class RenderingEfficiencyTests(unittest.TestCase):
         source=(S/"programs/shared/prepare6.csh.glsl").read_text()
         self.assertIn("historyCell=cell+ivec3(0,0,LW_GRID_SIZE)",source)
         self.assertIn("previous.w==frameCounter-1 && withinVoxelGrid(previousLocal)",source)
-        self.assertIn(">=LW_VOXEL_WALL) value=vec4(0.0)",source)
+        self.assertIn("if(wall) value=vec4(0.0)",source)
+        self.assertIn(">=LW_VOXEL_WALL",source)
         self.assertIn("sampleLightRgbaAtOrigin(cell,cacheOrigin)",(S/"lib/atmosphere/local_scatter.glsl").read_text())
         for size in (32,64,96,128):
             cells={(x+31)%size for x in range(size)}

@@ -9,3 +9,5 @@ An isolated forward-only experiment now exists in experiments/taau; build with `
 
 ## Production integration V4: scene HDR resolve
 `SCENE_TAAU_SCALE` (50/67/75/85/100, default 100) now scales the existing post-translucency composite viewport, uses a phased integer source lattice, and resolves into the existing full-resolution TAA history. Native depth, geometry, G-buffer, DH and reflection grids are deliberately unchanged. GI, clouds, water, DH and exposure remain available. The scene/volume composition pass and both spatial volume compute grids are reduced. The corresponding history and reconstruction readers use the same integer active dimensions, including the solar visibility reader. Earlier geometry and deferred lighting remain native. This is an incremental production path, not the full geometry TAAU of the experiment. All later post effects use the resolved full-resolution radiance and native depth. No hardware validation yet.
+
+Focused validation: `python tools/check_shaders.py --v4-focused`; the full matrix and all packaging checks remain mandatory. Scene HDR and volume scaling are deliberately separate from any future geometry viewport scaling.

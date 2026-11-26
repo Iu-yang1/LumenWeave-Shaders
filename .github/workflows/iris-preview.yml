@@ -33,6 +33,8 @@ jobs:
           sudo apt-get update
           sudo apt-get install --yes --no-install-recommends glslang-tools
           glslangValidator --version
+      - name: Validate V4 feature combinations
+        run: python tools/check_shaders.py --v4-focused
       - name: Validate profiles, locales and GLSL
         run: python tools/check_shaders.py
       - name: Run numerical and tooling tests

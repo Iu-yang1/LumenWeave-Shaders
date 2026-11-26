@@ -19,7 +19,8 @@ vec3 rainGeometry(vec3 viewPosition,vec3 normal){
     // A known opaque voxel strictly above this surface blocks vertical rain.
     // Blend near cache limits; missing voxels never prove an open sky.
     float exposed=1.0-coverage*smoothstep(0.12,0.70,c.x-cell.y);
-    if(normal.y<0.91 || abs(cell.y-c.x)>0.30 || exposed<0.99) return vec3(exposed,0.0,0.0);
+    float surfaceConfidence=(1.0-smoothstep(0.12,0.30,abs(cell.y-c.x)))*smoothstep(0.91,0.995,normal.y);
+    if(surfaceConfidence<=0.0) return vec3(exposed,0.0,0.0);
     const ivec2 offsets[4]=ivec2[4](ivec2(1,0),ivec2(-1,0),ivec2(0,1),ivec2(0,-1));
     float lower=0.0,higher=0.0,known=0.0;
     for(int i=0;i<4;++i){
@@ -33,7 +34,7 @@ vec3 rainGeometry(vec3 viewPosition,vec3 normal){
     // Drainage across an open lower neighbour; an enclosed local depression
     // retains water. This is local relief, not a global hydraulic simulation.
     float retention=(1.0-smoothstep(0.0,1.0,lower))*mix(0.35,1.0,higher*0.25);
-    return vec3(exposed,retention,coverage);
+    return vec3(exposed,retention,coverage*surfaceConfidence);
 }
 #else
 vec3 rainGeometry(vec3 viewPosition,vec3 normal){return vec3(1.0,0.0,0.0);}
