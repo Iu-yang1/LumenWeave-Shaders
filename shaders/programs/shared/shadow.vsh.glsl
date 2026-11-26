@@ -19,11 +19,29 @@ uniform mat4 shadowModelViewInverse;
 #endif
 #endif
 
+uniform bool hasSkylight;
+
 out vec2 texCoord;
 out vec4 vertexColor;
 
 void main() {
     vec4 position = gl_ModelViewMatrix * gl_Vertex;
+#ifdef LW_VOXEL_ACTIVE
+    // Off-screen emitters and occluders still populate the light field.
+    injectTerrainVoxel(position.xyz);
+#endif
+    // No celestial shadow consumer in Nether/End or a voxel-only profile.
+    // Keep vertex-side injection but clip before wind and rasterization.
+#ifdef SCENE_SHADOWS
+    if (!hasSkylight) {
+#endif
+        gl_Position = vec4(2.0, 2.0, 2.0, 1.0);
+        texCoord = vec2(0.0);
+        vertexColor = vec4(0.0);
+        return;
+#ifdef SCENE_SHADOWS
+    }
+#endif
 #if defined(WAVING_LEAVES) || defined(WAVING_GRASS)
     int vegetationId = int(mc_Entity.x);
     if (vegetationId >= 10030 && vegetationId <= 10033) {
@@ -36,9 +54,6 @@ void main() {
     }
 #endif
     gl_Position = gl_ProjectionMatrix * position;
-#ifdef LW_VOXEL_ACTIVE
-    injectTerrainVoxel((gl_ModelViewMatrix * gl_Vertex).xyz);
-#endif
     texCoord = (gl_TextureMatrix[0] * gl_MultiTexCoord0).xy;
     vertexColor = gl_Color;
 }
