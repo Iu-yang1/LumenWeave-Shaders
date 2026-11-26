@@ -75,7 +75,7 @@ void main(){
 #endif
     lwMeter(LW_METER_SOURCE);
 #endif
-#ifdef LW_AUTO_FOCUS
+#if defined(LW_AUTO_FOCUS) && !defined(LW_MOTION_DOF_FUSED)
     imageStore(lwExposureState,ivec2(1,0),lwAdvanceFocus(imageLoad(lwExposureState,ivec2(1,0)),frameTime));
 #endif
 #ifdef LW_IDLE_FOCUS

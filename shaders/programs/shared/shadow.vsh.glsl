@@ -4,7 +4,7 @@
 
 #ifdef LW_VOXEL_ACTIVE
 #extension GL_ARB_shader_image_load_store : require
-#if defined(GL_ARB_shader_ballot) && defined(GL_ARB_gpu_shader_int64)
+#if __VERSION__ >= 450 && defined(GL_ARB_shader_ballot) && defined(GL_ARB_gpu_shader_int64)
 #extension GL_ARB_gpu_shader_int64 : enable
 #extension GL_ARB_shader_ballot : enable
 #define LW_VOXEL_SUBGROUP

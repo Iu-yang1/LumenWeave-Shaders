@@ -40,6 +40,9 @@ float lwCoC(float depth,float focus) {
     float radius=magnitude*32.0*strength*pixelScale;
     return sign(power)*min(radius,8.0*pixelScale);
 }
+#ifndef LW_DOF_COLOR
+#define LW_DOF_COLOR(source,uv) texture(source,uv).rgb
+#endif
 vec3 lwDofGather(sampler2D source,vec2 uv,vec3 center,float depth,float coc,float focus) {
     if(depth<=0.0) return center;
     vec2 texel=1.0/vec2(textureSize(source,0));
@@ -99,7 +102,7 @@ vec3 lwDofGather(sampler2D source,vec2 uv,vec3 center,float depth,float coc,floa
             float cover=0.0;
             if(d<nearLimit) cover=sampleWeight*smoothstep(radius-1.0,radius+1.0,-lwCoC(d,focus));
             if(w+cover>0.001){
-                vec3 sampleColor=texture(source,p).rgb;
+                vec3 sampleColor=LW_DOF_COLOR(source,p);
                 farSum+=sampleColor*w;farTotal+=w;
                 nearSum+=sampleColor*cover;nearTotal+=cover;
             }
@@ -112,7 +115,7 @@ vec3 lwDofGather(sampler2D source,vec2 uv,vec3 center,float depth,float coc,floa
             float nearDepth=lwDofDepth(q);
             if(nearDepth>0.0 && nearDepth<nearLimit){
                 float cover=ringWeight*smoothstep(ring-1.5*pixelScale,ring+1.5*pixelScale,-lwCoC(nearDepth,focus));
-                if(cover>0.001){nearSum+=texture(source,q).rgb*cover;nearTotal+=cover;}
+                if(cover>0.001){nearSum+=LW_DOF_COLOR(source,q)*cover;nearTotal+=cover;}
             }
         }
 #endif

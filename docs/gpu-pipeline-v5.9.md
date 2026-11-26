@@ -51,3 +51,7 @@ GI history ownership still excludes DOF half-buffer writes. This removes
 one half-resolution global store/load boundary, but does not fuse moving
 motion blur with DOF or guarantee a measured speed-up (halo recomputation
 and texture-cache behavior need GPU tests). Disk and mip DOF are unchanged.
+
+## Moving motion + disk DOF (experimental)
+HDR_TILE_FUSION=1 uses composite1 compute for depth-only autofocus before the TAA raster pass, then composite2 compute for full-resolution motion and half-resolution disk DOF. The existing motion kernel is shared. Motion RGB is quantized to half before shared tile sampling, with bilinear reconstruction and exact immutable-source recomputation for cross-tile donors. Motion writes the current colortex0 for later Bloom, exposure and final optics; DOF writes current colortex10. composite2 raster is clipped and its flip disabled; composite5 is disabled. Stationary frames still bypass the HDR copy. History ownership, unsupported compute, other DOF modes and HDR_REUSE=0 retain the reference route. This is opt-in until live GPU timings justify enabling by default: extra cross-tile computation can outweigh saved traffic. The full-resolution motion result is still necessary for downstream effects.
+The ARB ballot path is now language-version gated (450+); existing GLSL 330 wrappers use original atomics. This fixes the glslang 330 compile failure without raising the minimum GLSL version.

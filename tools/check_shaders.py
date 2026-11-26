@@ -565,6 +565,7 @@ def main():
             variants = {
                 "v5-geometry-dynamic": {**profiles["profile.Extreme"],"GEOMETRY_TAAU_SCALE":"75","PROJECTION_JITTER":"2"},
                 "motion-history-direct": {**profiles["profile.Extreme"],"MOTION_BLUR":"true","DOF_MODE":"1","HDR_REUSE":"1"},
+                "motion-dof-fused": {**profiles["profile.Extreme"],"MOTION_BLUR":"true","DOF_MODE":"1","DOF_FILTER":"0","HDR_REUSE":"1","HDR_TILE_FUSION":"1","GI_REUSE_MODE":"0"},
                 "motion-history-reference": {**profiles["profile.Ultra"],"MOTION_BLUR":"true","DOF_MODE":"1","HDR_REUSE":"0"},
                 "camera-idle-manual": {**profiles["profile.Ultra"],"AUTO_EXPOSURE":"false","DOF_MODE":"2","DOF_IDLE":"1","PERIPHERAL_OPTICS":"1"},
                 "camera-mipmap": {**profiles["profile.Ultra"],"DOF_MODE":"1","DOF_FILTER":"1"},

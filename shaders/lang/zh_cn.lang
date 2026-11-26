@@ -375,3 +375,8 @@ option.PERIPHERAL_STRENGTH=边缘光学效果强度
 
 option.EDGE_TAAU=边缘自适应时域超分
 option.EDGE_TAAU.comment=LumenWeave 四样本方向性重建与反应式时域融合，非 AMD 官方 FSR。需要几何 TAAU，保留固定投影采样。
+
+option.HDR_TILE_FUSION=动态模糊与景深图块融合
+option.HDR_TILE_FUSION.comment=实验性圆盘景深与动态模糊计算融合。跨图块采样可能增加计算成本，请对照实机帧时间。
+value.HDR_TILE_FUSION.0=参考路径
+value.HDR_TILE_FUSION.1=图块融合
