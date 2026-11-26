@@ -310,3 +310,5 @@ value.DOF_MODE.0=关闭
 value.DOF_MODE.1=自动对焦
 value.DOF_MODE.2=手动对焦
 value.DOF_MODE.3=电影景深
+
+option.SSR_HALF_RES=半分辨率粗糙反射

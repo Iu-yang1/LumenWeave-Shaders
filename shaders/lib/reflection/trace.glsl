@@ -18,13 +18,7 @@ bool insideScreen(vec2 uv) {
 }
 
 vec2 reflectionProjectedUv(vec3 ray,mat4 projection,out float rayDepth) {
-    vec4 clip=projection*vec4(ray,1.0);
-    rayDepth=clip.z/clip.w*0.5+0.5;
-    vec2 uv=clip.xy/clip.w*0.5+0.5;
-#ifdef LW_TAA_ACTIVE
-    uv+=jitterOffset(frameCounter);
-#endif
-    return uv;
+    return lwProjectedRayUv(ray,projection,rayDepth);
 }
 
 vec2 reflectionProjectedUv(vec3 ray,mat4 projection) {

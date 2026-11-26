@@ -60,3 +60,14 @@ class RenderingEfficiencyTests(unittest.TestCase):
         self.assertIn("LW_SCATTER_UPSAMPLE_ACTIVE",bloom)
         self.assertIn("colortex11Format = R11F_G11F_B10F",bloom)
         self.assertIn("rainRippleSlope",(S/"lib/weather/wet_surface.glsl").read_text())
+
+    def test_ssr_half_preserves_raw_history(self):
+        q=(S/"lib/quality.glsl").read_text()
+        self.assertIn("LW_SSR_HALF",q)
+        self.assertIn("GI_REUSE_MODE == 2",q)
+        self.assertIn("imageStore(colorimg9,p,result)",(S/"programs/shared/deferred2_a.csh.glsl").read_text())
+        src=(S/"programs/shared/deferred2.fsh.glsl").read_text()
+        self.assertIn("reconstructRoughReflection",src)
+        self.assertIn("traceMaterialCorrection(pixel",src)
+        self.assertIn("weightSum<0.20",src)
+        self.assertIn("metadata.a<0.28",src)

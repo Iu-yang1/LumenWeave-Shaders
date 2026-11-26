@@ -321,6 +321,12 @@ def check_modern_properties(compiler, path):
             raise ValueError("Smoothed voxel occupancy expansion disabled")
         if len([k for k in config if k.startswith("image.")])>16:
             raise ValueError("Smoothed voxel image budget exceeded")
+    for mode in (0,1,2):
+        config=preprocess_properties(compiler,path,{**flags,"SSR_HALF_RES":"1","GI_REUSE_MODE":str(mode),"PROJECTION_JITTER":"1"})
+        for dimension in DIMENSIONS:
+            allowed=mode==0 or (mode==1 and dimension=="world0")
+            if (config.get(f"program.{dimension}/deferred2_a.enabled")!="false")!=allowed:
+                raise ValueError("Rough reflection prepass overwrites raw GI history")
     print("Modern/legacy compute, exposure and volume history capability matrix: OK")
 
 
@@ -518,6 +524,8 @@ def main():
             "WAVING_LEAVES": "false", "WAVING_GRASS": "false", "WATER_REFLECTION_STEPS": "0",
         }
         compile_pack(args.compiler, PREVIEW, profiles)
+        camera_entries=[p for p in PREVIEW.rglob("*") if p.suffix in STAGES and p.stem in ("final","composite3","composite4","composite5","deferred2","deferred2_a","prepare6","prepare6_a","prepare8")]
+        compile_pack(args.compiler,PREVIEW,{"camera-ultra":{**profiles["profile.Ultra"],"DOF_MODE":"1"},"camera-extreme-history":{**profiles["profile.Extreme"],"DOF_MODE":"3","GI_REUSE_MODE":"2"}},sources=camera_entries,environment=(*VOXEL_FEATURES,"DISTANT_HORIZONS","MC_TEXTURE_FORMAT_LAB_PBR_1_3"))
         compile_pack(
             args.compiler, PREVIEW, {"lab-pbr": profiles["profile.Standard"]},
             environment=("MC_TEXTURE_FORMAT_LAB_PBR", "MC_TEXTURE_FORMAT_LAB_PBR_1_3"),

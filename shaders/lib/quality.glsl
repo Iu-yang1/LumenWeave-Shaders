@@ -94,6 +94,7 @@
 #define WATER_REFRACTION 1.0 // [0.0 0.5 0.75 1.0 1.5]
 #define WATER_REFLECTION_STEPS 16 // [0 8 16 24 32]
 #define MATERIAL_REFLECTION_STEPS 16 // [0 8 16 24 32]
+#define SSR_HALF_RES 1 // [0 1]
 #define CLOUD_STEPS 12 // [8 10 12 16 20 24]
 #define SHAFT_STEPS 6 // [4 6 8]
 #define DH_SHADOW_STEPS 14 // [8 10 14]
@@ -204,6 +205,10 @@
 #if defined(IRIS_FEATURE_CUSTOM_IMAGES) && defined(IRIS_FEATURE_COMPUTE_SHADERS) && !(defined(INCREMENTAL_VOXELS) && defined(VOXEL_LIGHTING) && defined(IRIS_FEATURE_BLOCK_EMISSION_ATTRIBUTE) && defined(IRIS_FEATURE_REVERSED_CULLING) && defined(PHYSICAL_ATMOSPHERE) && (VOXEL_FUSION != 1 || ATMO_PREBAKED != 1))
 #define LW_EXPOSURE_METER
 #endif
+#endif
+// Raw GI history owns colortex9 in specific dimensions. Never overwrite it.
+#if defined(LW_MATERIAL_SSR_ACTIVE) && SSR_HALF_RES == 1 && defined(IRIS_FEATURE_CUSTOM_IMAGES) && defined(IRIS_FEATURE_COMPUTE_SHADERS) && (PROJECTION_JITTER == 1 || AA_MODE < 2) && !(defined(TEMPORAL_REUSE) && defined(SCREEN_GI) && defined(SCREEN_GI_SPATIAL) && defined(SCREEN_GI_HISTORY) && AA_MODE >= 2 && (GI_REUSE_MODE == 2 || (GI_REUSE_MODE == 1 && (defined(LW_DIMENSION_NETHER) || defined(LW_DIMENSION_END)))))
+#define LW_SSR_HALF
 #endif
 // colortex10 is transient except when the raw block GI trace is retained.
 #if DOF_MODE != 0 && !(defined(TEMPORAL_REUSE) && defined(SCREEN_GI) && defined(SCREEN_GI_SPATIAL) && defined(SCREEN_GI_HISTORY) && defined(VOXEL_GI) && defined(DEFERRED_LIGHTING) && AA_MODE >= 2 && PROJECTION_JITTER != 2 && defined(VOXEL_LIGHTING) && defined(IRIS_FEATURE_CUSTOM_IMAGES) && defined(IRIS_FEATURE_COMPUTE_SHADERS) && defined(IRIS_FEATURE_BLOCK_EMISSION_ATTRIBUTE) && defined(IRIS_FEATURE_REVERSED_CULLING) && (GI_REUSE_MODE == 2 || (GI_REUSE_MODE == 1 && (defined(LW_DIMENSION_NETHER) || defined(LW_DIMENSION_END)))))

@@ -2,10 +2,7 @@
 #define LW_WET_SURFACE
 #include "/lib/weather/ripples.glsl"
 #if RAIN_RIPPLES > 0
-#ifndef LW_RAIN_TIME_UNIFORM
-#define LW_RAIN_TIME_UNIFORM
-uniform float frameTimeCounter;
-#endif
+uniform float lwWeatherTime;
 #endif
 // Water-film response; preserve metal and emissive material identity.
 uniform float wetness;
@@ -42,7 +39,7 @@ vec3 wetRippleNormal(vec3 normal,vec2 lightLevels,vec3 viewPosition,Material mat
     float puddle=wetPuddle(normal,lightLevels,viewPosition)*smoothstep(0.18,0.45,material.roughness);
     if(puddle>0.001) {
         float footprint=length(viewPosition)*0.002;
-        vec2 ripple=rainRippleSlope(wetWorldXZ(viewPosition),frameTimeCounter,footprint);
+        vec2 ripple=rainRippleSlope(wetWorldXZ(viewPosition),lwWeatherTime,footprint);
         return normalize(normal-vec3(ripple.x,0.0,ripple.y)*(rainStrength*puddle));
     }
 #endif

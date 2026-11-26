@@ -25,61 +25,42 @@ const vec4 colortex15ClearColor = vec4(0.0, 0.0, 0.0, 0.0);
 
 #include "/lib/lighting/overworld.glsl"
 #include "/lib/lighting/fog.glsl"
-#include "/lib/materials/geometry_buffer.glsl"
-#include "/lib/coordinates/reconstruct.glsl"
-uniform sampler2D depthtex0;
-uniform sampler2D colortex1;
-uniform sampler2D colortex2;
-uniform sampler2D colortex12;
-uniform sampler2D colortex13;
-#define LW_REFLECTION_DEPTH depthtex0
-#define LW_NATIVE_HIZ
-#define LW_REFLECTION_DH_DEPTH dhDepthTex0
-#ifdef LW_STABLE_DYNAMIC
-#include "/lib/coordinates/sample_owner.glsl"
-#define LW_REFLECTION_OWNER
-#endif
-#include "/lib/reflection/trace.glsl"
+#include "/lib/reflection/material_trace.glsl"
 #ifdef LW_TAA_ACTIVE
 #include "/lib/reflection/material_history.glsl"
 #endif
-
-float reflectedDepth(vec2 uv,int kind) {
-    if(kind==1) {
-        ivec2 p=depthPixelAtUv(depthtex0,uv);
-        float d=texelFetch(depthtex0,p,0).r;
-        if(d>=1.0) return -1.0;
-        return -reflectionNativePosition(depthPixelUv(depthtex0,p),d,uv).z;
+#ifdef LW_SSR_HALF
+uniform sampler2D colortex9;
+// The prepass owns the transient GI attachment only after deferred1 consumed it.
+bool reconstructRoughReflection(vec2 uv,vec3 viewPosition,vec3 normal,vec4 metadata,out vec4 result) {
+    if(metadata.a<0.28) return false;
+    ivec2 size=textureSize(colortex9,0),fullSize=textureSize(depthtex0,0);
+    vec2 coord=uv*vec2(size)-0.5;
+    ivec2 base=ivec2(floor(coord));vec2 f=fract(coord);
+    vec4 total=vec4(0.0);float weightSum=0.0;
+    for(int y=0;y<2;++y)for(int x=0;x<2;++x) {
+        ivec2 p=base+ivec2(x,y);
+        if(any(lessThan(p,ivec2(0)))||any(greaterThanEqual(p,size))) continue;
+        vec2 w=mix(1.0-f,f,vec2(x,y));
+        float weight=w.x*w.y;
+        if(weight<=0.00001) continue;
+        ivec2 donor=clamp(ivec2((vec2(p)+0.5)*vec2(fullSize)/vec2(size)),ivec2(0),fullSize-1);
+        vec4 m=texelFetch(colortex12,donor,0);
+        if(m.a<0.28 || abs(m.a-metadata.a)>0.08 || length(m.rgb-metadata.rgb)>0.06) continue;
+        float depth=texelFetch(depthtex0,donor,0).r;
+        if(depth>=1.0 || abs(depth-texelFetch(colortex2,donor,0).r)>0.00000012) continue;
+        float distance=-reconstructViewPosition(depthPixelUv(depthtex0,donor),depth).z;
+        float tolerance=max(0.12,-viewPosition.z*0.025);
+        if(abs(distance+viewPosition.z)>=tolerance) continue;
+        if(dot(normal,decodeNormal(texelFetch(colortex1,donor,0).xy))<0.94) continue;
+        weight*=1.0-smoothstep(tolerance*0.35,tolerance,abs(distance+viewPosition.z));
+        total+=texelFetch(colortex9,p,0)*weight;weightSum+=weight;
     }
-#ifdef DISTANT_HORIZONS
-    if(kind==2 && depthAtUv(depthtex0,uv)>=1.0) {
-        ivec2 p=depthPixelAtUv(dhDepthTex0,uv);
-        float d=texelFetch(dhDepthTex0,p,0).r;
-        if(d>=1.0) return -1.0;
-        return -reconstructProjection(depthPixelUv(dhDepthTex0,p),d,dhProjectionInverse,true).z;
-    }
+    if(weightSum<0.20) return false;
+    result=total/weightSum;
+    return true;
+}
 #endif
-    return -1.0;
-}
-
-vec3 filterReflection(vec3 center,vec2 uv,float travel,int kind,float roughness) {
-    float radius=clamp(roughness*roughness*travel*0.75,0.0,6.0);
-    if(radius<0.65) return center;
-    float depth=reflectedDepth(uv,kind);
-    if(depth<=0.0) return center;
-    vec2 texel=1.0/vec2(textureSize(colortex8,0));
-    vec3 sum=center;float total=1.0;
-    const vec2 taps[4]=vec2[4](vec2(1,0),vec2(-1,0),vec2(0,1),vec2(0,-1));
-    for(int i=0;i<4;++i) {
-        vec2 p=uv+taps[i]*texel*radius;
-        if(!insideScreen(p)) continue;
-        float other=reflectedDepth(p,kind);
-        if(other<=0.0 || abs(other-depth)>max(0.25,depth*0.02)) continue;
-        float w=0.5;
-        sum+=texture(colortex8,p).rgb*w;total+=w;
-    }
-    return sum/total;
-}
 
 void main() {
     ivec2 pixel=ivec2(gl_FragCoord.xy);
@@ -102,35 +83,16 @@ void main() {
 #ifdef LW_STABLE_DYNAMIC
     viewPosition=stableViewSurfacePosition(viewPosition,texCoord,toView*normal,gbufferProjectionInverse);
 #endif
-    vec3 eye=normalize(worldDirection(-viewPosition));
-    vec3 reflected=reflect(-eye,normal);
-    float roughness=metadata.a;
-    float smoothness=1.0-smoothstep(0.18,0.65,roughness);
-    if(smoothness<=0.001 || MATERIAL_REFLECTION_STEPS == 0) return;
-    float contribution=1.0;
-    int steps=MATERIAL_REFLECTION_STEPS;
-#ifdef ADAPTIVE_SHADING
-    contribution=(1.0-smoothstep(80.0,144.0,-viewPosition.z))
-        *smoothstep(0.002,0.012,reflectance*smoothness);
-    if(contribution<=0.001) return;
-    // Projected footprint of a one-block feature: retain more taps at high
-    // display resolution / narrow FOV where the same distance is more visible.
-    float pixelsPerBlock=0.5*abs(gbufferProjection[1][1])
-        *float(textureSize(depthtex0,0).y)/max(-viewPosition.z,0.1);
-    if((-viewPosition.z>36.0 && pixelsPerBlock<14.0) || roughness>0.38)
-        steps=min(steps,max(9,steps/2));
+    float contribution=materialReflectionContribution(viewPosition,metadata);
+    if(contribution<=0.001 || MATERIAL_REFLECTION_STEPS==0) return;
+    vec4 sampleResult;
+#ifdef LW_SSR_HALF
+    if(!reconstructRoughReflection(texCoord,viewPosition,normal,metadata,sampleResult))
 #endif
-    vec2 hitUv;float travel;int hitKind;
-    vec4 hit=traceScreenReflection(viewPosition+toView*normal*0.07,toView*reflected,steps,hitUv,travel,hitKind);
-    vec3 correction=vec3(0.0);
-    if(hit.a>0.0) {
-        vec3 filtered=filterReflection(hit.rgb,hitUv,travel,hitKind,roughness);
-        // Replace exact environment contribution; indoor rays are independent of sky access.
-        vec3 fallback=texelFetch(colortex13,pixel,0).rgb;
-        correction=(filtered*metadata.rgb-fallback)*(hit.a*smoothness);
-    }
+        sampleResult=traceMaterialCorrection(pixel,viewPosition,normal,geometry,materialDepth,metadata);
+    vec3 correction=sampleResult.rgb;
 #ifdef LW_TAA_ACTIVE
-    correction=temporalReflectionCorrection(correction,hit.a,viewPosition,normal,texCoord);
+    correction=temporalReflectionCorrection(correction,sampleResult.a,viewPosition,normal,texCoord);
     reflectionHistory=vec4(correction,-viewPosition.z);
     reflectionGeometry=vec4(geometry.xy,vec2(textureSize(depthtex0,0)));
 #endif

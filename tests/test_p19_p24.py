@@ -24,7 +24,7 @@ class AdaptivePerformanceTests(unittest.TestCase):
         self.assertGreater(footprint(2160,1.4,80),footprint(1080,1.4,80))
         self.assertLess(footprint(1080,1.4,80),14)
         self.assertGreater(footprint(2160,1.4,80),14)
-        source=(ROOT/"shaders/programs/shared/deferred2.fsh.glsl").read_text()
+        source=(ROOT/"shaders/lib/reflection/material_trace.glsl").read_text()
         self.assertIn("pixelsPerBlock<14.0",source)
 
     def test_metadata_exact_range(self):

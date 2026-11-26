@@ -33,11 +33,8 @@ ScreenBounce screenBounceRay(vec3 origin, vec3 direction, mat3 toView, vec3 sun,
         if (position.z >= -0.12) {
             break;
         }
-        vec4 clip = gbufferProjection * vec4(position, 1.0);
-        vec2 uv = clip.xy / clip.w * 0.5 + 0.5;
-#ifdef LW_TAA_ACTIVE
-        uv += jitterOffset(frameCounter);
-#endif
+        float rayDepth;
+        vec2 uv=lwProjectedRayUv(position,gbufferProjection,rayDepth);
         vec2 edge = min(uv, 1.0 - uv);
         if (min(edge.x, edge.y) <= 0.0) {
             break;

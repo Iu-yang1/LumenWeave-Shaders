@@ -38,6 +38,17 @@ float depthAtUv(sampler2D tex, vec2 uv) {
     return texelFetch(tex, depthPixelAtUv(tex, uv), 0).r;
 }
 
+// Shared screen-ray projection for native depth, reflection and GI.
+vec2 lwProjectedRayUv(vec3 position,mat4 projection,out float rayDepth) {
+    vec4 clip=projection*vec4(position,1.0);
+    rayDepth=clip.z/clip.w*0.5+0.5;
+    vec2 uv=clip.xy/clip.w*0.5+0.5;
+#ifdef LW_TAA_ACTIVE
+    uv+=jitterOffset(frameCounter);
+#endif
+    return uv;
+}
+
 // A common plane intersection for raster coverage, lighting and history.
 vec3 stableViewSurfacePosition(vec3 samplePosition, vec2 stableUv, vec3 normalView, mat4 projectionInverse) {
     vec4 clip = projectionInverse * vec4(stableUv * 2.0 - 1.0, 1.0, 1.0);

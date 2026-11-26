@@ -310,3 +310,5 @@ value.DOF_MODE.0=Off
 value.DOF_MODE.1=Auto focus
 value.DOF_MODE.2=Manual focus
 value.DOF_MODE.3=Cinematic
+
+option.SSR_HALF_RES=Half-resolution rough reflections
