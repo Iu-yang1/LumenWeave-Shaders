@@ -332,6 +332,8 @@ def main():
         profiles["ultra-no-volume"] = {**profiles["profile.Ultra"], "VOLUME_EFFECTS": "false"}
         profiles["ultra-no-history"] = {**profiles["profile.Ultra"], "SCREEN_GI_HISTORY": "false"}
         profiles["ultra-no-spatial"] = {**profiles["profile.Ultra"], "SCREEN_GI_SPATIAL": "false"}
+        profiles["ultra-dynamic-projection"] = {**profiles["profile.Ultra"], "PROJECTION_JITTER": "2"}
+        profiles["high-fixed-projection"] = {**profiles["profile.High"], "PROJECTION_JITTER": "1"}
         profiles["screen-gi"] = {**profiles["profile.Standard"], "SCREEN_AO": "false", "SCREEN_GI": "true"}
         profiles["screen-gi-history-no-taa-water"] = {
             **profiles["screen-gi"], "SCREEN_GI_HISTORY": "true", "ADVANCED_WATER": "false"

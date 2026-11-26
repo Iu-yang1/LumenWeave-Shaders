@@ -94,7 +94,7 @@ class ShaderToolsTests(unittest.TestCase):
 
     def test_personal_effects_are_independent_of_quality_profiles(self):
         for profile in preview_profiles(PREVIEW).values():
-            self.assertFalse({"MOTION_BLUR", "BLOOM", "WAVING_LEAVES", "WAVING_GRASS"} & profile.keys())
+            self.assertFalse({"MOTION_BLUR", "BLOOM", "WAVING_LEAVES", "WAVING_GRASS", "PROJECTION_JITTER"} & profile.keys())
 
     def test_relative_includes_and_cycles(self):
         with TemporaryDirectory() as directory:

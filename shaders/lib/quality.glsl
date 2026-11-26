@@ -8,6 +8,7 @@
 #define SOFT_SHADOWS
 #define ADVANCED_WATER
 #define AA_MODE 2 // [0 1 2 3]
+#define PROJECTION_JITTER 0 // [0 1 2]
 //#define VOLUME_EFFECTS
 //#define VOXEL_LIGHTING
 //#define SCREEN_GI
@@ -54,6 +55,11 @@
 
 #if AA_MODE >= 2 && defined(DEFERRED_LIGHTING)
 #define LW_TAA_ACTIVE
+// Auto: preserve dynamic sampling on the verified Medium/High path.
+// The user-tested fixed-grid mode preserves both TAA and SSGI histories.
+#if PROJECTION_JITTER == 2 || (PROJECTION_JITTER == 0 && !defined(VOLUME_EFFECTS) && !defined(SCREEN_GI) && !defined(VOXEL_LIGHTING))
+#define LW_DYNAMIC_JITTER
+#endif
 #endif
 #if AA_MODE == 1 || AA_MODE == 3 || (AA_MODE == 2 && !defined(DEFERRED_LIGHTING))
 #define LW_FXAA_ACTIVE
