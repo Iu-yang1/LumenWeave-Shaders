@@ -8,6 +8,9 @@ vec4 celestialVolumeTransfer(vec3 direction,float distanceToSurface) {
 }
 #ifdef LW_VOLUME_SPATIAL_READER
 uniform sampler2D colortex9;
+#ifdef LW_AO_SPATIAL
+uniform sampler2D colortex3;
+#endif
 vec4 upsampleCelestialVolume(vec2 uv,vec3 direction,float distanceToSurface) {
     ivec2 size=textureSize(colortex9,0);
     vec2 coordinate=uv*vec2(size)-0.5;
@@ -20,10 +23,14 @@ vec4 upsampleCelestialVolume(vec2 uv,vec3 direction,float distanceToSurface) {
     float coverage=0.0;
     for(int y=0;y<2;++y) for(int x=0;x<2;++x) {
         ivec2 p=clamp(base+ivec2(x,y),ivec2(0),size-1);
+#ifdef LW_AO_SPATIAL
+        float donorDistance=texelFetch(colortex3,p,0).r;
+#else
         vec2 donorUv=(vec2(p)+0.5)/vec2(size);
         vec3 donorDirection;
         float donorDistance;
         volumeRay(donorUv,donorDirection,donorDistance);
+#endif
         float difference=abs(donorDistance-distanceToSurface);
         if(difference>=tolerance) continue;
         vec2 w=mix(1.0-f,f,vec2(x,y));

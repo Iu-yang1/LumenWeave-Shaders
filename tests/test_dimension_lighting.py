@@ -27,8 +27,8 @@ class DimensionLightingTests(unittest.TestCase):
         self.assertIn("applySceneFog(lit,lavaPosition)", lava)
         self.assertNotIn("physicalWater(", lava)
         self.assertIn("specularEnvironment = vec4(environmentContribution,1.0)", (ROOT / "lib/lighting/surface.glsl").read_text())
-        reflectance = [min(.045 + .955 * (1 - x/100)**5, .42) for x in range(101)]
-        self.assertTrue(all(.045 <= v <= .42 for v in reflectance))
+        reflectance = [min(.045 + .955 * (1 - x/100)**5, .18) for x in range(101)]
+        self.assertTrue(all(.045 <= v <= .18 for v in reflectance))
         self.assertTrue(all(a >= b for a, b in zip(reflectance, reflectance[1:])))
 
     def test_dimension_fog_optical_depth(self):

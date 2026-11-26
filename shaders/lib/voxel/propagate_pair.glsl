@@ -20,6 +20,10 @@ ivec3 pairCell(int index,int side) {
 int pairIndex(ivec3 cell,int side) {
     return cell.x+side*(cell.y+side*cell.z);
 }
+int pairHaloDistance(ivec3 p) {
+    ivec3 distance=max(max(-p,p-ivec3(3)),ivec3(0));
+    return distance.x+distance.y+distance.z;
+}
 vec4 pairHalf(vec4 v) {
     return vec4(unpackHalf2x16(packHalf2x16(v.xy)),
                 unpackHalf2x16(packHalf2x16(v.zw)));
@@ -48,7 +52,9 @@ void main() {
         return;
     }
     for(int i=lane;i<512;i+=64) {
-        ivec3 cell=base+pairCell(i,8)-2;
+        ivec3 p=pairCell(i,8)-2;
+        if(pairHaloDistance(p)>2) continue;
+        ivec3 cell=base+p;
         vec4 v=vec4(0.0);
         if(withinVoxelGrid(cell)) v=imageLoad(LW_VOXEL_READ,voxelWrapNear(cell+pairOrigin));
         pairInput[i]=v;
@@ -56,6 +62,7 @@ void main() {
     barrier();
     for(int i=lane;i<216;i+=64) {
         ivec3 p=pairCell(i,6);
+        if(pairHaloDistance(p-1)>1) continue;
         ivec3 cell=base+p-1;
         uint seed=LW_VOXEL_WALL;
         if(withinVoxelGrid(cell)) seed=imageLoad(lwVoxelOccupancy,cell).r;

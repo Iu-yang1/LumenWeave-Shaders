@@ -6,7 +6,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1] / "shaders"
 
 
-def integrate(distance, radius, extinction, sample, cap=24, glow=1.7):
+def integrate(distance, radius, extinction, sample, cap=24, glow=1.7, softness=0.0):
     end = min(max(distance - .08, 0.), radius - 1.)
     if end <= .001 or extinction <= 0.:
         return (0., 0., 0.), 0
@@ -21,7 +21,8 @@ def integrate(distance, radius, extinction, sample, cap=24, glow=1.7):
         for c in range(3):
             result[c] += light[c] * weight * through
         through *= segment
-    return tuple(result), steps
+    peak=max(result)
+    return tuple(v/(1+softness*.65*peak) for v in result), steps
 
 
 class LocalScatterTests(unittest.TestCase):

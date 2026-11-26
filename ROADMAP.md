@@ -300,3 +300,5 @@ Overworld fixed projection and transient spatial GI: after deferred, composite_b
 
 ### P32 — measured dimension budget calibration
 Three selectable per-world far-work budgets, balanced defaults and full/performance alternatives, near samples preserved. tools/dimension_budget.py consumes actual whole-GPU-frame timing CSV and normalized pass counters for matched approved images; selects highest quality meeting p95 5ms or fastest measured approved option and explicitly reports unmet targets. No automatic claim or live per-pass timing in GLSL; no data available to calibrate the user's GPU. See docs/gpu-profiling.md.
+
+P29 follow-up: restrict shared loads to Manhattan radius-two halo (304 input cells, 160 intermediate cells per 64 outputs), not all 512/216 cube cells. P30 reuses consumed AO target colortex3 for donor ray distances when AO spatial mode is active; otherwise reconstruct distances directly. No extra texture allocation. Numerical checks for half-float pair equivalence, HDR affine transfer, saturation/gain continuity, and budget selection use synthetic test inputs only.
