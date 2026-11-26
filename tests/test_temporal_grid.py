@@ -61,7 +61,8 @@ class StableGridTests(unittest.TestCase):
         self.assertIn("#define LW_TAA_ACTIVE", quality)
         self.assertIn("PROJECTION_JITTER == 2", quality)
         self.assertIn("!defined(VOLUME_EFFECTS) && !defined(SCREEN_GI) && !defined(VOXEL_LIGHTING)", quality)
-        self.assertIn("#ifndef LW_DYNAMIC_JITTER\n    return vec2(0.0);", jitter)
+        self.assertIn("#elif !defined(LW_DYNAMIC_JITTER)\n    return vec2(0.0);", jitter)
+        self.assertIn("lwGeometryJitter(frame",jitter)
 
     def test_advanced_profiles_keep_all_lighting_and_taa(self):
         props = (SHADERS / "shaders.properties").read_text()

@@ -35,7 +35,7 @@ class NaturalEnvironmentTests(unittest.TestCase):
 
     def test_weather_and_buffer_ownership(self):
         props=(S/"shaders.properties").read_text()
-        self.assertIn("smooth(rainStrength, 20.0, 40.0)",props)
+        self.assertIn("smooth(rainStrength, RAIN_RISE_TIME, RAIN_FALL_TIME)",props)
         self.assertIn("uniform float wetness",(S/"lib/weather/wet_surface.glsl").read_text())
         for d in ("world0","world-1","world1"):
             for name in ("setup5.csh","composite4.csh","composite5.fsh","composite5.vsh"):

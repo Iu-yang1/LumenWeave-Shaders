@@ -81,6 +81,10 @@ class ShaderToolsTests(unittest.TestCase):
                 "WATER_HYBRID_WAVES": "1", "RAIN_RIPPLES": "0", "WET_SURFACES": "false",
                 "PUDDLE_STRENGTH": "0.65", "AUTO_EXPOSURE": "false", "EXPOSURE_ADAPTATION": "0.65",
                 "SMOOTH_LIGHTING": "false", "SOLAR_GLARE": "false", "GLARE_STRENGTH": "0.25",
+                "GEOMETRY_TAAU_SCALE":"100","SCENE_TAAU_SCALE":"100","SSR_HALF_RES":"1",
+                "RAIN_GEOMETRY":"1","VOXEL_DIFFUSE_SMOOTHING":"1","DIRECT_RISE_HALF":"0.10","DIRECT_FALL_HALF":"0.18",
+                "DIFFUSE_RISE_HALF":"0.16","DIFFUSE_FALL_HALF":"0.28","RAIN_RISE_TIME":"20.0","RAIN_FALL_TIME":"40.0",
+                "DOF_MODE":"0","DOF_FOCUS":"8.0","DOF_STRENGTH":"0.5","LENS_GHOSTS":"false","LENS_STAR":"false","MOTION_BLUR":"false",
             },
         )
         self.assertEqual(profiles["profile.LowExposure"]["EXPOSURE"], "-1")

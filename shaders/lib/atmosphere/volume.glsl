@@ -124,7 +124,7 @@ vec4 cloudVolumeTransfer(vec3 origin, vec3 direction, vec3 sun, float maxDistanc
     // Fade the highest octave only when the ray or pixel footprint
     // undersamples its ~11.8-block lattice and the cloud is distant.
     float rayFootprint=length(direction.xz)*stepSize;
-    float pixelFootprint=2.0*abs(gbufferProjectionInverse[1][1])*start/max(float(textureSize(depthtex0,0).y),1.0);
+    float pixelFootprint=2.0*abs(gbufferProjectionInverse[1][1])*start/max(float(lwRasterSize(depthtex0).y),1.0);
     detail=1.0-smoothstep(128.0,400.0,start)*smoothstep(0.25,0.65,max(rayFootprint,pixelFootprint)*0.085);
 #endif
     vec3 rayStep=direction*stepSize;

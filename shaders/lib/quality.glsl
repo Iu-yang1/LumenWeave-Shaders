@@ -187,7 +187,7 @@
 #endif
 // Auto: preserve dynamic sampling on the verified Medium/High path.
 // The user-tested fixed-grid mode preserves both TAA and SSGI histories.
- #if !defined(LW_GEOMETRY_TAAU) && (PROJECTION_JITTER == 2 || (PROJECTION_JITTER == 0 && !defined(VOLUME_EFFECTS) && !defined(SCREEN_GI) && !defined(VOXEL_LIGHTING)))
+#if !defined(LW_GEOMETRY_TAAU) && (PROJECTION_JITTER == 2 || (PROJECTION_JITTER == 0 && !defined(VOLUME_EFFECTS) && !defined(SCREEN_GI) && !defined(VOXEL_LIGHTING)))
 #define LW_DYNAMIC_JITTER
 #if defined(VOLUME_EFFECTS) || defined(SCREEN_GI) || defined(VOXEL_LIGHTING) || defined(MATERIAL_SSR) || defined(PHYSICAL_ATMOSPHERE)
 #define LW_STABLE_DYNAMIC

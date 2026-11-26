@@ -181,3 +181,16 @@ class RenderingEfficiencyTests(unittest.TestCase):
         self.assertIn("stableUv+jitterOffset(frameCounter)",resolve)
         self.assertIn("donorWater!=water",resolve)
         self.assertIn("lwRasterSize(colortex0)",resolve)
+
+    def test_every_public_advanced_option_reachable_and_localized(self):
+        import re
+        from check_shaders import menu_options,properties
+        props=S/"shaders.properties"
+        cfg=properties(props,"\n".join(l for l in props.read_text().splitlines() if l.startswith(("profile.","screen"))))
+        menus,_=menu_options(cfg)
+        declarations=(S/"lib/quality.glsl").read_text()+"\n"+(S/"lib/voxel/settings.glsl").read_text()
+        public={m.group(1) for m in re.finditer(r"(?m)^(?://)?#define[ \t]+([A-Z0-9_]+)(?:[ \t]+\S+[ \t]+// \[[^\]]+\])?[ \t]*$",declarations) if not m.group(1).startswith("LW_")}
+        self.assertFalse(public-menus)
+        for lang in ("en_us","zh_cn"):
+            localized=properties(S/f"lang/{lang}.lang")
+            self.assertFalse({f"option.{n}" for n in public}-localized.keys())

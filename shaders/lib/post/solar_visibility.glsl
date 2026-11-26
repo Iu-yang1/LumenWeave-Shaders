@@ -45,8 +45,8 @@ vec4 solarVisibility(sampler2D source){
         cloudUv=lwRasterStorageUv(colortex9,sampleUv);
 #elif defined(LW_SCENE_TAAU)
         ivec2 fullSize=textureSize(colortex9,0);
-        ivec2 active=lwSceneRenderSize(fullSize);
-        cloudUv=clamp(sampleUv*vec2(active),vec2(0.5),vec2(active)-0.5)/vec2(fullSize);
+        ivec2 activeSize=lwSceneRenderSize(fullSize);
+        cloudUv=clamp(sampleUv*vec2(activeSize),vec2(0.5),vec2(activeSize)-0.5)/vec2(fullSize);
 #endif
         light+=openSky*clamp(textureLod(colortex9,cloudUv,0.0).a,0.0,1.0);
 #else
