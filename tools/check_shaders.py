@@ -486,6 +486,9 @@ def main():
             environment=(*VOXEL_FEATURES, "MC_TEXTURE_FORMAT_LAB_PBR_1_3"),
         )
         compile_pack(args.compiler, PREVIEW, {"world-voxels-fallback": voxel_profiles["world-voxels"]})
+        volume_entries=[p for p in PREVIEW.rglob("*") if p.suffix in STAGES and p.stem in ("composite","composite_a","composite_b","setup3")]
+        compile_pack(args.compiler, PREVIEW, {"extreme-volume-hardware":profiles["profile.Extreme"]},sources=volume_entries,
+            environment=(*VOXEL_FEATURES,"DISTANT_HORIZONS","IRIS_FEATURE_SEPARATE_HARDWARE_SAMPLERS"))
         compile_pack(args.compiler, PREVIEW, {"modern-compaction": profiles["profile.Ultra"]},
             environment=(*VOXEL_FEATURES,"IRIS_FEATURE_SSBO","LW_TEST_MODERN_IRIS"))
         compile_pack(args.compiler, PREVIEW, {"hybrid-shadow": profiles["profile.High"], "hybrid-hard": profiles["profile.Medium"]}, environment=("IRIS_FEATURE_SEPARATE_HARDWARE_SAMPLERS",))

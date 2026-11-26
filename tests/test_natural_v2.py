@@ -64,7 +64,7 @@ class NaturalV2Tests(unittest.TestCase):
 
     def test_volume_uses_cheap_visibility(self):
         source = (ROOT / "shaders/lib/atmosphere/volume.glsl").read_text()
-        self.assertIn("volumeShadow(offset)", source)
+        self.assertIn("volumeShadowProjected(clip.xyz/clip.w*0.5+0.5)", source)
         self.assertNotIn("sceneShadow(offset", source)
 
     def test_rayleigh_color_and_mie_direction(self):

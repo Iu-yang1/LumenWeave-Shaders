@@ -12,7 +12,7 @@ bool lwReduceDistantWork(float depth,float distanceThreshold,float contribution,
     // Broad low-contrast terrain permits a larger spatial reuse region.
     footprintLimit*=1.15;
     #endif
-    return depth>distanceThreshold && contribution<0.65 && footprint<footprintLimit;
+    return depth>distanceThreshold && contribution<0.65 && footprint*sqrt(max(contribution,0.0))<footprintLimit;
 #else
     return false;
 #endif

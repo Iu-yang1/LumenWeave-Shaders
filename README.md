@@ -62,3 +62,6 @@ V2.2 的实机隔离测试中，Ultra/Extreme 使用动态投影时闪烁；Ultr
 
 ## 版本兼容构建（P16）
 从同一套 GLSL 源码生成 `LumenWeave-Shaders-MC-1.20.x.zip`、`LumenWeave-Shaders-MC-1.21.x.zip`、`LumenWeave-Shaders-MC-26.x.zip`。运行 `python tools/package.py --all-versions` 生成三个独立 ZIP 及外层 `LumenWeave-Shaders-All-Versions.zip`（含 SHA256 和 manifest.json）。先解压外层包，仅将对应的内层 ZIP 放入 shaderpacks。亦可用 `--compatibility 1.20.x` 单独构建。旧版保留 worldN 映射，所有生成包在每个维度入口注入明确的维度标识；新版本方块 ID 按 MC_VERSION 条件解析。先进 GPU 功能仍按加载器和显卡的实际能力启用。26.x 要求匹配的 Iris/Sodium 和 OpenGL，Vulkan 不在当前实现范围内。目标范围覆盖 1.20–26.3 正式版本；26.4 预发布不作为正式支持声明。上述范围尚待不同游戏/加载器组合的实际运行验收，不以离线编译替代。
+
+### 体积渲染与场景预算（P40）
+大气设置独立提供体积云、光束、历史复用；光源与辉光提供局部散射自适应积分。Extreme/Ultra 默认启用场景感知预算、原生 R8 云图、方向与距离自适应、空区跳跃、光照复用及固定视角体积历史。R8 云形为独立的周期噪声近似，可切换原程序化路径；历史复用在动态投影或不满足图像资源条件时回退，光束始终采样当前遮挡。实际画质与性能比较方法见 `docs/gpu-profiling.md`。

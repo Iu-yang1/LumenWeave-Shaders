@@ -22,13 +22,13 @@ void main() {
     if(any(greaterThanEqual(p,size))) return;
     vec4 result=vec4(0.0,0.0,0.0,1.0);
     float distanceToSurface=0.0;
-    bool active=isEyeInWater==0 && hasSkylight;
+    bool volumeVisible=isEyeInWater==0 && hasSkylight;
     vec3 direction=vec3(0,1,0);
-    if(active) volumeRay((vec2(p)+0.5)/vec2(size),direction,distanceToSurface);
+    if(volumeVisible) volumeRay((vec2(p)+0.5)/vec2(size),direction,distanceToSurface);
 #ifdef LW_VOLUME_TEMPORAL_ACTIVE
-    result=temporalCelestialVolume(p,size,direction,distanceToSurface,active);
+    result=temporalCelestialVolume(p,size,direction,distanceToSurface,volumeVisible);
 #else
-    if(active) result=celestialVolumeTransfer(direction,distanceToSurface);
+    if(volumeVisible) result=celestialVolumeTransfer(direction,distanceToSurface);
 #endif
     imageStore(colorimg9,p,result);
 #ifdef LW_AO_SPATIAL

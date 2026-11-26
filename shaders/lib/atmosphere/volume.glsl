@@ -35,15 +35,17 @@ float cloudNoise(vec2 position) {
     return proceduralCloudNoise(position);
 #endif
 }
-float cloudDensity(vec3 position,float detail) {
+vec2 cloudNoisePosition(vec3 position) {
+    return (position.xz+frameTimeCounter*vec2(1.1,0.40))*0.017;
+}
+float cloudDensityCoarse(vec3 position,float detail,vec2 uv,float coarse) {
     float height = (position.y - 156.0) / 18.0;
     float layer = smoothstep(0.0, 0.24, height) * (1.0 - smoothstep(0.55, 1.0, height));
     if (layer <= 0.0) return 0.0;
-    vec2 uv = (position.xz + frameTimeCounter * vec2(1.1, 0.40)) * 0.017;
     float threshold=mix(0.48,0.34,rainStrength);
     // Noise is in [0,1]. The unfinished octave sum has a known upper
     // bound, so empty cloud regions can skip finer noise exactly.
-    float shape=0.65*cloudNoise(uv);
+    float shape=0.65*coarse;
     if(shape+0.35<=threshold) return 0.0;
     shape+=0.25*cloudNoise(uv*2.07);
     if(shape+0.10<=threshold) return 0.0;
@@ -52,6 +54,11 @@ float cloudDensity(vec3 position,float detail) {
     return layer*smoothstep(threshold,0.78,shape);
 }
 
+float cloudDensity(vec3 position,float detail) {
+    if(position.y<=156.0 || position.y>=174.0) return 0.0;
+    vec2 uv=cloudNoisePosition(position);
+    return cloudDensityCoarse(position,detail,uv,cloudNoise(uv));
+}
 float cloudDensity(vec3 position) { return cloudDensity(position,1.0); }
 
 vec4 cloudVolumeTransfer(vec3 origin, vec3 direction, vec3 sun, float maxDistance) {
@@ -91,9 +98,11 @@ vec4 cloudVolumeTransfer(vec3 origin, vec3 direction, vec3 sun, float maxDistanc
     vec3 scattering = vec3(0.0);
     float detail=1.0;
 #if CLOUD_ADAPTIVE == 1 && LW_DIMENSION_BUDGET != 0
-    // High octave wavelength is about 11.8 blocks. The distance-based
-    // fade is deliberately limited to distant clouds; near shapes unchanged.
-    detail=1.0-smoothstep(300.0,600.0,start);
+    // Fade the highest octave only when the ray or pixel footprint
+    // undersamples its ~11.8-block lattice and the cloud is distant.
+    float rayFootprint=length(direction.xz)*stepSize;
+    float pixelFootprint=2.0*abs(gbufferProjectionInverse[1][1])*start/max(float(textureSize(depthtex0,0).y),1.0);
+    detail=1.0-smoothstep(128.0,400.0,start)*smoothstep(0.25,0.65,max(rayFootprint,pixelFootprint)*0.085);
 #endif
     vec3 rayStep=direction*stepSize;
     vec3 point=origin+direction*(start+0.5*stepSize);
@@ -105,9 +114,9 @@ vec4 cloudVolumeTransfer(vec3 origin, vec3 direction, vec3 sun, float maxDistanc
         // Coarse octave is Lipschitz bounded by 2.3 in lattice coordinates.
         // If even the upper bound at the NEXT midpoint is below threshold
         // with both remaining octaves at one, both samples are exactly empty.
+        vec2 uv=cloudNoisePosition(point);
+        float coarse=cloudNoise(uv);
         if(tap+1<steps) {
-            vec2 uv=(point.xz+frameTimeCounter*vec2(1.1,0.40))*0.017;
-            float coarse=cloudNoise(uv);
             float upper=0.65*min(1.0,coarse+2.3*length(rayStep.xz)*0.017)+0.35;
             if(upper<=mix(0.48,0.34,rainStrength)) {
                 ++tap;
@@ -115,8 +124,10 @@ vec4 cloudVolumeTransfer(vec3 origin, vec3 direction, vec3 sun, float maxDistanc
                 continue;
             }
         }
-#endif
+        float density=cloudDensityCoarse(point,detail,uv,coarse);
+#else
         float density=cloudDensity(point,detail);
+#endif
         if (density <= 0.0) {
             continue;
         }
@@ -170,10 +181,14 @@ vec3 applyLightShafts(vec3 scene, vec3 origin, vec3 direction, vec3 sun, float m
     }
     float span=min(maxDistance,36.0);
     int steps=clamp(int(ceil(span/5.0)),min(2,SHAFT_STEPS),SHAFT_STEPS);
+    int extraSamples=max(0,SHAFT_STEPS-steps);
 #if SHAFT_ADAPTIVE == 1 && LW_DIMENSION_BUDGET != 0
     // Weak phase contribution uses fewer samples, but keep the full
     // baseline near the sun / strong shafts. Short spans need fewer taps.
     if(phase*day<0.06 && span>12.0) steps=max(2,steps-2);
+    // Reserve two comparisons for boundary refinement on strong rays.
+    if(phase*day>0.12 && steps>=4) steps=max(2,steps-2);
+    extraSamples=max(0,SHAFT_STEPS-steps);
 #endif
     float stepSize=span/float(steps);
     float density=0.0;
@@ -199,7 +214,8 @@ vec3 applyLightShafts(vec3 scene, vec3 origin, vec3 direction, vec3 sun, float m
 #if SHAFT_ADAPTIVE == 1 && defined(SCENE_SHADOWS) && LW_DIMENSION_BUDGET != 0
         // Replace one midpoint with two quarter samples when adjacent
         // visibility differs. Preserve the segment weight and cap work.
-        if(tap>0 && abs(previousSunlight-sunlight)>0.55 && phase*day>0.12) {
+        if(extraSamples>=2 && tap>0 && abs(previousSunlight-sunlight)>0.55 && phase*day>0.12) {
+            extraSamples-=2;
             vec4 a=clip-clipStep*0.25,b=clip+clipStep*0.25;
             float va=volumeShadowProjected(a.xyz/a.w*0.5+0.5);
             float vb=volumeShadowProjected(b.xyz/b.w*0.5+0.5);
