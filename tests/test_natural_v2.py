@@ -86,3 +86,5 @@ class NaturalV2Tests(unittest.TestCase):
             self.assertIn(" SCREEN_GI_SPATIAL ", profile)
         source = (ROOT / "shaders/lib/lighting/screen_gi_spatial.glsl").read_text()
         self.assertIn("return screenDiffuseBounce(viewPosition, normal, sun)", source)
+        self.assertIn("coverage <= 0.003", source)
+        self.assertIn("coverage < 0.035", source)

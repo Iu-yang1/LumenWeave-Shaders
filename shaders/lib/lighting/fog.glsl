@@ -29,7 +29,7 @@ float dimensionBorder(vec3 displacement) {
 #endif
     // Finish before the nominal chunk boundary, including short view ranges.
     float end=max(range-8.0,range*0.78);
-    float start=max(0.0,min(end*0.72,fogStart));
+    float start=end*0.68;
     return smoothstep(start,max(end,start+0.001),distanceToBorder);
 }
 float dimensionTransmission(vec3 direction,float distanceToEye,float boundary) {
@@ -60,7 +60,7 @@ vec3 dimensionFog(vec3 lit, vec3 viewPosition, float distanceToEye) {
 #ifndef LW_LOCAL_SCATTER_ACTIVE
     float eyeBlock = clamp(float(eyeBrightnessSmooth.x) / 240.0, 0.0, 1.0);
     if (hasCeiling) {
-        haze += vec3(0.035, 0.019, 0.009) * eyeBlock * eyeBlock * exp(-distanceToEye * 0.035);
+        haze += vec3(0.035, 0.019, 0.009) * eyeBlock * eyeBlock * exp(-distanceToEye * 0.035) * (1.0-boundary);
     }
 #endif
     return lit * transmission + haze * (1.0 - transmission);

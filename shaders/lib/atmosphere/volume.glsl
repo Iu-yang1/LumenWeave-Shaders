@@ -48,7 +48,7 @@ vec3 applyCloudVolume(vec3 scene, vec3 origin, vec3 direction, vec3 sun, float m
     float span=end-start;
     // A short visible segment or distant subpixel cloud layer does not need
     // all configured taps. Long nearby visible paths retain the full budget.
-    int steps=clamp(int(ceil(span/2.5)),min(4,CLOUD_STEPS),CLOUD_STEPS);
+    int steps=start<128.0 ? CLOUD_STEPS : clamp(int(ceil(span/2.5)),min(4,CLOUD_STEPS),CLOUD_STEPS);
     float stepSize = span / float(steps);
     float day = daylight(sun);
     vec3 tint = sunTint(sun);

@@ -213,13 +213,15 @@ void main() {
         return;
     }
     vec3 viewPosition = reconstructViewPosition(texCoord, depth);
+    float visibleWeight=1.0;
 #if defined(LW_DIMENSION_END) || defined(LW_DIMENSION_NETHER)
     if(isEyeInWater==0) {
         vec3 displacement=worldDirection(viewPosition);
         float distanceToEye=length(displacement);
         float boundary=dimensionBorder(displacement);
         vec3 direction=displacement/max(distanceToEye,0.001);
-        // Only skip when the scene contribution is exactly zero.
+        visibleWeight=dimensionTransmission(direction,distanceToEye,boundary);
+        // Skip all shading only when the scene contribution is exactly zero.
         if(boundary>=1.0) {
             writeScene(vec4(dimensionFogHaze(direction,1.0),scene.a));
             return;
@@ -239,15 +241,21 @@ void main() {
 #endif
 #ifdef SCREEN_AO
     vec3 normalInView = transpose(mat3(gbufferModelViewInverse)) * normal;
-    material.occlusion *= mix(0.23, 1.0, groundTruthOcclusion(texCoord, viewPosition, normalInView));
+    // In dense fog the AO contrast is already attenuated; keep full near detail.
+    if(visibleWeight>0.035) {
+        float ao=groundTruthOcclusion(texCoord,viewPosition,normalInView);
+        material.occlusion*=mix(1.0,mix(0.23,1.0,ao),smoothstep(0.035,0.12,visibleWeight));
+    }
 #endif
     vec3 sun = sunDirection();
 #ifdef LW_MATERIAL_SSR_ACTIVE
     vec3 lit = surfaceRadiance(scene.rgb, material, normal, eyeDirection, sun, geometry.zw, viewPosition, specularMetadata, specularEnvironment);
+    specularMetadata.rgb*=smoothstep(0.025,0.10,visibleWeight);
 #else
     vec3 lit = surfaceRadiance(scene.rgb, material, normal, eyeDirection, sun, geometry.zw, viewPosition);
 #endif
 #if defined(SCREEN_GI) || defined(LW_VOXEL_DIFFUSE_ACTIVE)
+    if(visibleWeight>0.025) {
     vec3 diffuse = scene.rgb * (1.0 - material.metallic) * (1.0 - material.f0);
     vec3 bounce = vec3(0.0);
 #ifdef LW_VOXEL_DIFFUSE_ACTIVE
@@ -275,7 +283,8 @@ void main() {
 #ifdef LW_VOXEL_DIFFUSE_ACTIVE
     bounce += min(blockBounce, vec3(0.25));
 #endif
-    lit += diffuse * bounce;
+    lit += diffuse * bounce * smoothstep(0.025,0.10,visibleWeight);
+    }
 #endif
     writeScene(vec4(applySceneFog(lit, viewPosition), scene.a));
 #ifdef ADVANCED_WATER

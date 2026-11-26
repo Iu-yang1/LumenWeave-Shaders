@@ -134,16 +134,20 @@ ScreenBounce screenDiffuseBounce(vec3 viewPosition, vec3 normal, vec3 sun) {
     vec3 tangent = normalize(cross(reference, normal));
     vec3 bitangent = cross(normal, tangent);
     vec3 origin = viewPosition + 0.07 * (toView * normal);
-    for (int ray = 0; ray < 4; ++ray) {
-        float angle = (float(ray) + 0.5) * (LW_PI * 0.5);
+    // Far GI is already fading to zero at 30 blocks. Two opposed rays
+    // retain the average energy while near surfaces keep the four-ray basis.
+    int rayCount=-viewPosition.z>22.0 ? 2 : 4;
+    int stride=4/rayCount;
+    for (int ray = 0; ray < rayCount; ++ray) {
+        float angle = (float(ray*stride) + 0.5) * (LW_PI * 0.5);
         vec3 direction = normalize(normal + tangent * cos(angle) + bitangent * sin(angle));
         ScreenBounce hit = screenBounceRay(origin, toView * direction, toView, sun);
         bounce.sky += hit.sky;
         bounce.block += hit.block;
         bounce.blockConfidence += hit.blockConfidence;
     }
-    bounce.sky = min(bounce.sky * 0.125, vec3(0.35)) * distanceFade;
-    bounce.block *= 0.125 * distanceFade;
-    bounce.blockConfidence *= 0.25 * distanceFade;
+    bounce.sky = min(bounce.sky * (0.5/float(rayCount)), vec3(0.35)) * distanceFade;
+    bounce.block *= (0.5/float(rayCount)) * distanceFade;
+    bounce.blockConfidence *= (1.0/float(rayCount)) * distanceFade;
     return bounce;
 }
