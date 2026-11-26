@@ -91,15 +91,20 @@ vec3 skyRadiance(vec3 direction, vec3 sun) {
     return color;
 }
 
+// Keep dim light dim, but give level-15 emitters HDR headroom.
+vec3 blockLightIrradiance(float level) {
+    float x = clamp(level, 0.0, 1.0);
+    return x*x*(0.45 + 1.35*x) * vec3(1.04, 0.76, 0.49) * BLOCKLIGHT_STRENGTH;
+}
+
 vec3 ambientIrradiance(vec2 light, float up, vec3 sun) {
     float sky = light.y * light.y;
-    float block = light.x * light.x;
     if (!hasSkylight) {
         vec3 environment = hasCeiling ? netherEnvironment(up) : endEnvironment(up);
-        return (vec3(0.015) + environment) * AMBIENT_STRENGTH
-            + block * vec3(1.04, 0.76, 0.49) * BLOCKLIGHT_STRENGTH;
+        return (vec3(0.008) + environment * (hasCeiling ? 0.48 : 0.58)) * AMBIENT_STRENGTH
+            + blockLightIrradiance(light.x);
     }
     vec3 hemisphere = overworldEnvironment(up, daylight(sun));
-    return (vec3(0.015) + sky * hemisphere) * AMBIENT_STRENGTH
-        + block * vec3(1.04, 0.76, 0.49) * BLOCKLIGHT_STRENGTH;
+    return (vec3(0.010) + sky * hemisphere * 0.82) * AMBIENT_STRENGTH
+        + blockLightIrradiance(light.x);
 }
