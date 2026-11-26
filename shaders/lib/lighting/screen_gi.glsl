@@ -25,15 +25,16 @@ ScreenBounce screenBounceRay(vec3 origin, vec3 direction, mat3 toView, vec3 sun)
         float depth = texelFetch(depthtex0, pixel, 0).r;
         if (depth < 1.0) {
             vec2 pixelUv = (vec2(pixel) + 0.5) / vec2(resolution);
-            vec3 hitPosition = reconstructViewPosition(pixelUv, depth);
+            vec3 hitPosition;
 #ifdef LW_STABLE_DYNAMIC
             int kind = sampleOwner(pixelUv, depth, false);
+            hitPosition = reconstructProjection(pixelUv,depth,gbufferProjectionInverse,kind!=0);
             if (kind == 1) {
                 vec3 sampleNormal = toView * decodeNormal(texelFetch(colortex1,pixel,0).xy);
                 hitPosition = stableViewSurfacePosition(hitPosition, unjitteredUv(uv,true), sampleNormal, gbufferProjectionInverse);
-            } else {
-                hitPosition = reconstructProjection(pixelUv,depth,gbufferProjectionInverse,kind!=0);
             }
+#else
+            hitPosition = reconstructViewPosition(pixelUv, depth);
 #endif
             float delta = hitPosition.z - position.z;
             if (delta >= 0.0) {
@@ -65,7 +66,7 @@ ScreenBounce screenBounceRay(vec3 origin, vec3 direction, mat3 toView, vec3 sun)
                 vec3 worldPosition = (gbufferModelViewInverse * vec4(hitPosition, 1.0)).xyz;
 #endif
 #ifdef SCENE_SHADOWS
-                if (daylightWeight > 0.0) {
+                if (hasSkylight && daylightWeight > 0.0) {
                     daylightWeight *= sceneShadow(worldPosition, hitNormal, light);
                 }
 #endif
