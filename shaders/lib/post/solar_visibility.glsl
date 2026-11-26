@@ -1,3 +1,4 @@
+#include "/lib/coordinates/raster_grid.glsl"
 // Shared by the meter and final vertex stage; depth occlusion is current-frame.
 uniform mat4 gbufferProjection;
 uniform mat4 gbufferModelViewInverse;
@@ -25,7 +26,7 @@ vec4 solarVisibility(sampler2D source){
     vec4 p=gbufferProjection*vec4(dir,0.0);
     if(p.w<=0.0) return vec4(0.0);
     vec2 uv=p.xy/p.w*0.5+0.5;
-    vec2 pixel=1.0/vec2(textureSize(depthtex0,0));
+    vec2 pixel=1.0/vec2(lwRasterSize(depthtex0));
     // The rendered disk uses cos(theta)=0.99972. Scale taps with FOV.
     vec2 radius=max(pixel*1.5,0.5*abs(vec2(gbufferProjection[0][0],gbufferProjection[1][1]))*0.02367/max(-dir.z,0.02));
     if(any(lessThan(uv,-radius))||any(greaterThan(uv,1.0+radius))) return vec4(0.0);
@@ -33,14 +34,16 @@ vec4 solarVisibility(sampler2D source){
     for(int y=-1;y<=1;++y)for(int x=-1;x<=1;++x) {
         vec2 sampleUv=uv+vec2(x,y)*radius*0.65;
         if(any(lessThan(sampleUv,vec2(0.0)))||any(greaterThan(sampleUv,vec2(1.0)))) continue;
-        float openSky=step(0.999999,textureLod(depthtex0,sampleUv,0.0).r);
+        float openSky=step(0.999999,lwPostDepth(depthtex0,sampleUv));
 #ifdef DISTANT_HORIZONS
-        openSky*=step(0.999999,textureLod(dhDepthTex0,sampleUv,0.0).r);
+        openSky*=step(0.999999,lwPostDepth(dhDepthTex0,sampleUv));
 #endif
         visible+=openSky;
 #ifdef LW_CELESTIAL_VOLUME_SPATIAL
         vec2 cloudUv=sampleUv;
-#ifdef LW_SCENE_TAAU
+#ifdef LW_GEOMETRY_TAAU
+        cloudUv=lwRasterStorageUv(colortex9,sampleUv);
+#elif defined(LW_SCENE_TAAU)
         ivec2 fullSize=textureSize(colortex9,0);
         ivec2 active=lwSceneRenderSize(fullSize);
         cloudUv=clamp(sampleUv*vec2(active),vec2(0.5),vec2(active)-0.5)/vec2(fullSize);

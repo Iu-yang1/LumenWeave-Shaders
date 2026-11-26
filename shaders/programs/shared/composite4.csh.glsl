@@ -1,4 +1,5 @@
 #include "/lib/quality.glsl"
+#include "/lib/coordinates/raster_grid.glsl"
 layout(local_size_x=1) in;
 const ivec3 workGroups = ivec3(1, 1, 1);
 #ifdef LW_EXPOSURE_METER
@@ -28,7 +29,7 @@ void main(){
         float l=clamp(luminance(textureLod(LW_METER_SOURCE,uv,0.0).rgb),0.012,4.0);
         float logL=log2(l);
         sum+=logL*w;weight+=w;
-        float ground=1.0-step(0.999999,textureLod(depthtex0,uv,0.0).r);
+        float ground=1.0-step(0.999999,lwPostDepth(depthtex0,uv));
         terrainSum+=logL*w*ground;terrainWeight+=w*ground;
     }
     float average=sum/weight;

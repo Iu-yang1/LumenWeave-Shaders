@@ -1,6 +1,7 @@
 #version 330 compatibility
 
 #include "/lib/quality.glsl"
+#include "/lib/coordinates/raster_grid.glsl"
 
 uniform sampler2D colortex0;
 in vec2 texCoord;
@@ -26,7 +27,7 @@ vec3 motionBlur(vec3 center) {
     if (dot(cameraDelta, cameraDelta) > 16.0) {
         return center;
     }
-    float depth = texture(depthtex0, texCoord).r;
+    float depth = lwPostDepth(depthtex0,texCoord);
     if (depth < 0.55) {
         return center;
     }
@@ -35,14 +36,14 @@ vec3 motionBlur(vec3 center) {
     mat4 previousProjection = gbufferPreviousProjection;
 #ifdef DISTANT_HORIZONS
     if (depth >= 1.0) {
-        depth = texture(dhDepthTex0, texCoord).r;
+        depth = lwPostDepth(dhDepthTex0,texCoord);
         distant = depth < 1.0;
         projectionInverse = dhProjectionInverse;
         previousProjection = dhPreviousProjection;
     }
 #endif
     vec2 currentUv = texCoord;
-#ifdef LW_TAA_ACTIVE
+#if defined(LW_TAA_ACTIVE) && !defined(LW_GEOMETRY_TAAU)
     currentUv -= jitterOffset(frameCounter);
 #endif
     vec4 position = projectionInverse * vec4(vec3(currentUv, min(depth, 0.99999)) * 2.0 - 1.0, 1.0);
@@ -70,10 +71,10 @@ vec3 motionBlur(vec3 center) {
         if (any(lessThanEqual(uv, vec2(0.0))) || any(greaterThanEqual(uv, vec2(1.0)))) {
             continue;
         }
-        float adjacentDepth = texture(depthtex0, uv).r;
+        float adjacentDepth = lwPostDepth(depthtex0,uv);
 #ifdef DISTANT_HORIZONS
         if (distant && adjacentDepth >= 1.0) {
-            adjacentDepth = texture(dhDepthTex0, uv).r;
+            adjacentDepth = lwPostDepth(dhDepthTex0,uv);
         }
 #endif
         if ((adjacentDepth >= 1.0) != (depth >= 1.0)) {

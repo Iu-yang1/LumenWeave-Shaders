@@ -7,7 +7,9 @@ uniform float viewHeight;
 #include "/lib/coordinates/raster_grid.glsl"
 
 vec2 jitterOffset(int frame) {
-#if !defined(LW_DYNAMIC_JITTER) && !defined(LW_GEOMETRY_TAAU)
+#ifdef LW_GEOMETRY_TAAU
+    return lwGeometryJitter(frame,lwRasterExtent(max(ivec2(viewWidth,viewHeight),ivec2(1))));
+#elif !defined(LW_DYNAMIC_JITTER)
     return vec2(0.0);
 #else
     const vec2 sequence[8] = vec2[8](

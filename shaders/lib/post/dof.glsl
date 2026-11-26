@@ -1,3 +1,4 @@
+#include "/lib/coordinates/raster_grid.glsl"
 // Linear view depth and signed circle of confusion, in pixels.
 uniform sampler2D depthtex0;
 uniform sampler2D depthtex1;
@@ -14,15 +15,15 @@ float lwLinearDepth(mat4 inverseProjection,float depth) {
     return clamp(-p.z/max(abs(p.w),0.00001),0.05,512.0);
 }
 float lwDofDepth(vec2 uv) {
-    float depth=texture(depthtex0,uv).r;
+    float depth=lwPostDepth(depthtex0,uv);
     // The hand has a compressed projection and is absent from depthtex2.
     // Keep close world geometry when the solid depth agrees.
-    float solid=texture(depthtex1,uv).r;
-    float withoutHand=texture(depthtex2,uv).r;
+    float solid=lwPostDepth(depthtex1,uv);
+    float withoutHand=lwPostDepth(depthtex2,uv);
     if(firstPersonCamera && depth<0.55 && (solid+0.00001<withoutHand || depth+0.00001<solid)) return -1.0;
 #ifdef DISTANT_HORIZONS
     if(depth>=1.0) {
-        float distant=texture(dhDepthTex0,uv).r;
+        float distant=lwPostDepth(dhDepthTex0,uv);
         if(distant<1.0) return lwLinearDepth(dhProjectionInverse,distant);
     }
 #endif
@@ -32,7 +33,12 @@ float lwFocusDepth(){
 #if DOF_MODE == 2
     return DOF_FOCUS;
 #else
+#ifdef LW_GEOMETRY_TAAU
+    // Loader centerDepthSmooth observes the storage center, not active grid.
+    float depth=clamp(lwPostDepth(depthtex0,vec2(0.5)),0.55,0.99999);
+#else
     float depth=clamp(centerDepthSmooth,0.55,0.99999);
+#endif
     return clamp(lwLinearDepth(gbufferProjectionInverse,depth),1.0,64.0);
 #endif
 }

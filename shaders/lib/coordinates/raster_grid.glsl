@@ -18,6 +18,27 @@ vec2 lwRasterStorageUv(sampler2D source,vec2 uv){
     return uv;
 #endif
 }
+#ifdef LW_GEOMETRY_TAAU
+uniform int lwRasterFrame;
+vec2 lwGeometryJitter(int frame,ivec2 active){
+    const vec2 sequence[8] = vec2[8](
+        vec2(0.0, -0.16667), vec2(-0.25, 0.16667),
+        vec2(0.25, -0.38889), vec2(-0.375, -0.05556),
+        vec2(0.125, 0.27778), vec2(-0.125, -0.27778),
+        vec2(0.375, 0.05556), vec2(-0.4375, 0.38889)
+    );
+    // Center the finite sequence, not only its theoretical Halton distribution.
+    const vec2 mean = vec2(-0.0546875, 0.0);
+    return (sequence[frame&7]-mean)/vec2(max(active,ivec2(1)));
+}
+#endif
+vec2 lwPostDepthUv(sampler2D source,vec2 uv){
+#ifdef LW_GEOMETRY_TAAU
+    uv+=lwGeometryJitter(lwRasterFrame,lwRasterSize(source));
+#endif
+    return lwRasterStorageUv(source,uv);
+}
+float lwPostDepth(sampler2D source,vec2 uv){return textureLod(source,lwPostDepthUv(source,uv),0.0).r;}
 vec4 lwRasterTexture(sampler2D source,vec2 uv){return texture(source,lwRasterStorageUv(source,uv));}
 vec4 lwRasterTextureLod(sampler2D source,vec2 uv,float lod){return textureLod(source,lwRasterStorageUv(source,uv),lod);}
 #endif

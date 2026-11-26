@@ -93,7 +93,10 @@ int hizTrace(sampler2D depthBuffer,mat4 projection,mat4 inverseProjection,
             frontSeen=true;t=end;continue;
         }
         vec2 center=(vec2(pixel)+0.5)/vec2(resolution);
-        vec4 surface=inverseProjection*vec4(unjitteredUv(center,true)*2.0-1.0,depth*2.0-1.0,1);
+#ifdef LW_GEOMETRY_TAAU
+        center-=jitterOffset(frameCounter);
+#endif
+        vec4 surface=inverseProjection*vec4(center*2.0-1.0,depth*2.0-1.0,1);
         float z=surface.z/surface.w;
         float a=z-(origin.z+direction.z*t);
         float b=z-(origin.z+direction.z*end);

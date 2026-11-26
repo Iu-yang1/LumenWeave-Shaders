@@ -58,7 +58,9 @@ uniform mat4 dhPreviousProjection;
 vec3 clipHistory(ivec2 pixel, vec3 history) {
     ivec2 size=textureSize(colortex0,0);
     ivec2 limit=size-1;
-#ifdef LW_SCENE_TAAU
+#ifdef LW_GEOMETRY_TAAU
+    limit=lwRasterSize(colortex0)-1;
+#elif defined(LW_SCENE_TAAU)
     pixel=lwSceneNearest((vec2(pixel)+0.5)/vec2(size),size,frameCounter);
     limit=lwSceneRenderSize(size)-1;
 #endif
@@ -75,7 +77,7 @@ vec3 clipHistory(ivec2 pixel, vec3 history) {
             upper = max(upper, sampleColor);
         }
     }
-#if defined(LW_STABLE_DYNAMIC) || defined(LW_SCENE_TAAU)
+#if defined(LW_STABLE_DYNAMIC) || defined(LW_SCENE_TAAU) || defined(LW_GEOMETRY_TAAU)
     // A flat neighbourhood has zero spatial variance but may have nonzero
     // temporal sampling variance. A small HDR-relative envelope preserves
     // accumulation there while depth/normal ownership rejects disocclusions.
@@ -102,8 +104,10 @@ vec4 filteredHistory(vec2 uv, float expectedDepth, vec2 normal, bool water, bool
             }
             vec4 history = texelFetch(colortex4, samplePixel, 0);
             vec4 metadata = texelFetch(colortex5, samplePixel, 0);
-#if defined(LW_STABLE_DYNAMIC) || defined(LW_SCENE_TAAU)
-#ifdef LW_SCENE_TAAU
+#if defined(LW_STABLE_DYNAMIC) || defined(LW_SCENE_TAAU) || defined(LW_GEOMETRY_TAAU)
+#ifdef LW_GEOMETRY_TAAU
+            vec2 historySize=vec2(lwRasterExtent(size));
+#elif defined(LW_SCENE_TAAU)
             vec2 historySize=vec2(lwSceneRenderSize(size));
 #else
             vec2 historySize=vec2(size);
@@ -149,7 +153,7 @@ vec3 temporalColor(vec3 current, vec3 viewPosition, vec2 normal, ivec2 pixel, ma
         return current;
     }
     vec2 size = vec2(textureSize(colortex4, 0));
-#if defined(LW_TEMPORAL_REUSE) && !defined(LW_DYNAMIC_JITTER) && !defined(LW_SCENE_TAAU)
+#if defined(LW_TEMPORAL_REUSE) && !defined(LW_DYNAMIC_JITTER) && !defined(LW_SCENE_TAAU) && !defined(LW_GEOMETRY_TAAU)
     if(!water && !distant && length((previousUv-texCoord)*size)<0.20) {
         vec4 history=texelFetch(colortex4,pixel,0);
         vec4 metadata=texelFetch(colortex5,pixel,0);
@@ -171,6 +175,11 @@ vec3 temporalColor(vec3 current, vec3 viewPosition, vec2 normal, ivec2 pixel, ma
     float weight = water ? mix(0.78, 0.55, smoothstep(2.0, 20.0, motion))
         : mix(stationaryWeight, 0.72, smoothstep(2.0, 20.0, motion));
     weight *= smoothstep(0.0, 0.5, historySample.a);
+#ifdef LW_GEOMETRY_TAAU
+    // Reactive water/bright changes cannot drag old lighting into a new sample.
+    float change=length(current-historySample.rgb)/max(length(current)+length(historySample.rgb),0.02);
+    weight*=mix(1.0,water?0.15:0.42,smoothstep(0.08,0.5,change));
+#endif
     float materialId = texelFetch(colortex2, pixel, 0).y;
     if (materialId >= 10030.0 && materialId <= 10033.0) {
         // Nearby moving vegetation needs rejection; distant settled foliage benefits from history.
@@ -244,7 +253,7 @@ vec3 stableSurfacePosition(vec3 samplePosition, vec2 stableUv, vec2 encodedNorma
         transpose(mat3(gbufferModelViewInverse))*decodeNormal(encodedNormal),projectionInverse);
 }
 
-#if defined(LW_STABLE_DYNAMIC) || defined(LW_SCENE_TAAU)
+#if defined(LW_STABLE_DYNAMIC) || defined(LW_SCENE_TAAU) || defined(LW_GEOMETRY_TAAU)
 bool skyAtUv(vec2 uv) {
     bool sky = depthAtUv(depthtex0,uv)>=1.0;
 #ifdef DISTANT_HORIZONS
@@ -267,7 +276,27 @@ vec3 temporalSky(vec3 current,vec2 uv,ivec2 pixel) {
 #endif
 
 vec3 resolveCurrent(ivec2 pixel, vec2 stableUv, vec3 position, vec2 normal, bool water, bool distant) {
-#ifdef LW_SCENE_TAAU
+#ifdef LW_GEOMETRY_TAAU
+    ivec2 lowSize=lwRasterSize(colortex0);
+    vec2 coordinate=(stableUv+jitterOffset(frameCounter))*vec2(lowSize)-0.5;
+    ivec2 base=ivec2(floor(coordinate));
+    vec2 fraction=fract(coordinate);
+    vec3 result=vec3(0.0);float weightSum=0.0;
+    vec3 referenceNormal=decodeNormal(normal);
+    for(int y=0;y<2;++y)for(int x=0;x<2;++x){
+        ivec2 donor=clamp(base+ivec2(x,y),ivec2(0),lowSize-1);
+        vec2 uv=(vec2(donor)+0.5)/vec2(lowSize);
+        vec3 p;vec2 n;mat4 prev;bool donorWater;
+        vec2 w=mix(1.0-fraction,fraction,vec2(x,y));float weight=w.x*w.y;
+        if(weight<=0.00001) continue;
+        if(!temporalGeometry(donor,uv,p,n,prev,donorWater) || donorWater!=water ||
+            (texelFetch(depthtex0,donor,0).r>=1.0)!=distant ||
+            abs(p.z-position.z)>max(0.10,-position.z*0.035) ||
+            dot(referenceNormal,decodeNormal(n))<(water?0.86:0.75)) continue;
+        result+=texelFetch(colortex0,donor,0).rgb*weight;weightSum+=weight;
+    }
+    return weightSum>0.001?result/weightSum:texelFetch(colortex0,pixel,0).rgb;
+#elif defined(LW_SCENE_TAAU)
     ivec2 fullSize=textureSize(depthtex0,0),lowSize=lwSceneRenderSize(fullSize);
     vec2 coord=lwSceneLowCoord(stableUv,fullSize,frameCounter);
     ivec2 base=ivec2(floor(coord));vec2 fraction=fract(coord);
@@ -336,7 +365,14 @@ void main() {
     ivec2 pixel = ivec2(gl_FragCoord.xy);
     ivec2 size = textureSize(colortex0, 0);
     vec2 stableUv = (vec2(pixel) + 0.5) / vec2(size);
-#ifdef LW_SCENE_TAAU
+    vec2 geometryUv=stableUv;
+#ifdef LW_GEOMETRY_TAAU
+    ivec2 lowSize=lwRasterSize(colortex0);
+    pixel=clamp(ivec2((stableUv+jitterOffset(frameCounter))*vec2(lowSize)),ivec2(0),lowSize-1);
+    geometryUv=(vec2(pixel)+0.5)/vec2(lowSize);
+    sceneColor=texelFetch(colortex0,pixel,0);
+    vec2 historySize=vec2(lowSize);
+#elif defined(LW_SCENE_TAAU)
     sceneColor=texelFetch(colortex0,lwSceneNearest(stableUv,size,frameCounter),0);
     vec2 historySize=vec2(lwSceneRenderSize(size));
 #else
@@ -355,9 +391,9 @@ void main() {
     vec2 normal;
     mat4 previousProjection;
     bool water;
-    if (!temporalGeometry(pixel, stableUv, viewPosition, normal, previousProjection, water)) {
-#if defined(LW_STABLE_DYNAMIC) || defined(LW_SCENE_TAAU)
-        if (skyAtUv(stableUv)) {
+    if (!temporalGeometry(pixel, geometryUv, viewPosition, normal, previousProjection, water)) {
+#if defined(LW_STABLE_DYNAMIC) || defined(LW_SCENE_TAAU) || defined(LW_GEOMETRY_TAAU)
+        if (skyAtUv(geometryUv)) {
             sceneColor.rgb = temporalSky(sceneColor.rgb,stableUv,pixel);
             colorHistory = vec4(sceneColor.rgb,0.0);
             normalHistory = vec4(0.0,0.0,historySize.x,-historySize.y);
@@ -374,7 +410,7 @@ void main() {
     }
 #endif
     // With fixed raster sampling the original depth already belongs to the output ray.
-#ifdef LW_DYNAMIC_JITTER
+#if defined(LW_DYNAMIC_JITTER) || defined(LW_GEOMETRY_TAAU)
     vec3 stablePosition = stableSurfacePosition(viewPosition, stableUv, normal, projectionInverse);
 #else
     vec3 stablePosition = viewPosition;
@@ -382,7 +418,7 @@ void main() {
     vec3 current = resolveCurrent(pixel, stableUv, stablePosition, normal, water, distant);
     sceneColor.rgb = temporalColor(current, stablePosition, normal, pixel, previousProjection, water, distant);
     colorHistory = vec4(sceneColor.rgb, water ? stablePosition.z : -stablePosition.z);
-#if defined(LW_STABLE_DYNAMIC) || defined(LW_SCENE_TAAU)
+#if defined(LW_STABLE_DYNAMIC) || defined(LW_SCENE_TAAU) || defined(LW_GEOMETRY_TAAU)
     normalHistory = vec4(normal,distant ? -historySize.x : historySize.x,historySize.y);
 #else
     normalHistory = vec4(normal, vec2(size));
