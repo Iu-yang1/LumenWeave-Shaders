@@ -106,7 +106,7 @@ class RenderingEfficiencyTests(unittest.TestCase):
         src=(S/"programs/shared/prepare6.csh.glsl").read_text()
         self.assertIn("imageLoad(lwVoxelSecond,historyCell)",src)
         self.assertIn("imageStore(lwVoxelSecond,historyCell,diffuseValue)",src)
-        self.assertIn("atomicOr(occupied,2u)",src)
+        self.assertIn("flags|=2u",src)
         self.assertIn("sampleVoxelIrradianceSlab(lwVoxelDiffuse,relativePosition,normal,1.05,1)",(S/"lib/voxel/irradiance.glsl").read_text())
         for hz in (30,60,144):
             value=1.
@@ -212,7 +212,7 @@ class RenderingEfficiencyTests(unittest.TestCase):
         self.assertIn("return vec2(0.0);",source)
         stage=(S/"programs/shared/prepare6.csh.glsl").read_text()
         self.assertIn("float(transitioning)",stage)
-        self.assertIn("atomicOr(transitioning,2u)",stage)
+        self.assertIn("if(diffusePending) flags|=8u",stage)
         self.assertIn("packHalf2x16",stage)
         self.assertIn("retainHistoryTile(tile,previousSupport)",stage)
         for changed in (0,1,2,3):
