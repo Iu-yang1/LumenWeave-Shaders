@@ -17,13 +17,15 @@ class QualityBudgetTests(unittest.TestCase):
             result = resource_budget(options, 1920, 1080)
             if tier in ("Ultra", "Extreme"):
                 size = int(options["VOXEL_GRID_SIZE"])
-                self.assertAlmostEqual(result["voxel_mib"], (46 * size ** 3 + 16*size**2 + 128 * 32 * 32 + 16) / MIB)
+                self.assertAlmostEqual(result["voxel_mib"], ((46 + 8*(tier=="Extreme")) * size ** 3 + 16*size**2 + 128 * 32 * 32 + 16) / MIB)
                 self.assertEqual(result["atmosphere_mib"], (ATMO_BYTES + 16) / MIB)
                 self.assertEqual(result["hiz_mib"], 67 * 37 * 8 / MIB)
                 self.assertEqual(result["extra_color_single_mib"], 28 * 1920 * 1080 / MIB)
             else:
-                self.assertTrue(all(value == 0 for key,value in result.items() if key not in ("hiz_mib","end_nebula_mib")))
+                self.assertTrue(all(value == 0 for key,value in result.items() if key not in ("hiz_mib","end_nebula_mib","water_normal_mib","opaque_hdr_single_mib")))
                 self.assertEqual(result["hiz_mib"], 0)
+                self.assertEqual(result["voxel_diffuse_smooth_mib"],0)
+            self.assertEqual(result["opaque_hdr_single_mib"],1920*1080*4/MIB if options.get("DEFERRED_LIGHTING")==options.get("ADVANCED_WATER")=="true" else 0)
 
     def test_fixed_mode_removes_dynamic_owner_payload(self):
         options = preview_profiles(PREVIEW)["profile.Ultra"]

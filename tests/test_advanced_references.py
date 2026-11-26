@@ -85,10 +85,11 @@ class IncrementalVoxelTests(unittest.TestCase):
 class AdvancedShaderContracts(unittest.TestCase):
     def test_ssr_replaces_environment(self):
         source = (ROOT/"shaders/programs/shared/deferred2.fsh.glsl").read_text()
-        self.assertIn("filtered*metadata.rgb-fallback",source)
+        trace=(ROOT/"shaders/lib/reflection/material_trace.glsl").read_text()
+        self.assertIn("filtered*metadata.rgb-fallback",trace)
         self.assertIn("temporalReflectionCorrection",source)
-        self.assertIn("LW_REFLECTION_DH_DEPTH dhDepthTex0",source)
-        self.assertIn("LW_REFLECTION_DEPTH depthtex0",source)
+        self.assertIn("LW_REFLECTION_DH_DEPTH dhDepthTex0",trace)
+        self.assertIn("LW_REFLECTION_DEPTH depthtex0",trace)
 
     def test_advanced_budget(self):
         props = (ROOT/"shaders/shaders.properties").read_text()

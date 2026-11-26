@@ -317,6 +317,11 @@ def check_modern_properties(compiler, path):
         config=preprocess_properties(compiler,path,{**flags,"SMOOTH_LIGHTING":"1","VOXEL_GRID_SIZE":str(size)})
         if config["image.lwVoxelFirst"].split()[-3:]!=[str(size),str(size),str(2*size+2)]:
             raise ValueError("Smoothed voxel slab dimensions incorrect")
+        diffuse=preprocess_properties(compiler,path,{**flags,"SMOOTH_LIGHTING":"1","VOXEL_GRID_SIZE":str(size),"VOXEL_GI":"1"})
+        if diffuse["image.lwVoxelSecond"].split()[-3:]!=[str(size),str(size),str(2*size)]:
+            raise ValueError("Diffuse temporal slab dimensions incorrect")
+        if len([k for k in diffuse if k.startswith("image.")])>16:
+            raise ValueError("Diffuse slab exceeded custom image budget")
         if config.get("program.world0/prepare8.enabled")=="false":
             raise ValueError("Smoothed voxel occupancy expansion disabled")
         if len([k for k in config if k.startswith("image.")])>16:

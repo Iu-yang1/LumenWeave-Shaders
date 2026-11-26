@@ -5,6 +5,9 @@
 #include "/lib/voxel/dispatch.glsl"
 #include "/lib/voxel/cache_coordinates.glsl"
 layout(rgba16f) uniform image3D lwVoxelFirst;
+#ifdef LW_VOXEL_DIFFUSE_SMOOTH
+layout(rgba16f) uniform image3D lwVoxelSecond;
+#endif
 layout(r32ui) readonly uniform uimage3D lwVoxelOccupancy;
 layout(rgba32i) readonly uniform iimage2D lwVoxelMeta;
 layout(r8ui) uniform uimage3D lwVoxelDirtyTiles;
@@ -48,6 +51,19 @@ void main(){
     if(max(value.r,max(value.g,value.b))<0.0005) value=vec4(0.0);
     if(!valid || any(notEqual(value,old))) imageStore(lwVoxelFirst,historyCell,value);
     if(max(max(target.r,max(target.g,target.b)),max(value.r,max(value.g,value.b)))>0.0) atomicOr(occupied,1u);
+#ifdef LW_VOXEL_DIFFUSE_SMOOTH
+    // Raw diffuse propagation remains independent. A separate world-space
+    // history follows its own irradiance, including hue changes and removals.
+    vec4 diffuseTarget=imageLoad(lwVoxelSecond,cell);
+    vec4 diffuseOld=valid?imageLoad(lwVoxelSecond,historyCell):diffuseTarget;
+    float diffuseHalf=dot(diffuseTarget.rgb,vec3(0.2126,0.7152,0.0722))>dot(diffuseOld.rgb,vec3(0.2126,0.7152,0.0722))?0.16:0.28;
+    vec4 diffuseValue=mix(diffuseTarget,diffuseOld,exp2(-clamp(frameTime,0.0,0.25)/diffuseHalf));
+    if(imageLoad(lwVoxelOccupancy,local).r>=LW_VOXEL_WALL) diffuseValue=vec4(0.0);
+    if(max(diffuseValue.r,max(diffuseValue.g,diffuseValue.b))<0.0005) diffuseValue=vec4(0.0);
+    if(!valid || any(notEqual(diffuseValue,diffuseOld))) imageStore(lwVoxelSecond,historyCell,diffuseValue);
+    // Union support ensures the tile cannot be skipped while diffuse tails remain.
+    if(max(max(diffuseTarget.r,max(diffuseTarget.g,diffuseTarget.b)),max(diffuseValue.r,max(diffuseValue.g,diffuseValue.b)))>0.0) atomicOr(occupied,2u);
+#endif
     barrier();
     // The original dirty seed slab is no longer needed by propagation.
     if(gl_LocalInvocationIndex==0u) {

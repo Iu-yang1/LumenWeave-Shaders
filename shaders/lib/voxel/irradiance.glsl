@@ -98,6 +98,10 @@ vec3 voxelTargetIrradiance(vec3 relativePosition,vec3 normal) {
 uniform sampler3D lwVoxelDiffuse;
 
 vec3 voxelDiffuseBounce(vec3 relativePosition, vec3 normal) {
+#ifdef LW_VOXEL_DIFFUSE_SMOOTH
+    return sampleVoxelIrradianceSlab(lwVoxelDiffuse,relativePosition,normal,1.05,1);
+#else
     return sampleVoxelIrradiance(lwVoxelDiffuse, relativePosition, normal, 1.05);
+#endif
 }
 #endif

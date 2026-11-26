@@ -95,3 +95,15 @@ class RenderingEfficiencyTests(unittest.TestCase):
                     for pixel in (0,render-1):
                         uv=(pixel+.5)/render
                         self.assertAlmostEqual(uv*s*size-.5,pixel)
+
+    def test_independent_diffuse_history(self):
+        src=(S/"programs/shared/prepare6.csh.glsl").read_text()
+        self.assertIn("imageLoad(lwVoxelSecond,historyCell)",src)
+        self.assertIn("imageStore(lwVoxelSecond,historyCell,diffuseValue)",src)
+        self.assertIn("atomicOr(occupied,2u)",src)
+        self.assertIn("sampleVoxelIrradianceSlab(lwVoxelDiffuse,relativePosition,normal,1.05,1)",(S/"lib/voxel/irradiance.glsl").read_text())
+        for hz in (30,60,144):
+            value=1.
+            for _ in range(hz):
+                value*=2**(-1/hz/.28)
+            self.assertAlmostEqual(value,2**(-1/.28),places=10)

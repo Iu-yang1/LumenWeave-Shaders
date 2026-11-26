@@ -128,6 +128,9 @@
 
 #if defined(SMOOTH_LIGHTING) && defined(LW_VOXEL_INCREMENTAL_ACTIVE)
 #define LW_VOXEL_SMOOTH_ACTIVE
+#if defined(VOXEL_GI) && defined(DEFERRED_LIGHTING)
+#define LW_VOXEL_DIFFUSE_SMOOTH
+#endif
 #endif
 
 // The legacy four-stage voxel cache plus runtime static atmosphere tables
