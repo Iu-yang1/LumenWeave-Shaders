@@ -29,7 +29,7 @@ vec3 dimensionFog(vec3 lit, vec3 viewPosition, float distanceToEye) {
 #ifndef LW_LOCAL_SCATTER_ACTIVE
     float eyeBlock = clamp(float(eyeBrightnessSmooth.x) / 240.0, 0.0, 1.0);
     if (hasCeiling) {
-        haze += vec3(0.075, 0.026, 0.008) * eyeBlock * eyeBlock * exp(-distanceToEye * 0.035);
+        haze += vec3(0.035, 0.019, 0.009) * eyeBlock * eyeBlock * exp(-distanceToEye * 0.035);
     }
 #endif
     float shapedDistance = fogShape == 1

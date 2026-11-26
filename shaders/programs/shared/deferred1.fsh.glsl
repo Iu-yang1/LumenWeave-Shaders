@@ -1,4 +1,3 @@
-#version 330 compatibility
 
 #include "/lib/quality.glsl"
 
@@ -73,6 +72,9 @@ const vec4 colortex3ClearColor = vec4(0.0, 0.0, 0.0, 0.0);
 
 #include "/lib/color/scene.glsl"
 #include "/lib/lighting/overworld.glsl"
+#ifdef LW_DIMENSION_END
+#include "/lib/dimensions/celestial_sky.glsl"
+#endif
 #include "/lib/lighting/fog.glsl"
 #include "/lib/lighting/surface.glsl"
 #ifdef LW_VOXEL_ACTIVE
@@ -170,6 +172,15 @@ void main() {
 #endif
             return;
         }
+    }
+#endif
+#if defined(LW_DIMENSION_END) && !defined(DISTANT_HORIZONS)
+    // Authoritative background before translucent rendering, even if the
+    // loader did not submit the textured End sky geometry.
+    if(depth>=1.0 && (isEyeInWater==0 || isEyeInWater==1)) {
+        vec3 ray=normalize(worldDirection((gbufferProjectionInverse*vec4(texCoord*2.0-1.0,1.0,1.0)).xyz));
+        writeScene(vec4(skyRadiance(ray,vec3(0,1,0))+endSkyDetail(ray),1.0));
+        return;
     }
 #endif
     if (depth >= 1.0 || abs(depth - materialDepth.x) > 0.00000012) {

@@ -21,25 +21,34 @@ float skyNoise(vec3 p) {
 
 // Direction-space procedural sky: no UV seam, time noise or camera translation.
 vec3 endSkyDetail(vec3 direction) {
-    vec3 p=direction*4.0;
-    float n=0.70*skyNoise(p)+0.30*skyNoise(p*2.31+vec3(9.0,3.0,5.0));
-#ifndef LITE_LIGHTING
-    n=0.82*n+0.18*skyNoise(p*5.13+vec3(3.0,12.0,7.0));
-#endif
-    float band=1.0-smoothstep(0.04,0.55,abs(dot(direction,normalize(vec3(0.34,0.71,0.61)))+0.16*(n-0.5)));
-    float cloud=smoothstep(0.34,0.78,n)*band;
-    vec3 color=mix(vec3(0.028,0.012,0.073),vec3(0.15,0.055,0.24),cloud)*cloud;
-    // Analytic anti-aliased star cores; disable at subpixel density.
-    vec3 q=direction*92.0;
-    vec3 cell=floor(q);
+    vec3 p=direction*5.0;
+    float n=0.62*skyNoise(p)+0.26*skyNoise(p*2.31+vec3(9,3,5))
+        +0.12*skyNoise(p*5.13+vec3(3,12,7));
+    vec3 axis=normalize(vec3(0.34,0.71,0.61));
+    float latitude=abs(dot(direction,axis)+0.23*(n-0.5));
+    float band=1.0-smoothstep(0.08,0.55,latitude);
+    float wisps=smoothstep(0.32,0.80,n)*band;
+    float ridge=pow(wisps,2.0);
+    vec3 color=vec3(0.008,0.0025,0.023)*wisps
+        +vec3(0.031,0.008,0.047)*ridge;
+    // A cube-face directional lattice places stars ON the sky, rather than
+    // randomly inside 3D cells that rarely intersect the unit sphere.
+    vec3 a=abs(direction);
+    vec2 uv; float face;
+    if(a.x>=a.y && a.x>=a.z) {uv=direction.yz/a.x; face=direction.x>0.0?0.0:1.0;}
+    else if(a.y>=a.z) {uv=direction.xz/a.y;face=direction.y>0.0?2.0:3.0;}
+    else {uv=direction.xy/a.z;face=direction.z>0.0?4.0:5.0;}
+    vec2 q=(uv*0.5+0.5)*96.0;
+    vec3 cell=vec3(floor(q),face);
     float seed=skyHash(cell);
-    vec3 center=vec3(skyHash(cell+vec3(3,0,0)),skyHash(cell+vec3(0,7,0)),skyHash(cell+vec3(0,0,11)));
-    center=mix(vec3(0.24),vec3(0.76),center);
-    float distanceToStar=length(fract(q)-center);
-    float footprint=clamp(length(fwidth(q)),0.012,0.24);
-    float star=(1.0-smoothstep(0.038,0.038+footprint,distanceToStar))
-        *step(0.975,seed)*(1.0-smoothstep(0.10,0.24,footprint));
-    return color+star*mix(vec3(0.45,0.56,0.92),vec3(0.85,0.58,0.95),skyHash(cell+vec3(7,4,1)))*1.25;
+    vec2 center=mix(vec2(0.22),vec2(0.78),
+        vec2(skyHash(cell+vec3(3,0,7)),skyHash(cell+vec3(0,7,2))));
+    float radius=mix(0.035,0.095,skyHash(cell+vec3(5,2,1)));
+    float footprint=clamp(length(fwidth(q)),0.008,0.15);
+    float star=(1.0-smoothstep(radius,radius+footprint,length(fract(q)-center)))
+        *step(0.955,seed)*(1.0-smoothstep(0.10,0.15,footprint));
+    float intensity=mix(0.12,0.85,pow(skyHash(cell+vec3(8,3,2)),3.0));
+    return color+star*intensity*mix(vec3(0.63,0.72,1.0),vec3(0.91,0.72,0.96),seed);
 }
 
 vec3 celestialSkyGlow(vec3 direction,vec3 sun) {

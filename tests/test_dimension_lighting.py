@@ -18,7 +18,7 @@ class DimensionLightingTests(unittest.TestCase):
 
     def test_emitter_headroom_and_lava_path(self):
         palette = (ROOT / "lib/lighting/emitter_palette.glsl").read_text()
-        self.assertIn("if (kind==5u) return 7.2;", palette)
+        self.assertIn("if (kind==5u) return 3.8;", palette)
         self.assertIn("kind==6u", palette)
         surface = (ROOT / "programs/p1/surface.fsh.glsl").read_text()
         lava = surface.split("if (blockId == 10015)", 1)[1].split("radiance = surfaceRadiance", 1)[0]

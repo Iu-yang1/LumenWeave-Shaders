@@ -1,4 +1,3 @@
-#version 330 compatibility
 
 #include "/lib/quality.glsl"
 #include "/lib/voxel/features.glsl"

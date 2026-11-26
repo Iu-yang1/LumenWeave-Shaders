@@ -32,8 +32,8 @@ vec3 surfaceRadiance(vec3 albedo, Material material, vec3 normal, vec3 view, vec
     vec3 blockAmbient = blockLightIrradiance(lightLevels.x);
 #ifdef LW_VOXEL_ACTIVE
     vec3 coloredLight = voxelIrradiance(position, normal) * BLOCKLIGHT_STRENGTH;
-    float influence = smoothstep(0.025, 0.65, max(coloredLight.r, max(coloredLight.g, coloredLight.b)));
-    blockAmbient = mix(blockAmbient, coloredLight * 1.45, influence);
+    float influence = smoothstep(0.05, 0.90, max(coloredLight.r, max(coloredLight.g, coloredLight.b)));
+    blockAmbient = mix(blockAmbient, coloredLight * 1.18, influence);
 #endif
     vec3 diffuse = albedo * (1.0 - material.metallic) * (1.0 - f0);
     vec3 ambient = (skyAmbient + blockAmbient) * material.occlusion;

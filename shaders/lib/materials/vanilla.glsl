@@ -26,7 +26,9 @@ Material vanillaMaterial(int blockId, vec3 albedo) {
         float mask = smoothstep(0.045,0.65,peak);
         // Keep the emissive texture's luminance and hue detail rather than
         // painting its dark seams and bright pixels a uniform solid color.
-        vec3 tint = mix(albedo,emitterColor(kind)*peak,0.45);
+        // Visible texels retain resource-pack chromaticity. The light field uses
+        // the separate, softer illuminant palette.
+        vec3 tint = albedo;
         material.emission = tint*emitterRadiance(kind)*mask;
     }
     if (kind==5u) {

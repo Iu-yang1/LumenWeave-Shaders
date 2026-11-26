@@ -10,6 +10,31 @@ uniform bool hasSkylight;
 uniform bool hasCeiling;
 uniform float ambientLight;
 uniform vec3 fogColor;
+#ifdef CAT_THE_END
+uniform int biome_category;
+#endif
+
+// Sky-light capability is not a dimension identity (modern End has sky light).
+bool lwEndDimension() {
+#ifdef LW_DIMENSION_END
+    return true;
+#elif defined(LW_DIMENSION_NETHER)
+    return false;
+#elif defined(CAT_THE_END)
+    return biome_category == CAT_THE_END || (!hasSkylight && !hasCeiling);
+#else
+    return !hasSkylight && !hasCeiling;
+#endif
+}
+bool lwHasCelestial() {
+#if defined(LW_DIMENSION_END) || defined(LW_DIMENSION_NETHER)
+    return false;
+#else
+    return hasSkylight && !lwEndDimension();
+#endif
+}
+// Existing lighting users mean celestial sky, not the vanilla light-map flag.
+#define hasSkylight lwHasCelestial()
 
 #include "/lib/dimensions/overworld.glsl"
 #include "/lib/dimensions/nether.glsl"
@@ -73,8 +98,8 @@ vec3 skyRadiance(vec3 direction, vec3 sun) {
             float lower = 1.0-smoothstep(-0.25,0.65,direction.y);
             return mix(fog,vec3(0.14,0.032,0.012),0.10+0.13*lower)*mix(0.68,1.0,lower);
         }
-        vec3 horizon = mix(fog,vec3(0.052,0.023,0.105),0.60);
-        vec3 zenith = vec3(0.006,0.004,0.019);
+        vec3 horizon = vec3(0.010,0.0038,0.022);
+        vec3 zenith = vec3(0.0009,0.00055,0.0030);
         return mix(horizon,zenith,smoothstep(0.0,0.85,abs(direction.y)));
     }
     float height = max(direction.y, 0.0);
@@ -107,14 +132,14 @@ vec3 skyRadiance(vec3 direction, vec3 sun) {
 // Keep dim light dim, but give level-15 emitters HDR headroom.
 vec3 blockLightIrradiance(float level) {
     float x = clamp(level, 0.0, 1.0);
-    return x*x*(0.45 + 1.35*x) * vec3(1.04, 0.76, 0.49) * BLOCKLIGHT_STRENGTH;
+    return x*x*(0.45 + 1.35*x) * vec3(1.0, 0.82, 0.62) * BLOCKLIGHT_STRENGTH;
 }
 
 vec3 ambientIrradiance(vec2 light, float up, vec3 sun) {
     float sky = light.y * light.y;
     if (!hasSkylight) {
         vec3 environment = hasCeiling ? netherEnvironment(up) : endEnvironment(up);
-        return (vec3(0.008) + environment * (hasCeiling ? 0.48 : 0.58)) * AMBIENT_STRENGTH
+        return (vec3(0.008) + environment * (hasCeiling ? 0.48 : 0.38)) * AMBIENT_STRENGTH
             + blockLightIrradiance(light.x);
     }
     vec3 hemisphere = overworldEnvironment(up, daylight(sun));

@@ -1,4 +1,3 @@
-#version 430 core
 #include "/lib/quality.glsl"
 #include "/lib/voxel/features.glsl"
 layout(local_size_x=8,local_size_y=8) in;
