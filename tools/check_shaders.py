@@ -2,6 +2,8 @@
 """Check the Iris preview and voxel probe with a desktop GLSL compiler."""
 
 import argparse
+from functools import partial
+from hashlib import sha256
 import re
 import shutil
 import subprocess
@@ -470,7 +472,13 @@ def check_projection_sampling(compiler, profiles):
     print(f"Projection sampling: {len(cases) * len(DIMENSIONS) * len(stages)} native entry points and 72 geometry entry points OK")
 
 
-def compile_pack(compiler, root, profiles, sources=None, environment=()):
+def compile_shard(root, name, program, environment, count):
+    """Stable partition of complete vertex/fragment links and compute programs."""
+    key = "\\0".join((root.name, name, program.relative_to(root).as_posix(), *sorted(environment)))
+    return int.from_bytes(sha256(key.encode("utf-8")).digest()[:8], "big") % count
+
+
+def compile_pack(compiler, root, profiles, sources=None, environment=(), *, shard_index=0, shard_count=1):
     groups = {}
     for path in sorted(sources if sources is not None else root.rglob("*")):
         if path.suffix in STAGES:
@@ -487,6 +495,8 @@ def compile_pack(compiler, root, profiles, sources=None, environment=()):
                     raise ValueError(
                         f"Missing render stage: {program.relative_to(root)}"
                     )
+                if compile_shard(root, name, program, environment, shard_count) != shard_index:
+                    continue
                 compiled = []
                 for source in stages:
                     text = compiler_source(root, source, options, environment)
@@ -513,7 +523,14 @@ def main():
         default=shutil.which("glslangValidator") or shutil.which("glslang"),
     )
     parser.add_argument("--v4-focused", action="store_true", help="Compile the changed V4 program families across feature paths")
+    parser.add_argument("--shard-index", type=int, default=0)
+    parser.add_argument("--shard-count", type=int, default=1)
     args = parser.parse_args()
+    if args.shard_count < 1 or not 0 <= args.shard_index < args.shard_count:
+        parser.error("invalid compile shard index/count")
+    if args.v4_focused and args.shard_count != 1:
+        parser.error("focused validation must run unsharded")
+    compile_matrix = partial(compile_pack, shard_index=args.shard_index, shard_count=args.shard_count)
     if not args.compiler:
         parser.error("install glslang or supply --compiler")
     try:
@@ -535,23 +552,24 @@ def main():
                 "v4-taau-dynamic": {**profiles["profile.High"], "SCENE_TAAU_SCALE":"85", "PROJECTION_JITTER":"2", "MOTION_BLUR":"true"},
                 "v4-taau-history": {**profiles["profile.Extreme"], "SCENE_TAAU_SCALE":"50", "GI_REUSE_MODE":"2", "DOF_MODE":"3"},
             }
-            compile_pack(args.compiler, PREVIEW, variants, sources=sources, environment=(*VOXEL_FEATURES,"DISTANT_HORIZONS","MC_TEXTURE_FORMAT_LAB_PBR_1_3"))
-            compile_pack(args.compiler, PREVIEW, {"v4-fallback":profiles["profile.High"]}, sources=sources)
+            compile_matrix(args.compiler, PREVIEW, variants, sources=sources, environment=(*VOXEL_FEATURES,"DISTANT_HORIZONS","MC_TEXTURE_FORMAT_LAB_PBR_1_3"))
+            compile_matrix(args.compiler, PREVIEW, {"v4-fallback":profiles["profile.High"]}, sources=sources)
             print("Focused V4 capability and shader matrix: OK")
             return
-        check_voxel_properties(args.compiler, PREVIEW / "shaders.properties")
-        check_modern_properties(args.compiler, PREVIEW / "shaders.properties")
-        check_voxel_dispatch(args.compiler)
-        check_projection_sampling(args.compiler, profiles)
-        print("Shadow and voxel capability matrix: 384 configurations OK")
-        print("Voxel dispatch: 84 dimension/stage/size combinations OK")
+        if args.shard_index == 0:
+            check_voxel_properties(args.compiler, PREVIEW / "shaders.properties")
+            check_modern_properties(args.compiler, PREVIEW / "shaders.properties")
+            check_voxel_dispatch(args.compiler)
+            check_projection_sampling(args.compiler, profiles)
+            print("Shadow and voxel capability matrix: 384 configurations OK")
+            print("Voxel dispatch: 84 dimension/stage/size combinations OK")
         profiles["color-chart"] = {**profiles["profile.Natural"], "SHOW_COLOR_CHART": "true"}
         profiles["temporal"] = {**profiles["profile.Standard"], "AA_MODE": "2"}
         profiles["volume"] = {**profiles["temporal"], "VOLUME_EFFECTS": "true"}
         profiles["ultra-no-volume"] = {**profiles["profile.Ultra"], "VOLUME_EFFECTS": "false"}
         profiles["ultra-no-history"] = {**profiles["profile.Ultra"], "SCREEN_GI_HISTORY": "false"}
         profiles["ultra-no-spatial"] = {**profiles["profile.Ultra"], "SCREEN_GI_SPATIAL": "false"}
-        profiles["ultra-dynamic-projection"] = {**profiles["profile.Ultra"], "PROJECTION_JITTER": "2"}
+        profiles["ultra-dynamic-projection"] = {**profiles["profile.Ultra"], "PROJECTION_JITTER": "2", "GEOMETRY_TAAU_SCALE":"100"}
         profiles["ultra-legacy-voxel"] = {**profiles["profile.Ultra"], "VOXEL_FUSION": "0"}
         profiles["cinematic-auto"] = {**profiles["profile.High"], "DOF_MODE": "1", "LENS_GHOSTS": "true", "LENS_STAR": "true"}
         profiles["cinematic-manual"] = {**profiles["profile.Ultra"], "DOF_MODE": "2", "SOLAR_GLARE": "true"}
@@ -568,7 +586,7 @@ def main():
         profiles["dimension-full"] = {**profiles["profile.Ultra"], "OVERWORLD_BUDGET": "0", "NETHER_BUDGET": "0", "END_BUDGET": "0"}
         profiles["ultra-original-hdr"] = {**profiles["profile.Ultra"], "HDR_REUSE": "0", "VOLUME_RECONSTRUCTION": "0"}
         profiles["ultra-full-ao"] = {**profiles["profile.Ultra"], "AO_RECONSTRUCTION": "0"}
-        profiles["high-fixed-projection"] = {**profiles["profile.High"], "PROJECTION_JITTER": "1"}
+        profiles["high-fixed-projection"] = {**profiles["profile.High"], "PROJECTION_JITTER": "1", "GEOMETRY_TAAU_SCALE":"100"}
         profiles["screen-gi"] = {**profiles["profile.Standard"], "SCREEN_AO": "false", "SCREEN_GI": "true"}
         profiles["screen-gi-history-no-taa-water"] = {
             **profiles["screen-gi"], "SCREEN_GI_HISTORY": "true", "ADVANCED_WATER": "false"
@@ -587,12 +605,12 @@ def main():
             **profiles["profile.High"], "AA_MODE": "0",
             "WAVING_LEAVES": "false", "WAVING_GRASS": "false", "WATER_REFLECTION_STEPS": "0",
         }
-        compile_pack(args.compiler, PREVIEW, profiles)
+        compile_matrix(args.compiler, PREVIEW, profiles)
         scene_entries=[p for p in PREVIEW.rglob("*") if p.suffix in STAGES and p.stem in ("composite","composite1","composite2","composite3","composite4","composite5","final")]
-        compile_pack(args.compiler,PREVIEW,{"scene-taau-ultra":{**profiles["profile.Ultra"],"SCENE_TAAU_SCALE":"75"},"scene-taau-extreme":{**profiles["profile.Extreme"],"SCENE_TAAU_SCALE":"50","DOF_MODE":"1"},"scene-taau-dynamic":{**profiles["profile.High"],"SCENE_TAAU_SCALE":"67","PROJECTION_JITTER":"2","MOTION_BLUR":"true"}},sources=scene_entries,environment=(*VOXEL_FEATURES,"DISTANT_HORIZONS"))
+        compile_matrix(args.compiler,PREVIEW,{"scene-taau-ultra":{**profiles["profile.Ultra"],"SCENE_TAAU_SCALE":"75"},"scene-taau-extreme":{**profiles["profile.Extreme"],"SCENE_TAAU_SCALE":"50","DOF_MODE":"1"},"scene-taau-dynamic":{**profiles["profile.High"],"SCENE_TAAU_SCALE":"67","PROJECTION_JITTER":"2","MOTION_BLUR":"true"}},sources=scene_entries,environment=(*VOXEL_FEATURES,"DISTANT_HORIZONS"))
         camera_entries=[p for p in PREVIEW.rglob("*") if p.suffix in STAGES and p.stem in ("final","composite3","composite4","composite5","deferred2","deferred2_a","prepare6","prepare6_a","prepare8")]
-        compile_pack(args.compiler,PREVIEW,{"camera-ultra":{**profiles["profile.Ultra"],"DOF_MODE":"1"},"camera-extreme-history":{**profiles["profile.Extreme"],"DOF_MODE":"3","GI_REUSE_MODE":"2"}},sources=camera_entries,environment=(*VOXEL_FEATURES,"DISTANT_HORIZONS","MC_TEXTURE_FORMAT_LAB_PBR_1_3"))
-        compile_pack(
+        compile_matrix(args.compiler,PREVIEW,{"camera-ultra":{**profiles["profile.Ultra"],"DOF_MODE":"1"},"camera-extreme-history":{**profiles["profile.Extreme"],"DOF_MODE":"3","GI_REUSE_MODE":"2"}},sources=camera_entries,environment=(*VOXEL_FEATURES,"DISTANT_HORIZONS","MC_TEXTURE_FORMAT_LAB_PBR_1_3"))
+        compile_matrix(
             args.compiler, PREVIEW, {"lab-pbr": profiles["profile.Standard"]},
             environment=("MC_TEXTURE_FORMAT_LAB_PBR", "MC_TEXTURE_FORMAT_LAB_PBR_1_3"),
         )
@@ -601,60 +619,61 @@ def main():
             "world-voxels-no-shadow-filter": {**profiles["profile.Natural"], "VOXEL_LIGHTING": "true"},
             "world-local-scatter-full-rebuild": {**profiles["profile.High"], "VOXEL_LIGHTING": "true", "VOLUME_EFFECTS": "true", "INCREMENTAL_VOXELS": "false"},
         }
-        compile_pack(args.compiler, PREVIEW, voxel_profiles, environment=VOXEL_FEATURES)
-        compile_pack(
+        compile_matrix(args.compiler, PREVIEW, voxel_profiles, environment=VOXEL_FEATURES)
+        compile_matrix(
             args.compiler, PREVIEW,
             {"ultra-voxel": profiles["profile.Ultra"], "extreme-gi": profiles["profile.Extreme"]},
             environment=(*VOXEL_FEATURES, "MC_TEXTURE_FORMAT_LAB_PBR_1_3"),
         )
-        compile_pack(
+        compile_matrix(
             args.compiler, PREVIEW,
             {"grid-64": {**profiles["profile.Extreme"], "VOXEL_GRID_SIZE": "64"}},
             environment=VOXEL_FEATURES,
         )
-        compile_pack(
+        compile_matrix(
             args.compiler, PREVIEW, {name: profiles[f"profile.{name}"] for name in ("Medium", "High", "Ultra", "Extreme")},
             environment=(*VOXEL_FEATURES, "DISTANT_HORIZONS"),
         )
-        compile_pack(
+        compile_matrix(
             args.compiler, PREVIEW,
             {"extreme-spatial": {**profiles["profile.Extreme"], "SCREEN_GI_SPATIAL": "true"}},
             environment=(*VOXEL_FEATURES, "MC_TEXTURE_FORMAT_LAB_PBR_1_3"),
         )
-        compile_pack(args.compiler, PREVIEW, {"world-voxels-fallback": voxel_profiles["world-voxels"]})
+        compile_matrix(args.compiler, PREVIEW, {"world-voxels-fallback": voxel_profiles["world-voxels"]})
         volume_entries=[p for p in PREVIEW.rglob("*") if p.suffix in STAGES and p.stem in ("deferred","deferred1","composite","composite_a","composite_b","setup","setup1","setup3","setup4","begin1","begin2","begin3","begin4","begin5")]
-        compile_pack(args.compiler, PREVIEW, {"medium-volume-no-gi":profiles["medium-volume-no-gi"],"atmosphere-original":profiles["atmosphere-original"],"cloud-cache-off":profiles["cloud-cache-off"],"sky-original-grid":profiles["sky-original-grid"],"legacy-atmo-and-voxel":profiles["legacy-atmo-and-voxel"]},sources=volume_entries,environment=VOXEL_FEATURES)
-        compile_pack(args.compiler, PREVIEW, {"extreme-volume-hardware":profiles["profile.Extreme"]},sources=volume_entries,
+        compile_matrix(args.compiler, PREVIEW, {"medium-volume-no-gi":profiles["medium-volume-no-gi"],"atmosphere-original":profiles["atmosphere-original"],"cloud-cache-off":profiles["cloud-cache-off"],"sky-original-grid":profiles["sky-original-grid"],"legacy-atmo-and-voxel":profiles["legacy-atmo-and-voxel"]},sources=volume_entries,environment=VOXEL_FEATURES)
+        compile_matrix(args.compiler, PREVIEW, {"extreme-volume-hardware":profiles["profile.Extreme"]},sources=volume_entries,
             environment=(*VOXEL_FEATURES,"DISTANT_HORIZONS","IRIS_FEATURE_SEPARATE_HARDWARE_SAMPLERS"))
-        compile_pack(args.compiler, PREVIEW, {"modern-compaction": profiles["profile.Ultra"]},
+        compile_matrix(args.compiler, PREVIEW, {"modern-compaction": profiles["profile.Ultra"]},
             environment=(*VOXEL_FEATURES,"IRIS_FEATURE_SSBO","LW_TEST_MODERN_IRIS"))
-        compile_pack(args.compiler, PREVIEW, {"hybrid-shadow": profiles["profile.High"], "hybrid-hard": profiles["profile.Medium"]}, environment=("IRIS_FEATURE_SEPARATE_HARDWARE_SAMPLERS",))
-        compile_pack(args.compiler, PREVIEW, {"full-hiz": {**profiles["profile.Ultra"], "HIZ_MODE": "2"}},
+        compile_matrix(args.compiler, PREVIEW, {"hybrid-shadow": profiles["profile.High"], "hybrid-hard": profiles["profile.Medium"]}, environment=("IRIS_FEATURE_SEPARATE_HARDWARE_SAMPLERS",))
+        compile_matrix(args.compiler, PREVIEW, {"full-hiz": {**profiles["profile.Ultra"], "HIZ_MODE": "2"}},
             environment=VOXEL_FEATURES)
-        compile_pack(args.compiler, PREVIEW, {"adaptive-off": {**profiles["profile.Ultra"], "ADAPTIVE_SHADING": "false", "TEMPORAL_REUSE": "false", "ADAPTIVE_SHADOWS": "false"}},
+        compile_matrix(args.compiler, PREVIEW, {"adaptive-off": {**profiles["profile.Ultra"], "ADAPTIVE_SHADING": "false", "TEMPORAL_REUSE": "false", "ADAPTIVE_SHADOWS": "false"}},
             environment=VOXEL_FEATURES)
-        compile_pack(args.compiler, PREVIEW, {"legacy-1.20": profiles["profile.High"]},
+        compile_matrix(args.compiler, PREVIEW, {"legacy-1.20": profiles["profile.High"]},
             environment=("LW_TEST_LEGACY_IRIS",))
 
-        compile_pack(args.compiler, PREVIEW, {
+        compile_matrix(args.compiler, PREVIEW, {
             "research-ssr": {**profiles["profile.High"], "MATERIAL_SSR": "true"},
             "research-ssr-gi": {**profiles["profile.Extreme"], "MATERIAL_SSR": "true", "DH_SHADOWS": "true", "PHYSICAL_ATMOSPHERE": "true", "INCREMENTAL_VOXELS": "true"},
             "research-atmosphere": {**profiles["profile.High"], "PHYSICAL_ATMOSPHERE": "true"},
             "research-incremental": {**profiles["profile.Ultra"], "INCREMENTAL_VOXELS": "true"},
-            "research-dynamic-all": {**profiles["profile.Extreme"], "PROJECTION_JITTER": "2", "MATERIAL_SSR": "true", "DH_SHADOWS": "true", "PHYSICAL_ATMOSPHERE": "true", "INCREMENTAL_VOXELS": "true"},
+            "research-dynamic-all": {**profiles["profile.Extreme"], "GEOMETRY_TAAU_SCALE":"100", "PROJECTION_JITTER": "2", "MATERIAL_SSR": "true", "DH_SHADOWS": "true", "PHYSICAL_ATMOSPHERE": "true", "INCREMENTAL_VOXELS": "true"},
         }, environment=(*VOXEL_FEATURES, "DISTANT_HORIZONS", "MC_TEXTURE_FORMAT_LAB_PBR_1_3"))
-        compile_pack(
+        compile_matrix(
             args.compiler, PREVIEW, preview_profiles(PREVIEW, P0_CONFIG),
             [PREVIEW / name for name in P0_SHARED],
         )
         properties(PROBE / "shaders.properties")
-        compile_pack(args.compiler, PROBE, {"voxel-probe": {}})
-        compile_pack(args.compiler,TAAU_PROBE,{f"taau-{scale}":{"TAAU_SCALE":scale} for scale in ("0.5","0.67","0.75","0.85","1.0")})
-        for source in sorted((PREVIEW.parent / "experiments" / "voxel_compaction").glob("*.comp")):
-            result = subprocess.run([args.compiler, "-S", "comp", str(source)], capture_output=True, text=True)
-            if result.returncode:
-                raise ValueError(f"{source}: {result.stdout}{result.stderr}")
-            print(f"compaction-probe/{source.name}: OK")
+        compile_matrix(args.compiler, PROBE, {"voxel-probe": {}})
+        compile_matrix(args.compiler,TAAU_PROBE,{f"taau-{scale}":{"TAAU_SCALE":scale} for scale in ("0.5","0.67","0.75","0.85","1.0")})
+        if args.shard_index == 0:
+            for source in sorted((PREVIEW.parent / "experiments" / "voxel_compaction").glob("*.comp")):
+                result = subprocess.run([args.compiler, "-S", "comp", str(source)], capture_output=True, text=True)
+                if result.returncode:
+                    raise ValueError(f"{source}: {result.stdout}{result.stderr}")
+                print(f"compaction-probe/{source.name}: OK")
     except (OSError, ValueError) as error:
         parser.exit(1, f"{error}\n")
 

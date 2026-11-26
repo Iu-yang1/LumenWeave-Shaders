@@ -5,7 +5,7 @@ from tempfile import TemporaryDirectory
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "tools"))
 
-from check_shaders import DIMENSIONS, check_iris_directives, expand, menu_options, preview_profiles
+from check_shaders import DIMENSIONS, check_iris_directives, compile_shard, expand, menu_options, preview_profiles
 from package import P0_CONFIG, PREVIEW
 
 
@@ -84,7 +84,6 @@ class ShaderToolsTests(unittest.TestCase):
                 "GEOMETRY_TAAU_SCALE":"100","SCENE_TAAU_SCALE":"100","SSR_HALF_RES":"1",
                 "RAIN_GEOMETRY":"1","VOXEL_DIFFUSE_SMOOTHING":"1","DIRECT_RISE_HALF":"0.10","DIRECT_FALL_HALF":"0.18",
                 "DIFFUSE_RISE_HALF":"0.16","DIFFUSE_FALL_HALF":"0.28","RAIN_RISE_TIME":"20.0","RAIN_FALL_TIME":"40.0",
-                "DOF_MODE":"0","DOF_FOCUS":"8.0","DOF_STRENGTH":"0.5","LENS_GHOSTS":"false","LENS_STAR":"false","MOTION_BLUR":"false",
             },
         )
         self.assertEqual(profiles["profile.LowExposure"]["EXPOSURE"], "-1")
@@ -130,7 +129,20 @@ class ShaderToolsTests(unittest.TestCase):
 
     def test_personal_effects_are_independent_of_quality_profiles(self):
         for profile in preview_profiles(PREVIEW).values():
-            self.assertFalse({"MOTION_BLUR", "WAVING_LEAVES", "WAVING_GRASS"} & profile.keys())
+            self.assertFalse({"MOTION_BLUR", "WAVING_LEAVES", "WAVING_GRASS", "DOF_MODE", "DOF_FOCUS", "DOF_STRENGTH", "LENS_GHOSTS", "LENS_STAR"} & profile.keys())
+
+    def test_compile_matrix_shards_cover_each_link_once(self):
+        programs = [PREVIEW / dim / name for dim in DIMENSIONS
+                    for name in ("deferred1", "composite1", "gbuffers_water", "prepare7")]
+        assignments = [compile_shard(PREVIEW, profile, program, env, 6)
+                       for profile in ("native", "geometry", "scene")
+                       for program in programs for env in ((), ("DISTANT_HORIZONS",))]
+        self.assertEqual(set(assignments), set(range(6)))
+        self.assertEqual(sum(assignments.count(i) for i in range(6)), len(assignments))
+        for program in programs:
+            self.assertEqual(compile_shard(PREVIEW, "native", program, ("B","A"), 6),
+                             compile_shard(PREVIEW, "native", program, ("A","B"), 6))
+            self.assertEqual(compile_shard(PREVIEW, "native", program, (), 1), 0)
 
     def test_relative_includes_and_cycles(self):
         with TemporaryDirectory() as directory:
