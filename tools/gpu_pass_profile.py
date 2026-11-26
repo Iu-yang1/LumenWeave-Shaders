@@ -64,17 +64,46 @@ def summarize(rows):
     return sorted(result, key=lambda row: (-row["median_ms"],row["pass"]))
 
 
+def compare(baseline, candidate):
+    """Compare independent GPU captures without treating absent passes as zero."""
+    a={row["pass"]:row for row in summarize(baseline)}
+    b={row["pass"]:row for row in summarize(candidate)}
+    result=[]
+    for name in sorted(a.keys() | b.keys()):
+        x,y=a.get(name),b.get(name)
+        old=x["median_ms"] if x else None
+        new=y["median_ms"] if y else None
+        delta=new-old if old is not None and new is not None else None
+        result.append({"pass":name,"baseline_frames":x["frames"] if x else 0,
+                       "candidate_frames":y["frames"] if y else 0,
+                       "baseline_ms":old,"candidate_ms":new,"delta_ms":delta,
+                       "delta_percent":100*delta/old if delta is not None and old>0 else None,
+                       "baseline_p95_ms":x["p95_ms"] if x else None,
+                       "candidate_p95_ms":y["p95_ms"] if y else None})
+    return sorted(result,key=lambda row: -(row["delta_ms"] or 0.0))
+
+
+def load_rows(path):
+    with open(path,newline="",encoding="utf-8-sig") as source:
+        reader=csv.DictReader(source)
+        if not {"frame","pass","gpu_ms"}.issubset(reader.fieldnames or []):
+            raise ValueError("Required CSV columns: frame,pass,gpu_ms")
+        return list(reader)
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("capture_csv")
+    parser.add_argument("--baseline", help="Measured baseline CSV from the same scene, loader and GPU")
     args = parser.parse_args()
     try:
-        with open(args.capture_csv, newline="", encoding="utf-8-sig") as source:
-            reader = csv.DictReader(source)
-            if not {"frame","pass","gpu_ms"}.issubset(reader.fieldnames or []):
-                raise ValueError("Required CSV columns: frame,pass,gpu_ms")
-            result = summarize(reader)
-        fields = ["pass","frames","median_ms","p95_ms","mean_ms","counter_frames","read_GB_s","write_GB_s"]
+        rows=load_rows(args.capture_csv)
+        if args.baseline:
+            result=compare(load_rows(args.baseline),rows)
+            fields=["pass","baseline_frames","candidate_frames","baseline_ms","candidate_ms","delta_ms","delta_percent","baseline_p95_ms","candidate_p95_ms"]
+        else:
+            result=summarize(rows)
+            fields=["pass","frames","median_ms","p95_ms","mean_ms","counter_frames","read_GB_s","write_GB_s"]
         writer = csv.DictWriter(sys.stdout, fieldnames=fields)
         writer.writeheader()
         writer.writerows(result)

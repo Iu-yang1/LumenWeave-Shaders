@@ -266,3 +266,6 @@ Additional visible-work budget: near GI retains four rays; beyond 22 blocks two 
 - P22: near full PCSS search, reduced blocker search after 28 blocks and filter after 48 or small radius. Full legacy path remains available via option.
 - P23: R16UI previous seed (max 259), R8UI dirty flags (max 15), keep R32UI atomic occupancy. Positive environment fallback colortex13 uses R11F_G11F_B10F; fetch only on a hit. Full HDR scene, signed SSR history and normal/depth remain unchanged. Iris 1.21.1 InternalTextureFormat supports all these formats.
 - Design reference: Javier Garduño, MakeUp Ultra Fast, ForDevelopers.EN.md blob e942c2c0661570bbaee36c944d012848536f00d3 (https://github.com/javiergcim/MakeUpUltraFast/blob/master/ForDevelopers.EN.md), LGPL-3.0. Inspired by selective temporal reuse and compact/reused buffers; no source code imported.
+
+### P24 measured GPU profiling
+RenderDoc actual EventGPUDuration counter exporter with explicit per-capture event ranges, unclassified event reporting, and baseline/candidate median/p95 comparison. See docs/gpu-profiling.md. No real replay or game captures available in this environment.

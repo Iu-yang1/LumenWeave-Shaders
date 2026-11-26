@@ -124,7 +124,7 @@ vec3 temporalColor(vec3 current, vec3 viewPosition, vec2 normal, ivec2 pixel, ma
         return current;
     }
     vec2 size = vec2(textureSize(colortex4, 0));
-#if defined(TEMPORAL_REUSE) && !defined(LW_DYNAMIC_JITTER)
+#if defined(LW_TEMPORAL_REUSE) && !defined(LW_DYNAMIC_JITTER)
     if(!water && !distant && length((previousUv-texCoord)*size)<0.20) {
         vec4 history=texelFetch(colortex4,pixel,0);
         vec4 metadata=texelFetch(colortex5,pixel,0);

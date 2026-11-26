@@ -25,7 +25,7 @@ uniform sampler2D depthtex0;
 uniform mat4 gbufferProjection;
 
 #include "/lib/lighting/screen_gi.glsl"
-#if defined(TEMPORAL_REUSE) && defined(SCREEN_GI_HISTORY) && defined(LW_TAA_ACTIVE) && !defined(LW_DYNAMIC_JITTER)
+#if defined(LW_TEMPORAL_REUSE) && defined(SCREEN_GI_HISTORY) && defined(LW_TAA_ACTIVE) && !defined(LW_DYNAMIC_JITTER)
 #define LW_GI_REUSE
 #include "/lib/temporal/reproject.glsl"
 uniform sampler2D colortex9;

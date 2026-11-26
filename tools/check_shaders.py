@@ -471,6 +471,8 @@ def main():
             environment=(*VOXEL_FEATURES,"IRIS_FEATURE_SSBO","LW_TEST_MODERN_IRIS"))
         compile_pack(args.compiler, PREVIEW, {"full-hiz": {**profiles["profile.Ultra"], "HIZ_MODE": "2"}},
             environment=VOXEL_FEATURES)
+        compile_pack(args.compiler, PREVIEW, {"adaptive-off": {**profiles["profile.Ultra"], "ADAPTIVE_SHADING": "false", "TEMPORAL_REUSE": "false", "ADAPTIVE_SHADOWS": "false"}},
+            environment=VOXEL_FEATURES)
         compile_pack(args.compiler, PREVIEW, {"legacy-1.20": profiles["profile.High"]},
             environment=("LW_TEST_LEGACY_IRIS",))
 

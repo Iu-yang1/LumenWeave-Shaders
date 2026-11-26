@@ -15,6 +15,9 @@
 #define HIZ_MODE 1 // [0 1 2]
 #define ADAPTIVE_SHADING
 #define TEMPORAL_REUSE
+#ifdef TEMPORAL_REUSE
+#define LW_TEMPORAL_REUSE
+#endif
 #define ADAPTIVE_SHADOWS
 //#define DH_SHADOWS
 //#define VOLUME_EFFECTS
