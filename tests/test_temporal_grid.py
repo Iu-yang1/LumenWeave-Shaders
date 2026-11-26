@@ -51,7 +51,7 @@ class StableGridTests(unittest.TestCase):
 
     def test_gi_continuous_fallback(self):
         source = (SHADERS / "lib/lighting/screen_gi_spatial.glsl").read_text()
-        self.assertIn("smoothstep(0.15, 0.55, coverage)", source)
+        self.assertIn("smoothstep(0.003, 0.035, coverage)", source)
         self.assertIn("mix(full.sky, filtered.sky", source)
 
     def test_projection_mode_is_separate_from_aa(self):
