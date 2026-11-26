@@ -4,7 +4,7 @@
 
 uniform sampler2D colortex0;
 in vec2 texCoord;
-#ifdef LW_TAA_DIRECT
+#ifdef LW_TAA_HISTORY_ONLY
 vec4 sceneColor;
 #else
 layout(location = 0) out vec4 sceneColor;
@@ -27,7 +27,7 @@ const bool colortex5Clear = false;
 const vec4 colortex4ClearColor = vec4(0.0, 0.0, 0.0, 0.0);
 const vec4 colortex5ClearColor = vec4(0.0, 0.0, 0.0, 0.0);
 */
-#ifdef LW_TAA_DIRECT
+#ifdef LW_TAA_HISTORY_ONLY
 /* RENDERTARGETS: 4,5 */
 layout(location=0) out vec4 colorHistory;
 layout(location=1) out vec4 normalHistory;
@@ -505,7 +505,7 @@ void main() {
     sceneColor = texelFetch(colortex0, pixel, 0);
     vec2 historySize=vec2(size);
 #endif
-#ifdef LW_TAA_DIRECT
+#ifdef LW_TAA_HISTORY_ONLY
     // Untouched sky/entities still need display RGB, but zero metadata
     // rejects these samples from geometry history.
     colorHistory=vec4(sceneColor.rgb,0.0);

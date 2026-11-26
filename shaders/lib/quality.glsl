@@ -236,8 +236,12 @@
 #if defined(LW_CELESTIAL_VOLUME_SPATIAL) && defined(LW_TAA_ACTIVE) && VOLUME_TEMPORAL == 1 && !defined(LW_IMAGE_BUDGET_FULL)
 #define LW_VOLUME_TEMPORAL_ACTIVE
 #endif
-#if HDR_REUSE == 1 && defined(LW_TAA_ACTIVE) && !defined(MOTION_BLUR)
+#if HDR_REUSE == 1 && defined(LW_TAA_ACTIVE)
+// Resolve only into history even if motion blur consumes it next.
+#define LW_TAA_HISTORY_ONLY
+#ifndef MOTION_BLUR
 #define LW_TAA_DIRECT
+#endif
 #endif
 
 // Stable native depth only; dynamic reanchoring can shift hit depth.

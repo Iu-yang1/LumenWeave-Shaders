@@ -53,16 +53,20 @@ vec2 lwProjectedRayUv(vec3 position,mat4 projection,out float rayDepth) {
 // A common plane intersection for raster coverage, lighting and history.
 vec3 stableViewSurfacePosition(vec3 samplePosition, vec2 stableUv, vec3 normalView, mat4 projectionInverse) {
     vec4 clip = projectionInverse * vec4(stableUv * 2.0 - 1.0, 1.0, 1.0);
-    vec3 ray = normalize(clip.xyz);
-    float denominator = dot(normalView, ray);
-    if (abs(denominator) > 0.02) {
+    // Ray scaling cancels in both plane intersection and z anchoring.
+    // Test the normalized angular threshold in squared form.
+    vec3 ray=clip.xyz;
+    float denominator=dot(normalView,ray);
+    if(denominator*denominator>0.0004*dot(ray,ray)){
         float distance = dot(normalView, samplePosition) / denominator;
         vec3 position = ray * distance;
         if (distance > 0.0 && abs(position.z - samplePosition.z) < max(0.10, -samplePosition.z * 0.03)) {
             return position;
         }
     }
-    return ray * (samplePosition.z / min(ray.z, -0.00001));
+    if(ray.z<0.0 && ray.z*ray.z>1e-10*dot(ray,ray)) return ray*(samplePosition.z/ray.z);
+    vec3 unitRay=normalize(ray); // Rare degenerate projection fallback.
+    return unitRay*(samplePosition.z/min(unitRay.z,-0.00001));
 }
 
 #endif

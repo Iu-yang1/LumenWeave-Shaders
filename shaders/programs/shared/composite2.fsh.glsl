@@ -3,12 +3,19 @@
 #include "/lib/quality.glsl"
 #include "/lib/coordinates/raster_grid.glsl"
 
+#ifdef LW_TAA_HISTORY_ONLY
+uniform sampler2D colortex4;
+#define LW_MOTION_SOURCE colortex4
+#else
 uniform sampler2D colortex0;
+#define LW_MOTION_SOURCE colortex0
+#endif
 in vec2 texCoord;
 layout(location = 0) out vec4 outputColor;
 /* RENDERTARGETS: 0 */
 
 #ifdef MOTION_BLUR
+flat in int lwMotionActive;
 #include "/lib/coordinates/reconstruct.glsl"
 uniform sampler2D depthtex0;
 uniform mat4 gbufferModelViewInverse;
@@ -23,6 +30,8 @@ uniform mat4 dhPreviousProjection;
 #endif
 
 vec3 motionBlur(vec3 center) {
+    // Vertex-stage uniform check avoids per-pixel reprojection while still.
+    if(lwMotionActive==0) return center;
     vec3 cameraDelta = cameraPosition - previousCameraPosition;
     if (dot(cameraDelta, cameraDelta) > 16.0) {
         return center;
@@ -57,23 +66,32 @@ vec3 motionBlur(vec3 center) {
         return center;
     }
     vec2 velocity = (currentUv - (previousClip.xy / previousClip.w * 0.5 + 0.5)) * MOTION_BLUR_STRENGTH;
-    vec2 resolution = vec2(textureSize(colortex0, 0));
+    vec2 resolution = vec2(textureSize(LW_MOTION_SOURCE, 0));
     float pixels = length(velocity * resolution);
     if (pixels < 0.35) {
         return center;
     }
     velocity *= min(1.0, 24.0 / pixels);
+    // Subpixel/short streaks do not need a fixed eight-tap quadrature.
+    // The configured count remains the ceiling for larger motion.
+    int tapCount=min(MOTION_BLUR_SAMPLES,max(2,int(ceil(min(pixels,24.0)*0.75))+1));
+    float depthTolerance=max(0.5,-view.z*0.035);
+    vec4 zRow=vec4(projectionInverse[0].z,projectionInverse[1].z,projectionInverse[2].z,projectionInverse[3].z);
+    vec4 wRow=vec4(projectionInverse[0].w,projectionInverse[1].w,projectionInverse[2].w,projectionInverse[3].w);
+    vec4 residualRow=zRow-view.z*wRow;
     vec3 accumulated = center;
     float total = 1.0;
     for (int tap = 0; tap < MOTION_BLUR_SAMPLES; ++tap) {
-        float offset = (float(tap) + 0.5) / float(MOTION_BLUR_SAMPLES) - 0.5;
+        if(tap>=tapCount) break;
+        float offset = (float(tap) + 0.5) / float(tapCount) - 0.5;
         vec2 uv = texCoord + velocity * offset;
         if (any(lessThanEqual(uv, vec2(0.0))) || any(greaterThanEqual(uv, vec2(1.0)))) {
             continue;
         }
         float adjacentDepth = lwPostDepth(depthtex0,uv);
 #ifdef DISTANT_HORIZONS
-        if (distant && adjacentDepth >= 1.0) {
+        if (distant) {
+            if(adjacentDepth<1.0) continue;
             adjacentDepth = lwPostDepth(dhDepthTex0,uv);
         }
 #endif
@@ -81,13 +99,14 @@ vec3 motionBlur(vec3 center) {
             continue;
         }
         if (depth < 1.0) {
-            vec4 adjacent = projectionInverse * vec4(vec3(uv, adjacentDepth) * 2.0 - 1.0, 1.0);
-            if (abs(adjacent.z / adjacent.w - view.z) > max(0.5, -view.z * 0.035)) {
+            vec4 ndc=vec4(vec3(uv,adjacentDepth)*2.0-1.0,1.0);
+            // Exact homogeneous depth inequality, avoiding a division per tap.
+            if(abs(dot(residualRow,ndc))>depthTolerance*abs(dot(wRow,ndc))) {
                 continue;
             }
         }
         float weight = 1.0 - abs(offset);
-        accumulated += texture(colortex0, uv).rgb * weight;
+        accumulated += texture(LW_MOTION_SOURCE, uv).rgb * weight;
         total += weight;
     }
     return accumulated / total;
@@ -95,7 +114,10 @@ vec3 motionBlur(vec3 center) {
 #endif
 
 void main() {
-    outputColor = texture(colortex0, texCoord);
+    outputColor = texture(LW_MOTION_SOURCE, texCoord);
+#ifdef LW_TAA_HISTORY_ONLY
+    outputColor.a=1.0; // History alpha is signed depth, never scene opacity.
+#endif
 #ifdef MOTION_BLUR
     outputColor.rgb = motionBlur(outputColor.rgb);
 #endif
