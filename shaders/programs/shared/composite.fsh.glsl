@@ -1,5 +1,6 @@
 
 #include "/lib/quality.glsl"
+#include "/lib/coordinates/raster_grid.glsl"
 #include "/lib/voxel/features.glsl"
 
 uniform sampler2D colortex0;
@@ -45,7 +46,7 @@ void main() {
     uv=(vec2(donor)+0.5)/vec2(fullSize);
     vec4 scene=texelFetch(colortex0,donor,0);
 #else
-    vec4 scene = texture(colortex0, texCoord);
+    vec4 scene = lwRasterTexture(colortex0, texCoord);
 #endif
 #ifdef VOLUME_EFFECTS
     if (isEyeInWater == 0

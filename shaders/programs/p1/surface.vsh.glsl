@@ -1,6 +1,7 @@
 #include "/lib/quality.glsl"
 
-#if defined(LW_TAA_ACTIVE) && defined(LW_TERRAIN)
+#include "/lib/coordinates/raster_viewport.glsl"
+#if defined(LW_TAA_ACTIVE) && (defined(LW_TERRAIN) || defined(LW_GEOMETRY_TAAU))
 #include "/lib/temporal/jitter.glsl"
 #endif
 
@@ -39,9 +40,10 @@ void main() {
     }
 #endif
     gl_Position = gl_ProjectionMatrix * position;
-#if defined(LW_TAA_ACTIVE) && defined(LW_TERRAIN)
+#if defined(LW_TAA_ACTIVE) && (defined(LW_TERRAIN) || defined(LW_GEOMETRY_TAAU))
     gl_Position.xy += 2.0 * jitterOffset(frameCounter) * gl_Position.w;
 #endif
+    gl_Position=lwRasterClip(gl_Position,1);
     viewPosition = position.xyz;
     texCoord = (gl_TextureMatrix[0] * gl_MultiTexCoord0).xy;
     vec2 lightCoord = (gl_TextureMatrix[1] * gl_MultiTexCoord1).xy;

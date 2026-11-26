@@ -1,4 +1,5 @@
 #ifdef LW_VOXEL_WEATHER_ACTIVE
+#include "/lib/voxel/settings.glsl"
 #ifndef LW_VOXEL_LIGHT_UNIFORM
 #define LW_VOXEL_LIGHT_UNIFORM
 uniform sampler3D lwVoxelLight;

@@ -2,6 +2,7 @@
 #define LW_RECONSTRUCT_VIEW
 
 uniform mat4 gbufferProjectionInverse;
+#include "/lib/coordinates/raster_grid.glsl"
 
 #ifdef LW_TAA_ACTIVE
 #include "/lib/temporal/jitter.glsl"
@@ -26,12 +27,12 @@ vec3 reconstructViewPosition(vec2 uv, float depth) {
 }
 
 ivec2 depthPixelAtUv(sampler2D tex, vec2 uv) {
-    ivec2 size = textureSize(tex, 0);
+    ivec2 size = lwRasterSize(tex);
     return clamp(ivec2(uv * vec2(size)), ivec2(0), size - 1);
 }
 
 vec2 depthPixelUv(sampler2D tex, ivec2 pixel) {
-    return (vec2(pixel) + 0.5) / vec2(textureSize(tex, 0));
+    return (vec2(pixel) + 0.5) / vec2(lwRasterSize(tex));
 }
 
 float depthAtUv(sampler2D tex, vec2 uv) {

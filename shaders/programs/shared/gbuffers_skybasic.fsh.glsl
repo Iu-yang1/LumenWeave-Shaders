@@ -1,5 +1,6 @@
 #version 330 compatibility
 #include "/lib/quality.glsl"
+#include "/lib/coordinates/raster_fragment.glsl"
 #include "/lib/color/scene.glsl"
 #include "/lib/lighting/overworld.glsl"
 #include "/lib/dimensions/celestial_sky.glsl"
@@ -13,6 +14,7 @@ in vec4 vertexColor;
 /* RENDERTARGETS: 0 */
 
 void main() {
+    lwRasterDiscardOutside();
     if (renderStage == MC_RENDER_STAGE_SUNSET) {
         discard;
     }

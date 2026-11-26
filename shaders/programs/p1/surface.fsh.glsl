@@ -1,4 +1,5 @@
 #include "/lib/quality.glsl"
+#include "/lib/coordinates/raster_fragment.glsl"
 #include "/lib/color/scene.glsl"
 #include "/lib/lighting/overworld.glsl"
 #include "/lib/lighting/fog.glsl"
@@ -51,6 +52,7 @@ flat in int blockId;
 #endif
 
 void main() {
+    lwRasterDiscardOutside();
     vec4 base = vertexColor;
 #ifndef LW_BASIC
 #ifdef LW_WATER

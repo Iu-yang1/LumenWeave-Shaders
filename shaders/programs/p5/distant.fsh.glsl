@@ -1,4 +1,5 @@
 #include "/lib/quality.glsl"
+#include "/lib/coordinates/raster_fragment.glsl"
 #include "/lib/color/scene.glsl"
 #include "/lib/lighting/overworld.glsl"
 #include "/lib/lighting/fog.glsl"
@@ -29,6 +30,7 @@ layout(location = 2) out vec2 distantOwner;
 #endif
 
 void main() {
+    lwRasterDiscardOutside();
     vec3 normal = normalize(worldDirection(viewNormal));
 #if defined(LW_TAA_ACTIVE) || defined(LW_DH_DEFERRED_SHADOWS)
 #if defined(LW_DH_DEFERRED_SHADOWS) && !defined(LW_DH_WATER)

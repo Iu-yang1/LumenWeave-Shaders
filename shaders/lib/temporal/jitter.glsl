@@ -1,9 +1,13 @@
 uniform int frameCounter;
+#ifndef LW_VIEW_SIZE_UNIFORMS
+#define LW_VIEW_SIZE_UNIFORMS
 uniform float viewWidth;
 uniform float viewHeight;
+#endif
+#include "/lib/coordinates/raster_grid.glsl"
 
 vec2 jitterOffset(int frame) {
-#ifndef LW_DYNAMIC_JITTER
+#if !defined(LW_DYNAMIC_JITTER) && !defined(LW_GEOMETRY_TAAU)
     return vec2(0.0);
 #else
     const vec2 sequence[8] = vec2[8](
@@ -14,6 +18,6 @@ vec2 jitterOffset(int frame) {
     );
     // Center the finite sequence, not only its theoretical Halton distribution.
     const vec2 mean = vec2(-0.0546875, 0.0);
-    return (sequence[frame & 7] - mean) / max(vec2(viewWidth, viewHeight), vec2(1.0));
+    return (sequence[frame & 7] - mean) / vec2(lwRasterExtent(max(ivec2(viewWidth,viewHeight),ivec2(1))));
 #endif
 }

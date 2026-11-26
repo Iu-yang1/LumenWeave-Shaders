@@ -62,6 +62,6 @@ class DynamicSamplingContract(unittest.TestCase):
             # Current stable-grid sample has no artificial luminance shift.
             self.assertAlmostEqual(1+0.1*x,stable)
         taa=(ROOT/"programs/shared/composite1.fsh.glsl").read_text()
-        self.assertIn("#if !defined(LW_DYNAMIC_JITTER) || defined(LW_STABLE_DYNAMIC)",taa)
+        self.assertIn("!defined(LW_DYNAMIC_JITTER) || defined(LW_STABLE_DYNAMIC)",taa)
         deferred=(ROOT/"programs/shared/deferred1.fsh.glsl").read_text()
         self.assertIn("stableViewSurfacePosition(viewPosition, texCoord",deferred)

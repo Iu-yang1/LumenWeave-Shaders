@@ -9,6 +9,7 @@
 #define ADVANCED_WATER
 #define AA_MODE 2 // [0 1 2 3]
 #define SCENE_TAAU_SCALE 100 // [50 67 75 85 100]
+#define GEOMETRY_TAAU_SCALE 100 // [50 67 75 85 100]
 #define PROJECTION_JITTER 0 // [0 1 2]
 //#define INCREMENTAL_VOXELS
 #define VOXEL_FUSION 1 // [0 1]
@@ -171,12 +172,14 @@
 
 #if AA_MODE >= 2 && defined(DEFERRED_LIGHTING)
 #define LW_TAA_ACTIVE
-#if SCENE_TAAU_SCALE < 100
+#if GEOMETRY_TAAU_SCALE < 100
+#define LW_GEOMETRY_TAAU
+#elif SCENE_TAAU_SCALE < 100
 #define LW_SCENE_TAAU
 #endif
 // Auto: preserve dynamic sampling on the verified Medium/High path.
 // The user-tested fixed-grid mode preserves both TAA and SSGI histories.
-#if PROJECTION_JITTER == 2 || (PROJECTION_JITTER == 0 && !defined(VOLUME_EFFECTS) && !defined(SCREEN_GI) && !defined(VOXEL_LIGHTING))
+ #if !defined(LW_GEOMETRY_TAAU) && (PROJECTION_JITTER == 2 || (PROJECTION_JITTER == 0 && !defined(VOLUME_EFFECTS) && !defined(SCREEN_GI) && !defined(VOXEL_LIGHTING)))
 #define LW_DYNAMIC_JITTER
 #if defined(VOLUME_EFFECTS) || defined(SCREEN_GI) || defined(VOXEL_LIGHTING) || defined(MATERIAL_SSR) || defined(PHYSICAL_ATMOSPHERE)
 #define LW_STABLE_DYNAMIC
