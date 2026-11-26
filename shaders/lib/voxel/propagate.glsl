@@ -14,7 +14,7 @@ layout(rgba16f) writeonly uniform image3D LW_VOXEL_WRITE;
 
 // 4^3 interior + six 4x4 faces. Corners/edges of the halo are
 // never sampled by the six-neighbour stencil.
-shared vec3 lwStencil[160];
+shared vec4 lwStencil[160];
 shared uint lwOpenMask[2];
 
 ivec3 stencilCell(int index) {
@@ -70,30 +70,30 @@ void main() {
             return;
         }
         vec3 source = seed == 0u ? vec3(0.0) : voxelSeedEmission(seed);
-        vec3 incoming = vec3(0.0);
+        vec4 incoming = vec4(0.0);
         for (int stepIndex=0; stepIndex<6; ++stepIndex) {
             ivec3 neighbor=cell+LW_VOXEL_DIRECTIONS[stepIndex];
             if (withinVoxelGrid(neighbor)) {
 #ifdef LW_VOXEL_INCREMENTAL_ACTIVE
-                incoming=max(incoming,imageLoad(LW_VOXEL_READ,voxelWrap(neighbor+origin)).rgb);
+                incoming=max(incoming,imageLoad(LW_VOXEL_READ,voxelWrap(neighbor+origin)));
 #else
-                incoming=max(incoming,imageLoad(LW_VOXEL_READ,neighbor).rgb);
+                incoming=max(incoming,imageLoad(LW_VOXEL_READ,neighbor));
 #endif
             }
         }
-        imageStore(LW_VOXEL_WRITE,storageCell,vec4(max(source,incoming*0.73),0.0));
+        imageStore(LW_VOXEL_WRITE,storageCell,vec4(max(source,incoming.rgb*0.73),max(float(seed!=0u),incoming.a-0.20)));
         return;
     }
 
     // Every lane participates before any wall early return.
     for (int i=int(gl_LocalInvocationIndex); i<160; i+=64) {
         ivec3 sampleCell = base + stencilCell(i);
-        vec3 light = vec3(0.0);
+        vec4 light = vec4(0.0);
         if (withinVoxelGrid(sampleCell)) {
 #ifdef LW_VOXEL_INCREMENTAL_ACTIVE
-            light = imageLoad(LW_VOXEL_READ,voxelWrap(sampleCell+origin)).rgb;
+            light = imageLoad(LW_VOXEL_READ,voxelWrap(sampleCell+origin));
 #else
-            light = imageLoad(LW_VOXEL_READ,sampleCell).rgb;
+            light = imageLoad(LW_VOXEL_READ,sampleCell);
 #endif
         }
         lwStencil[i] = light;
@@ -104,7 +104,7 @@ void main() {
         return;
     }
     vec3 source = seed == 0u ? vec3(0.0) : voxelSeedEmission(seed);
-    vec3 incoming = vec3(0.0);
+    vec4 incoming = vec4(0.0);
     for (int stepIndex = 0; stepIndex < 6; ++stepIndex) {
         incoming = max(incoming,lwStencil[stencilIndex(local+LW_VOXEL_DIRECTIONS[stepIndex])]);
     }

@@ -43,7 +43,7 @@ void main() {
     bool seedChanged = fullRebuild || entered || imageLoad(lwVoxelPrevSeed,cacheCell).r != seed;
     if (seedChanged) {
         vec3 source=seed < LW_VOXEL_WALL ? voxelSeedEmission(seed) : vec3(0.0);
-        imageStore(lwVoxelStage0,cacheCell,vec4(source,0.0));
+        imageStore(lwVoxelStage0,cacheCell,vec4(source,float(any(greaterThan(source,vec3(0.0))))));
         imageStore(lwVoxelPrevSeed,cacheCell,uvec4(seed));
     }
     if (seedChanged || lostNeighbor) atomicOr(lwGroupDirty,1u);
@@ -53,6 +53,6 @@ void main() {
     }
 #else
     vec3 source=seed < LW_VOXEL_WALL ? voxelSeedEmission(seed) : vec3(0.0);
-    imageStore(lwVoxelFirst, cell, vec4(source, 0.0));
+    imageStore(lwVoxelFirst, cell, vec4(source,float(any(greaterThan(source,vec3(0.0))))));
 #endif
 }

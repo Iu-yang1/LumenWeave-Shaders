@@ -21,7 +21,7 @@ vec3 integrateLocalScatter(vec3 direction, float surfaceDistance) {
     float stepSize = end / float(steps);
     float segmentTransmission = exp(-extinction * stepSize);
     // Exact constant-source segment integral: sigma_s / sigma_t = 0.75.
-    float segmentWeight = (1.0 - segmentTransmission) * (0.75 * 1.45 * BLOCKLIGHT_STRENGTH);
+    float segmentWeight = (1.0 - segmentTransmission) * (0.75 * 0.90 * BLOCKLIGHT_STRENGTH);
     float transmission = 1.0;
     vec3 cell = cameraPositionFract + vec3(radius);
     vec3 delta = direction * stepSize;
@@ -50,14 +50,18 @@ vec3 integrateLocalScatter(vec3 direction, float surfaceDistance) {
         }
 #endif
         vec3 edge = min(cell, vec3(float(LW_GRID_SIZE)) - cell);
-        float coverage = smoothstep(0.8, 2.2, min(edge.x,min(edge.y,edge.z)))
-            * (1.0 - smoothstep(radius - 5.0, radius - 1.0, travel));
+        float coverage = smoothstep(0.8, 4.5, min(edge.x,min(edge.y,edge.z)))
+            * (1.0 - smoothstep(radius - 12.0, radius - 1.0, travel));
         if (coverage > 0.0) {
 #ifdef LW_VOXEL_INCREMENTAL_ACTIVE
-            vec3 light = sampleWrappedVoxelAtOrigin(lwVoxelLight,cell,cacheOrigin);
+            vec4 field = sampleWrappedVoxelRgbaAtOrigin(lwVoxelLight,cell,cacheOrigin);
 #else
-            vec3 light = textureLod(lwVoxelLight,cell/float(LW_GRID_SIZE),0.0).rgb;
+            vec4 field = textureLod(lwVoxelLight,cell/float(LW_GRID_SIZE),0.0);
 #endif
+            // Alpha carries distance-to-emitter support, propagated with the RGB.
+            // A smooth support taper suppresses the finite Manhattan frontier.
+            float support=smoothstep(0.02,0.88,field.a);
+            vec3 light=field.rgb*support;
             // Empty samples contribute exactly zero.
             if (max(light.r,max(light.g,light.b)) > 0.0) {
                 result += light * (coverage * transmission * segmentWeight);

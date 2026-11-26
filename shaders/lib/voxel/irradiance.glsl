@@ -6,22 +6,25 @@ uniform sampler3D lwVoxelLight;
 
 // Most lookups use hardware filtering. Only ring seams need a manual 8-tap
 // reconstruction; clamp to the active domain before wrapping storage indices.
-vec3 sampleWrappedVoxelAtOrigin(sampler3D field,vec3 localCell,vec3 cacheOrigin) {
+vec4 sampleWrappedVoxelRgbaAtOrigin(sampler3D field,vec3 localCell,vec3 cacheOrigin) {
     float size=float(LW_GRID_SIZE);
     vec3 p=mod(clamp(localCell,vec3(0.5),vec3(size-0.5))+cacheOrigin,size);
     if(all(greaterThanEqual(p,vec3(0.5))) && all(lessThanEqual(p,vec3(size-0.5)))) {
-        return textureLod(field,p/size,0.0).rgb;
+        return textureLod(field,p/size,0.0);
     }
     vec3 texel=p-0.5;
     ivec3 base=ivec3(floor(texel));
     vec3 fraction=fract(texel);
-    vec3 result=vec3(0.0);
+    vec4 result=vec4(0.0);
     for(int z=0;z<2;++z)for(int y=0;y<2;++y)for(int x=0;x<2;++x) {
         ivec3 offset=ivec3(x,y,z);
         vec3 weight=mix(1.0-fraction,fraction,vec3(offset));
-        result+=texelFetch(field,voxelWrap(base+offset),0).rgb*weight.x*weight.y*weight.z;
+        result+=texelFetch(field,voxelWrap(base+offset),0)*weight.x*weight.y*weight.z;
     }
     return result;
+}
+vec3 sampleWrappedVoxelAtOrigin(sampler3D field,vec3 localCell,vec3 cacheOrigin) {
+    return sampleWrappedVoxelRgbaAtOrigin(field,localCell,cacheOrigin).rgb;
 }
 vec3 sampleWrappedVoxel(sampler3D field,vec3 localCell) {
     return sampleWrappedVoxelAtOrigin(field,localCell,vec3(voxelCacheOrigin()));

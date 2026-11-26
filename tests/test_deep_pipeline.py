@@ -123,7 +123,7 @@ class DeepPipelineTests(unittest.TestCase):
 
     def test_gpu_path_contracts(self):
         prop=(SHADERS/"lib/voxel/propagate.glsl").read_text()
-        self.assertIn("shared vec3 lwStencil[160]",prop)
+        self.assertIn("shared vec4 lwStencil[160]",prop)
         self.assertIn("if (openCount < 32)",prop)
         scatter=(SHADERS/"lib/atmosphere/local_scatter.glsl").read_text()
         self.assertIn("tile+ivec3(32,0,0)",scatter)

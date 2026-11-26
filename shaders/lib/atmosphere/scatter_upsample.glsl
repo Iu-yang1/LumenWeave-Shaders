@@ -23,7 +23,10 @@ vec3 upsampleLocalScatter(vec2 uv,vec3 direction,float distanceToSurface) {
         spatialSum+=spatial;
     }
     // Thin objects and depth discontinuities use the exact full-resolution ray.
-    if(spatialSum<0.85 || weightSum<0.05) return integrateLocalScatter(direction,distanceToSurface);
-    return total/weightSum;
+    float confidence=smoothstep(0.45,0.96,spatialSum)*smoothstep(0.03,0.20,weightSum);
+    if(confidence<=0.001) return integrateLocalScatter(direction,distanceToSurface);
+    vec3 filtered=total/max(weightSum,0.0001);
+    if(confidence>=0.999) return filtered;
+    return mix(integrateLocalScatter(direction,distanceToSurface),filtered,confidence);
 }
 #endif

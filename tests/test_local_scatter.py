@@ -13,7 +13,7 @@ def integrate(distance, radius, extinction, sample, cap=24):
     steps = max(1, min(cap, math.ceil(end / 1.5)))
     dt = end / steps
     segment = math.exp(-extinction * dt)
-    weight = (1. - segment) * .75 * 1.45
+    weight = (1. - segment) * .75 * .90
     result = [0., 0., 0.]
     through = 1.
     for i in range(steps):
@@ -68,7 +68,7 @@ class LocalScatterTests(unittest.TestCase):
         self.assertIn("radius - 1.0", source)
         self.assertIn("clamp(int(ceil(end / 1.5)), 1, 24)", source)
         self.assertIn("transmission *= segmentTransmission", source)
-        self.assertIn("sampleWrappedVoxelAtOrigin", source)
+        self.assertIn("sampleWrappedVoxelRgbaAtOrigin", source)
         comp = (ROOT / "programs/shared/composite.fsh.glsl").read_text()
         self.assertIn("scene.rgb += integrateLocalScatter", comp)
         self.assertIn("isEyeInWater == 0", comp)
