@@ -21,3 +21,5 @@ P69: cross-pack benchmark manifest/analysis tool, real game captures still requi
 No FPS figures inferred from resource size. Preserve all prior quality settings. macOS issue remains deferred by request.
 
 Cross-pack benchmark: `python tools/shader_benchmark.py manifest.json --output comparison.json`. Manifest requires common GPU/CPU/driver/game/loader/resolution/FOV/resource-pack metadata; pinned pack ID/version/profile/SHA256; scenes with world seed, camera path, time, weather, dimension and comparison mode; three measured repeats with 300 warm-up and at least 300 GPU/presentation frames each, distinct screenshot and capture files. The tool reports per-pack timing percentiles and operator quality acceptance. No hardware results are shipped.
+
+V4 follow-up: independent diffuse temporal slab, geometric rain columns and optional scene HDR composition scaling are integrated on the development branch. See docs/taau-v1.md for scope; full raster-grid port and runtime acceptance remain pending.

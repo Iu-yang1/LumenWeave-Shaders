@@ -127,3 +127,23 @@ class RenderingEfficiencyTests(unittest.TestCase):
         self.assertEqual(retention(10,[9,10,11,11]),0)
         self.assertAlmostEqual(retention(10,[10]*4),.35)
         self.assertIsNone(retention(10,[10,11,10]))
+
+    def test_production_scene_taau_grid(self):
+        phases=[(-.375,-.125),(.125,.375),(.375,-.375),(-.125,.125),(.375,.125),(-.125,-.375),(-.375,.375),(.125,-.125)]
+        self.assertEqual(tuple(sum(p[i] for p in phases) for i in (0,1)),(0.,0.))
+        for display in (1,1919,1920,2161,3840):
+            for scale in (50,67,75,85,100):
+                low=max(display*scale//100,1)
+                for phase in [p[0] for p in phases]:
+                    for index in (0,low//2,low-1):
+                        uv=(index+.5+phase)/low
+                        self.assertAlmostEqual(uv*low-phase-.5,index)
+                        self.assertLessEqual(0,int(uv*display))
+                        self.assertLess(int(uv*display),display)
+        composite=(S/"programs/shared/composite.fsh.glsl").read_text()
+        self.assertIn("lwSceneDonorPixel",composite)
+        self.assertIn("volumeRay(uv",composite)
+        resolve=(S/"programs/shared/composite1.fsh.glsl").read_text()
+        self.assertIn("lwSceneLowCoord(stableUv",resolve)
+        self.assertIn("donorWater!=water",resolve)
+        self.assertIn("lwSceneRenderSize(size)",resolve)

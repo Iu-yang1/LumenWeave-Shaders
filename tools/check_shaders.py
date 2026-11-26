@@ -335,6 +335,13 @@ def check_modern_properties(compiler, path):
             allowed=mode==0 or (mode==1 and dimension=="world0")
             if (config.get(f"program.{dimension}/deferred2_a.enabled")!="false")!=allowed:
                 raise ValueError("Rough reflection prepass overwrites raw GI history")
+    for scale in (50,67,75,85,100):
+        for aa in (1,2):
+            config=preprocess_properties(compiler,path,{"SCENE_TAAU_SCALE":str(scale),"AA_MODE":str(aa),"DEFERRED_LIGHTING":"1"})
+            for dimension in DIMENSIONS:
+                expected=scale<100 and aa>=2
+                if (config.get(f"program.{dimension}/composite.enabled")=="true")!=expected:
+                    raise ValueError("Scene TAAU composition gate incorrect")
     print("Modern/legacy compute, exposure and volume history capability matrix: OK")
 
 
@@ -532,6 +539,8 @@ def main():
             "WAVING_LEAVES": "false", "WAVING_GRASS": "false", "WATER_REFLECTION_STEPS": "0",
         }
         compile_pack(args.compiler, PREVIEW, profiles)
+        scene_entries=[p for p in PREVIEW.rglob("*") if p.suffix in STAGES and p.stem in ("composite","composite1","composite2","composite3","composite4","composite5","final")]
+        compile_pack(args.compiler,PREVIEW,{"scene-taau-ultra":{**profiles["profile.Ultra"],"SCENE_TAAU_SCALE":"75"},"scene-taau-extreme":{**profiles["profile.Extreme"],"SCENE_TAAU_SCALE":"50","DOF_MODE":"1"},"scene-taau-dynamic":{**profiles["profile.High"],"SCENE_TAAU_SCALE":"67","PROJECTION_JITTER":"2","MOTION_BLUR":"true"}},sources=scene_entries,environment=(*VOXEL_FEATURES,"DISTANT_HORIZONS"))
         camera_entries=[p for p in PREVIEW.rglob("*") if p.suffix in STAGES and p.stem in ("final","composite3","composite4","composite5","deferred2","deferred2_a","prepare6","prepare6_a","prepare8")]
         compile_pack(args.compiler,PREVIEW,{"camera-ultra":{**profiles["profile.Ultra"],"DOF_MODE":"1"},"camera-extreme-history":{**profiles["profile.Extreme"],"DOF_MODE":"3","GI_REUSE_MODE":"2"}},sources=camera_entries,environment=(*VOXEL_FEATURES,"DISTANT_HORIZONS","MC_TEXTURE_FORMAT_LAB_PBR_1_3"))
         compile_pack(

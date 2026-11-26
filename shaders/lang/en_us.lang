@@ -312,3 +312,6 @@ value.DOF_MODE.2=Manual focus
 value.DOF_MODE.3=Cinematic
 
 option.SSR_HALF_RES=Half-resolution rough reflections
+
+option.SCENE_TAAU_SCALE=Scene HDR reconstruction scale
+option.SCENE_TAAU_SCALE.comment=Experimental reduced-resolution scene/volume composition with temporal reconstruction. Geometry and depth stay native; GI, water and DH remain enabled. Requires deferred TAA. 100 is original mode.
