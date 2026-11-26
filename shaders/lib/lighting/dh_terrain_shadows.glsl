@@ -1,4 +1,6 @@
+#ifndef LW_DH_DEPTH0_DECLARED
 uniform sampler2D dhDepthTex0;
+#endif
 uniform mat4 dhProjection;
 uniform mat4 dhProjectionInverse;
 
@@ -64,7 +66,7 @@ vec3 shadeDistantTerrain(vec3 albedo,vec4 geometry,vec3 viewPosition) {
         vec3 position=(gbufferModelViewInverse*vec4(viewPosition,1.0)).xyz;
         float coverage=dhShadowMapCoverage(position);
         if(coverage>0.0) shadow=sceneShadow(position,normal,light);
-        if(coverage<0.999) {
+        if(coverage<0.98 && direct>0.015) {
             mat3 toView=transpose(mat3(gbufferModelViewInverse));
             float farShadow=distantTerrainVisibility(viewPosition,toView*normal,toView*light);
             shadow*=mix(farShadow,1.0,coverage);

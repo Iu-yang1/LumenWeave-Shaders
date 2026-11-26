@@ -1,7 +1,8 @@
 float horizonCosine(vec2 originUv, vec2 stepUv, vec3 position, vec3 observer, vec3 normal) {
     float horizon = -1.0;
-    for (int tap = 1; tap <= 4; ++tap) {
-        vec2 uv = originUv + stepUv * (float(tap * tap) * (1.0 / 16.0));
+    int taps=-position.z>32.0 ? 2 : 4;
+    for (int tap = 1; tap <= taps; ++tap) {
+        vec2 uv = originUv + stepUv * (float(tap * tap) / float(taps * taps));
         if (any(lessThanEqual(uv, vec2(0.0))) || any(greaterThanEqual(uv, vec2(1.0)))) {
             break;
         }

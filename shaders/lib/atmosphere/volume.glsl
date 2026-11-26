@@ -45,12 +45,16 @@ vec3 applyCloudVolume(vec3 scene, vec3 origin, vec3 direction, vec3 sun, float m
     if (end <= start) {
         return scene;
     }
-    float stepSize = (end - start) / float(CLOUD_STEPS);
+    float span=end-start;
+    // A short visible segment or distant subpixel cloud layer does not need
+    // all configured taps. Long nearby visible paths retain the full budget.
+    int steps=clamp(int(ceil(span/2.5)),min(4,CLOUD_STEPS),CLOUD_STEPS);
+    float stepSize = span / float(steps);
     float day = daylight(sun);
     vec3 tint = sunTint(sun);
     float transmission = 1.0;
     vec3 scattering = vec3(0.0);
-    for (int tap = 0; tap < CLOUD_STEPS; ++tap) {
+    for (int tap = 0; tap < steps; ++tap) {
         vec3 point = origin + direction * (start + (float(tap) + 0.5) * stepSize);
         float density = cloudDensity(point);
         if (density <= 0.0) {
@@ -77,12 +81,14 @@ vec3 applyLightShafts(vec3 scene, vec3 origin, vec3 direction, vec3 sun, float m
     float day = smoothstep(0.0, 0.2, sun.y) * (1.0 - rainStrength);
     float cosine = max(dot(direction, sun), 0.0);
     float phase = 0.025 + 0.975 * pow(cosine, 6.0);
-    if (day <= 0.0 || maxDistance <= 0.001 || phase * day < 0.001) {
+    if (day <= 0.0 || maxDistance <= 0.001 || phase * day < 0.008) {
         return scene;
     }
-    float stepSize = min(maxDistance, 36.0) / float(SHAFT_STEPS);
+    float span=min(maxDistance,36.0);
+    int steps=clamp(int(ceil(span/5.0)),min(2,SHAFT_STEPS),SHAFT_STEPS);
+    float stepSize = span / float(steps);
     float density = 0.0;
-    for (int tap = 0; tap < SHAFT_STEPS; ++tap) {
+    for (int tap = 0; tap < steps; ++tap) {
         vec3 offset = direction * ((float(tap) + 0.5) * stepSize);
         float altitude = origin.y + offset.y;
         float sunlight = 1.0;

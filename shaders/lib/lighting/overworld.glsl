@@ -39,6 +39,9 @@ bool lwHasCelestial() {
 #include "/lib/dimensions/overworld.glsl"
 #include "/lib/dimensions/nether.glsl"
 #include "/lib/dimensions/end.glsl"
+#ifdef LW_DIMENSION_END
+#include "/lib/dimensions/end_nebula.glsl"
+#endif
 #ifdef LW_ATMOSPHERE_LUT_ACTIVE
 #include "/lib/atmosphere/physical_lookup.glsl"
 uniform sampler2D lwAtmoSky;

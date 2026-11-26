@@ -68,7 +68,7 @@ const vec4 colortex3ClearColor = vec4(0.0, 0.0, 0.0, 0.0);
 */
 #endif
 
-#ifdef DEFERRED_LIGHTING
+#if defined(DEFERRED_LIGHTING) || defined(LW_DIMENSION_END) || defined(LW_DIMENSION_NETHER)
 
 #include "/lib/color/scene.glsl"
 #include "/lib/lighting/overworld.glsl"
@@ -76,6 +76,33 @@ const vec4 colortex3ClearColor = vec4(0.0, 0.0, 0.0, 0.0);
 #include "/lib/dimensions/celestial_sky.glsl"
 #endif
 #include "/lib/lighting/fog.glsl"
+#include "/lib/coordinates/reconstruct.glsl"
+uniform sampler2D depthtex0;
+#ifdef DISTANT_HORIZONS
+#define LW_DH_DEPTH0_DECLARED
+uniform sampler2D dhDepthTex0;
+#endif
+#if defined(LW_DIMENSION_END) || defined(LW_DIMENSION_NETHER)
+vec4 dimensionBackground(vec2 uv) {
+    vec3 direction=normalize(worldDirection((gbufferProjectionInverse*vec4(uv*2.0-1.0,1.0,1.0)).xyz));
+    vec3 color=skyRadiance(direction,vec3(0,1,0));
+#ifdef LW_DIMENSION_END
+    color+=endSkyDetail(direction,96.0/max(float(textureSize(depthtex0,0).y),1.0));
+#endif
+    if(isEyeInWater!=0 && isEyeInWater!=1) color=decodeSrgb(fogColor);
+    return vec4(color,1.0);
+}
+bool dimensionBackgroundPixel(vec2 uv,float depth) {
+    if(depth<1.0) return false;
+#ifdef DISTANT_HORIZONS
+    if(depthAtUv(dhDepthTex0,uv)<1.0) return false;
+#endif
+    return true;
+}
+#endif
+#endif
+
+#ifdef DEFERRED_LIGHTING
 #include "/lib/lighting/surface.glsl"
 #ifdef LW_VOXEL_ACTIVE
 #if VOXEL_GRID_SIZE == 128
@@ -113,11 +140,9 @@ const int colortex2Format = RG32F;
 
 uniform sampler2D colortex1;
 uniform sampler2D colortex2;
-uniform sampler2D depthtex0;
 #ifdef LW_DH_DEFERRED_SHADOWS
 #include "/lib/lighting/dh_terrain_shadows.glsl"
-#elif defined(LW_DIMENSION_END) && defined(DISTANT_HORIZONS)
-uniform sampler2D dhDepthTex0;
+
 #endif
 
 #if defined(SCREEN_AO) || defined(SCREEN_GI)
@@ -176,16 +201,10 @@ void main() {
         }
     }
 #endif
-#ifdef LW_DIMENSION_END
-    // Authoritative background before translucent rendering, even if the
-    // loader did not submit the textured End sky geometry.
-    bool bareEndSky=depth>=1.0;
-#ifdef DISTANT_HORIZONS
-    bareEndSky=bareEndSky && depthAtUv(dhDepthTex0,texCoord)>=1.0;
-#endif
-    if(bareEndSky && (isEyeInWater==0 || isEyeInWater==1)) {
-        vec3 ray=normalize(worldDirection((gbufferProjectionInverse*vec4(texCoord*2.0-1.0,1.0,1.0)).xyz));
-        writeScene(vec4(skyRadiance(ray,vec3(0,1,0))+endSkyDetail(ray),1.0));
+#if defined(LW_DIMENSION_END) || defined(LW_DIMENSION_NETHER)
+    // Always fill uncovered native/DH background, independent of sky geometry.
+    if(dimensionBackgroundPixel(texCoord,depth)) {
+        writeScene(dimensionBackground(texCoord));
         return;
     }
 #endif
@@ -193,9 +212,22 @@ void main() {
         writeScene(scene);
         return;
     }
+    vec3 viewPosition = reconstructViewPosition(texCoord, depth);
+#if defined(LW_DIMENSION_END) || defined(LW_DIMENSION_NETHER)
+    if(isEyeInWater==0) {
+        vec3 displacement=worldDirection(viewPosition);
+        float distanceToEye=length(displacement);
+        float boundary=dimensionBorder(displacement);
+        vec3 direction=displacement/max(distanceToEye,0.001);
+        // Only skip when the scene contribution is exactly zero.
+        if(boundary>=1.0) {
+            writeScene(vec4(dimensionFogHaze(direction,1.0),scene.a));
+            return;
+        }
+    }
+#endif
     vec4 geometry = texelFetch(colortex1, pixel, 0);
     vec3 normal = decodeNormal(geometry.xy);
-    vec3 viewPosition = reconstructViewPosition(texCoord, depth);
 #ifdef LW_STABLE_DYNAMIC
     viewPosition = stableViewSurfacePosition(viewPosition, texCoord,
         transpose(mat3(gbufferModelViewInverse)) * normal, gbufferProjectionInverse);
@@ -255,6 +287,10 @@ void main() {
 
 void main() {
     outputColor = texture(colortex0, texCoord);
+#if defined(LW_DIMENSION_END) || defined(LW_DIMENSION_NETHER)
+    if(dimensionBackgroundPixel(texCoord,depthAtUv(depthtex0,texCoord)))
+        outputColor=dimensionBackground(texCoord);
+#endif
 }
 
 #endif
