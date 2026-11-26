@@ -39,6 +39,7 @@ def resource_budget(options, width, height):
     volume_noise=1024**2 if enabled("VOLUME_EFFECTS") and options.get("CLOUD_NOISE_MODE")=="1" else 0
     volume_history=8*int(width*1.5)*height if enabled("VOLUME_EFFECTS") and taa and jitter_mode==1 and options.get("VOLUME_RECONSTRUCTION")=="1" and options.get("VOLUME_TEMPORAL")=="1" and not (enabled("TEMPORAL_REUSE") and enabled("SCREEN_GI") and enabled("SCREEN_GI_SPATIAL") and enabled("SCREEN_GI_HISTORY") and options.get("GI_REUSE_MODE")=="2") and not (voxel_bytes and enabled("INCREMENTAL_VOXELS") and options.get("VOXEL_FUSION")=="0") else 0
     return {
+        "end_nebula_mib": (256*256*2/MIB) if options.get("END_NEBULA_ASSET")=="1" else 0,
         "cloud_noise_mib": volume_noise/MIB,
         "volume_history_mib": volume_history/MIB,
         "hiz_mib": hiz_bytes / MIB,

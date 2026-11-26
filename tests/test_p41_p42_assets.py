@@ -18,7 +18,7 @@ class PrebakedAssetsTests(unittest.TestCase):
             for key in ("SCENE_BUDGET","CLOUD_NOISE_MODE","CLOUD_ADAPTIVE",
                         "CLOUD_EMPTY_SKIP","SHAFT_ADAPTIVE","CLOUD_LIGHT_REUSE",
                         "VOLUME_TEMPORAL","LOCAL_SCATTER_ADAPTIVE","ATMO_PREBAKED",
-                        "ATMO_UPDATE_MODE","AO_RECONSTRUCTION","HDR_REUSE"):
+                        "ATMO_UPDATE_MODE","AO_RECONSTRUCTION","HDR_REUSE","END_NEBULA_ASSET"):
                 self.assertEqual(options[key],"1",key)
         for name in ("Natural","Potato","Low","Medium","High","Standard"):
             self.assertEqual(profiles[f"profile.{name}"]["VOLUME_EFFECTS"],"false")
@@ -74,3 +74,37 @@ class PrebakedAssetsTests(unittest.TestCase):
         gate=next(line for line in q.splitlines() if line.startswith("#if VOLUME_RECONSTRUCTION"))
         self.assertNotIn("defined(SCREEN_GI)",gate.split("&& !(")[0])
         self.assertIn("colortex9Format = RGBA16F",(S/"programs/shared/composite.fsh.glsl").read_text())
+
+    def test_end_asset_sampling_and_purple_transfer(self):
+        from generate_end_nebula import decode_octahedral,encode_octahedral,wisps
+        import random
+        data=[row[0] for row in struct.iter_unpack("<e",(S/"textures/end_wisps.r16f").read_bytes())]
+        self.assertEqual(len(data),256*256)
+        self.assertTrue(all(0<=v<=1 for v in data))
+        def sample(direction):
+            x,y=encode_octahedral(direction)
+            x=(x*.5+.5)*255
+            y=(y*.5+.5)*255
+            i,j=int(x),int(y)
+            fx,fy=x-i,y-j
+            a,b=data[j*256+i],data[j*256+min(i+1,255)]
+            c,d=data[min(j+1,255)*256+i],data[min(j+1,255)*256+min(i+1,255)]
+            return (a+(b-a)*fx)*(1-fy)+(c+(d-c)*fx)*fy
+        rng=random.Random(43)
+        errors=[]
+        for _ in range(1500):
+            x,y=rng.uniform(-1,1),rng.uniform(-1,1)
+            direction=decode_octahedral(x,y)
+            expected=wisps(direction)
+            actual=sample(direction)
+            errors.append(abs(actual-expected))
+            rgb=[a*actual+b*actual*actual for a,b in ((.008,.031),(.0025,.008),(.023,.047))]
+            self.assertGreaterEqual(rgb[2],rgb[0])
+            self.assertGreaterEqual(rgb[0],rgb[1])
+        # The texture interpolates a band-limited scalar, not stars.
+        self.assertLess(sum(errors)/len(errors),.012)
+        self.assertLess(sorted(errors)[int(.95*len(errors))],.04)
+        # All four octahedral corners represent the same south pole.
+        self.assertEqual(data[0],data[255])
+        self.assertEqual(data[0],data[-1])
+        self.assertEqual(data[0],data[-256])

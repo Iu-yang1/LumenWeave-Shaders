@@ -259,3 +259,8 @@ option.ATMO_UPDATE_MODE=Atmosphere table updates
 option.ATMO_UPDATE_MODE.comment=Refresh sky and aerial tables after altitude, sun elevation or maximum age changes; skip zero-contribution night work.
 value.ATMO_UPDATE_MODE.0=Every frame
 value.ATMO_UPDATE_MODE.1=Change-driven
+
+option.END_NEBULA_ASSET=Precomputed End nebula
+option.END_NEBULA_ASSET.comment=Offline spherical wisps texture with original purple radiance formula; stars remain analytically antialiased. Disable for procedural nebula.
+value.END_NEBULA_ASSET.0=Procedural
+value.END_NEBULA_ASSET.1=Precomputed

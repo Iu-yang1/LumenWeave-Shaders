@@ -259,3 +259,8 @@ option.ATMO_UPDATE_MODE=大气查找表更新
 option.ATMO_UPDATE_MODE.comment=相机高度、太阳高度或最大时间间隔变化时刷新天空及空中透视表；夜间无贡献时跳过。
 value.ATMO_UPDATE_MODE.0=每帧
 value.ATMO_UPDATE_MODE.1=按变化更新
+
+option.END_NEBULA_ASSET=末地星云预计算
+option.END_NEBULA_ASSET.comment=离线生成球面星云密度图，保持原紫色亮度公式；星点仍实时抗锯齿。关闭恢复程序化星云。
+value.END_NEBULA_ASSET.0=程序化
+value.END_NEBULA_ASSET.1=预计算

@@ -22,7 +22,7 @@ class QualityBudgetTests(unittest.TestCase):
                 self.assertEqual(result["hiz_mib"], 67 * 37 * 8 / MIB)
                 self.assertEqual(result["extra_color_single_mib"], 28 * 1920 * 1080 / MIB)
             else:
-                self.assertTrue(all(value == 0 for key,value in result.items() if key != "hiz_mib"))
+                self.assertTrue(all(value == 0 for key,value in result.items() if key not in ("hiz_mib","end_nebula_mib")))
                 self.assertEqual(result["hiz_mib"], 0)
 
     def test_fixed_mode_removes_dynamic_owner_payload(self):

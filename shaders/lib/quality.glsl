@@ -17,6 +17,7 @@
 #define ADAPTIVE_SHADING
 #define SCENE_BUDGET 1 // [0 1]
 #define ATMO_PREBAKED 1 // [0 1]
+#define END_NEBULA_ASSET 1 // [0 1]
 #define ATMO_UPDATE_MODE 1 // [0 1]
 #define CLOUD_NOISE_MODE 1 // [0 1]
 #define CLOUD_ADAPTIVE 1 // [0 1]
