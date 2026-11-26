@@ -70,10 +70,16 @@ vec3 lwDofGather(sampler2D source,vec2 uv,vec3 center,float depth,float coc,floa
 #endif
     vec3 farSum=center,nearSum=vec3(0.0);
     float farTotal=1.0,nearTotal=0.0;
+    float inverseDepth=1.0/max(depth,0.5);
+    float nearLimit=depth*0.97;
     // A smooth radius and weight avoid the old hard 0.65-pixel switch.
     float radius=abs(coc), blur=smoothstep(0.15,1.5,radius);
     float pixelScale=max(viewHeight,1.0)/1080.0;
     float nearRadius=max(radius,3.0*pixelScale);
+#if DOF_QUALITY > 0
+    float ring=DOF_QUALITY==2?max(radius,6.0*pixelScale):nearRadius;
+    float ringWeight=smoothstep(0.25,1.5,(ring-radius)/pixelScale);
+#endif
     float diagonalWeight=1.0;
 #if DOF_QUALITY == 1 && APPROX_REUSE == 1
     // Small blur disks are low frequency. Gradually introduce diagonal
@@ -89,9 +95,9 @@ vec3 lwDofGather(sampler2D source,vec2 uv,vec3 center,float depth,float coc,floa
         vec2 p=clamp(uv+taps[i]*texel*max(radius,1.0),texel*0.5,1.0-texel*0.5);
         float d=lwDofDepth(p);
         if(d>0.0){
-            float w=sampleWeight*blur*(1.0-smoothstep(0.04,0.23,abs(d-depth)/max(depth,0.5)));
+            float w=sampleWeight*blur*(1.0-smoothstep(0.04,0.23,abs(d-depth)*inverseDepth));
             float cover=0.0;
-            if(d<depth*0.97) cover=sampleWeight*smoothstep(radius-1.0,radius+1.0,-lwCoC(d,focus));
+            if(d<nearLimit) cover=sampleWeight*smoothstep(radius-1.0,radius+1.0,-lwCoC(d,focus));
             if(w+cover>0.001){
                 vec3 sampleColor=texture(source,p).rgb;
                 farSum+=sampleColor*w;farTotal+=w;
@@ -101,12 +107,10 @@ vec3 lwDofGather(sampler2D source,vec2 uv,vec3 center,float depth,float coc,floa
 #if DOF_QUALITY > 0
         // Four extra cardinal donors in Balanced; all eight in Cinematic.
         // Fade the extra ring as it merges into the primary sampling disk.
-        float ring=DOF_QUALITY==2?max(radius,6.0*pixelScale):nearRadius;
-        float ringWeight=smoothstep(0.25,1.5,(ring-radius)/pixelScale);
         if(ringWeight>0.0 && (DOF_QUALITY==2 || i<4)){
             vec2 q=clamp(uv+taps[i]*texel*ring,texel*0.5,1.0-texel*0.5);
             float nearDepth=lwDofDepth(q);
-            if(nearDepth>0.0 && nearDepth<depth*0.97){
+            if(nearDepth>0.0 && nearDepth<nearLimit){
                 float cover=ringWeight*smoothstep(ring-1.5*pixelScale,ring+1.5*pixelScale,-lwCoC(nearDepth,focus));
                 if(cover>0.001){nearSum+=texture(source,q).rgb*cover;nearTotal+=cover;}
             }
@@ -124,17 +128,18 @@ vec3 lwDofResolve(sampler2D blurred,vec2 uv,vec3 center,float depth,float focus)
     ivec2 base=ivec2(floor(pos));vec2 f=fract(pos);
     vec3 sum=vec3(0.0),nearSum=vec3(0.0);
     float total=0.0,nearTotal=0.0;
+    float inverseDepth=1.0/max(depth,0.5);
+    float nearLimit=depth*0.97;
     for(int y=0;y<2;++y)for(int x=0;x<2;++x){
         vec4 s=texelFetch(blurred,clamp(base+ivec2(x,y),ivec2(0),size-1),0);
         if(s.a<=0.0) continue;
         vec2 w=mix(1.0-f,f,vec2(x,y));
-        float weight=w.x*w.y*(1.0-smoothstep(0.035,0.18,abs(s.a-depth)/max(depth,0.5)));
+        float weight=w.x*w.y*(1.0-smoothstep(0.035,0.18,abs(s.a-depth)*inverseDepth));
         sum+=s.rgb*weight;total+=weight;
         // Closer defocused donors may cover a sharp background at a silhouette.
         // A distant donor must never contaminate a sharp foreground.
-        if(s.a<depth*0.97){
-            vec2 outputSize=vec2(size)*2.0;
-            float distancePixels=length((vec2(base+ivec2(x,y))+0.5-pos-0.5)*outputSize/vec2(size));
+        if(s.a<nearLimit){
+            float distancePixels=2.0*length(vec2(x,y)-f);
             float coverage=smoothstep(distancePixels,distancePixels+2.0,-lwCoC(s.a,focus));
             float nearWeight=w.x*w.y*coverage;
             nearSum+=s.rgb*nearWeight;nearTotal+=nearWeight;
@@ -165,6 +170,8 @@ vec3 lwDofAxisGather(sampler2D source,vec2 uv,vec4 center,float focus,vec2 axis,
 #endif
     vec3 sum=center.rgb,nearSum=vec3(0.0);
     float total=1.0,nearTotal=0.0;
+    float inverseDepth=1.0/max(depth,0.5);
+    float nearLimit=depth*0.97;
     for(int i=-pairs;i<=pairs;++i){
         if(i==0)continue;
         float t=float(i)/float(pairs);
@@ -176,10 +183,10 @@ vec3 lwDofAxisGather(sampler2D source,vec2 uv,vec4 center,float focus,vec2 axis,
         } else donor=vec4(texture(source,q).rgb,lwDofDepth(q));
         if(donor.a<=0.0)continue;
         float weight=1.0/(1.0+4.0*t*t);
-        float compatibility=1.0-smoothstep(0.04,0.23,abs(donor.a-depth)/max(depth,0.5));
+        float compatibility=1.0-smoothstep(0.04,0.23,abs(donor.a-depth)*inverseDepth);
         float farWeight=weight*compatibility*blur;
         sum+=donor.rgb*farWeight;total+=farWeight;
-        if(donor.a<depth*0.97){
+        if(donor.a<nearLimit){
             float distancePixels=abs(radius*t);
             float cover=weight*smoothstep(max(distancePixels-1.0,0.0),distancePixels+1.0,-lwCoC(donor.a,focus));
             nearSum+=donor.rgb*cover;nearTotal+=cover;

@@ -2,6 +2,7 @@
 #include "/lib/quality.glsl"
 #include "/lib/voxel/dispatch.glsl"
 #if defined(LW_VOXEL_INCREMENTAL_ACTIVE) && VOXEL_FUSION == 1
+#define LW_PAIR_PACKED_INPUT
 #define LW_VOXEL_READ lwVoxelStage2
 #define LW_VOXEL_WRITE lwVoxelFirst
 #include "/lib/voxel/propagate_pair.glsl"

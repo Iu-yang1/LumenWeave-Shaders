@@ -18,7 +18,7 @@ class BoundedReuseTests(unittest.TestCase):
         self.assertIn("retainHistoryTile(tile,support)",s)
         p=(ROOT/"shaders/shaders.properties").read_text()
         self.assertIn("indirect.prepare6 = 0 32",p)
-        self.assertIn("bufferObject.0 = 393264",p)
+        self.assertIn("bufferObject.0 = 524352",p)
 
     def test_bounded_history_and_retrace_counts(self):
         result=history_cases()

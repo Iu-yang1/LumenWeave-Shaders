@@ -63,6 +63,9 @@ int hizTrace(sampler2D depthBuffer,mat4 projection,mat4 inverseProjection,
 #endif
     if(direction.z>0.0) limit=min(limit,(-0.12-origin.z)/direction.z);
     vec2 velocity=d.xy*c.w-c.xy*d.w;
+    // Atlas row offsets and the projected ray direction are ray invariants.
+    ivec2 atlasOffsets[3]=ivec2[3](hizAtlasOffset(resolution,64),hizAtlasOffset(resolution,16),hizAtlasOffset(resolution,4));
+    vec2 raySign=sign(velocity)*0.0001;
     float t=start;
     bool frontSeen=!requireFront;
     for(int visit=0;visit<budget;++visit) {
@@ -70,15 +73,16 @@ int hizTrace(sampler2D depthBuffer,mat4 projection,mat4 inverseProjection,
         vec4 p=c+d*t;
         if(p.w<=0.0) return 0;
         vec2 uv=p.xy/p.w*0.5+0.5;
-        vec2 pixelPosition=uv*vec2(resolution)+sign(velocity)*0.0001;
+        vec2 pixelPosition=uv*vec2(resolution)+raySign;
         if(any(lessThan(pixelPosition,vec2(0))) ||
            any(greaterThanEqual(pixelPosition,vec2(resolution)))) return 0;
         ivec2 pixel=ivec2(floor(pixelPosition));
         bool skipped=false;
         float startDepth=hizProjectedDepth(p);
-        for(int scale=64;scale>=4;scale/=4) {
+        for(int level=0;level<3;++level) {
+            int scale=64>>(2*level);
             ivec2 tile=pixel/scale;
-            vec2 bounds=texelFetch(lwHiZ,tile+hizAtlasOffset(resolution,scale),0).rg;
+            vec2 bounds=texelFetch(lwHiZ,tile+atlasOffsets[level],0).rg;
             if(dhFallback && bounds.y>=1.0) continue;
             float end=hizTileExit(c,d,tile,scale,resolution,velocity,t,limit);
             float rayDepth=max(startDepth,hizProjectedDepth(c+d*end));

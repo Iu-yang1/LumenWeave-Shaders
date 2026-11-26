@@ -6,7 +6,14 @@
 #include "/lib/voxel/dispatch.glsl"
 layout(r32ui) readonly uniform uimage3D lwVoxelOccupancy;
 #ifdef LW_VOXEL_INCREMENTAL_ACTIVE
+#if VOXEL_FUSION == 1
+layout(r16ui) writeonly uniform uimage3D lwVoxelStage0;
+#else
 layout(rgba16f) writeonly uniform image3D lwVoxelStage0;
+#endif
+#ifdef LW_GPU_COMPACTION
+#include "/lib/voxel/active_tiles.glsl"
+#endif
 layout(r16ui) uniform uimage3D lwVoxelPrevSeed;
 layout(r8ui) coherent uniform uimage3D lwVoxelDirtyTiles;
 layout(rgba32i) readonly uniform iimage2D lwVoxelMeta;
@@ -25,7 +32,12 @@ layout(rgba16f) writeonly uniform image3D lwVoxelFirst;
 #endif
 
 void main() {
-    ivec3 cell = ivec3(gl_GlobalInvocationID);
+#ifdef LW_GPU_COMPACTION
+    ivec3 tile = activeTile(0);
+#else
+    ivec3 tile = ivec3(gl_WorkGroupID);
+#endif
+    ivec3 cell = tile*4+ivec3(gl_LocalInvocationID);
 #ifdef LW_VOXEL_INCREMENTAL_ACTIVE
     if(gl_LocalInvocationIndex==0u) {
         lwPreviousMeta=imageLoad(lwVoxelMeta,ivec2(0));
@@ -35,12 +47,12 @@ void main() {
         lwStationary=all(equal(lwMovement,ivec3(0)));
         // Only consecutive stationary frames with two empty observations can skip.
         lwEmptyTile = !lwFullRebuild && lwStationary &&
-            imageLoad(lwVoxelOccupancy, lwOccupancyTileAddress(ivec3(gl_WorkGroupID))).r == 0u;
+            imageLoad(lwVoxelOccupancy, lwOccupancyTileAddress(tile)).r == 0u;
     }
     barrier();
     if (lwEmptyTile) {
         if (gl_LocalInvocationIndex == 0u)
-            imageStore(lwVoxelDirtyTiles, ivec3(gl_WorkGroupID), uvec4(0u));
+            imageStore(lwVoxelDirtyTiles, tile, uvec4(0u));
         return;
     }
     uint seed = imageLoad(lwVoxelOccupancy, cell).r;
@@ -60,8 +72,12 @@ void main() {
     }
     bool seedChanged = fullRebuild || entered || imageLoad(lwVoxelPrevSeed,cacheCell).r != seed;
     if (seedChanged) {
+#if VOXEL_FUSION == 1
+        imageStore(lwVoxelStage0,cacheCell,uvec4(seed));
+#else
         vec3 source=seed < LW_VOXEL_WALL ? voxelSeedEmission(seed) : vec3(0.0);
         imageStore(lwVoxelStage0,cacheCell,vec4(source,float(any(greaterThan(source,vec3(0.0))))));
+#endif
         imageStore(lwVoxelPrevSeed,cacheCell,uvec4(seed));
     }
     uint flags=(seedChanged || lostNeighbor) ? 1u : 0u;
@@ -82,7 +98,7 @@ void main() {
     if(lane==0u) {
         uint mask=0u;
         for(int i=0;i<8;++i) mask|=lwGroupFlags[i*8];
-        imageStore(lwVoxelDirtyTiles,ivec3(gl_WorkGroupID),uvec4(mask));
+        imageStore(lwVoxelDirtyTiles,tile,uvec4(mask));
     }
 #else
     uint seed = imageLoad(lwVoxelOccupancy, cell).r;

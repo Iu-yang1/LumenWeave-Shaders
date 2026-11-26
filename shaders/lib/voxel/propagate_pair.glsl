@@ -7,8 +7,18 @@
 #include "/lib/voxel/active_tiles.glsl"
 #endif
 layout(r32ui) readonly uniform uimage3D lwVoxelOccupancy;
-layout(rgba16f) readonly uniform image3D LW_VOXEL_READ;
+#include "/lib/voxel/packed_field.glsl"
+#ifdef LW_PAIR_SOURCE_SEED
+layout(r16ui) readonly uniform uimage3D LW_VOXEL_READ;
+layout(r32ui) writeonly uniform uimage3D LW_VOXEL_WRITE;
+vec4 pairRead(ivec3 p) { return lwDecodeSource(imageLoad(LW_VOXEL_READ,p).r); }
+void pairWrite(ivec3 p,vec4 value) { imageStore(LW_VOXEL_WRITE,p,uvec4(lwPackStage2(value))); }
+#else
+layout(r32ui) readonly uniform uimage3D LW_VOXEL_READ;
 layout(rgba16f) writeonly uniform image3D LW_VOXEL_WRITE;
+vec4 pairRead(ivec3 p) { return lwUnpackStage2(imageLoad(LW_VOXEL_READ,p).r); }
+void pairWrite(ivec3 p,vec4 value) { imageStore(LW_VOXEL_WRITE,p,value); }
+#endif
 shared vec4 pairInput[512];
 shared vec4 pairMiddle[216];
 shared uint pairSeeds[216];
@@ -25,8 +35,7 @@ int pairHaloDistance(ivec3 p) {
     return distance.x+distance.y+distance.z;
 }
 vec4 pairHalf(vec4 v) {
-    return vec4(unpackHalf2x16(packHalf2x16(v.xy)),
-                unpackHalf2x16(packHalf2x16(v.zw)));
+    return lwFieldHalf(v);
 }
 vec4 pairPropagate(uint seed,vec4 incoming) {
     if(seed>=LW_VOXEL_WALL) return vec4(0.0);
@@ -48,7 +57,7 @@ void main() {
     if(lane==0) pairOrigin=voxelCacheOrigin();
     barrier();
     if((mask&4u)==0u) {
-        imageStore(LW_VOXEL_WRITE,voxelWrapNear(base+local+pairOrigin),vec4(0.0));
+        pairWrite(voxelWrapNear(base+local+pairOrigin),vec4(0.0));
         return;
     }
     for(int i=lane;i<512;i+=64) {
@@ -56,7 +65,7 @@ void main() {
         if(pairHaloDistance(p)>2) continue;
         ivec3 cell=base+p;
         vec4 v=vec4(0.0);
-        if(withinVoxelGrid(cell)) v=imageLoad(LW_VOXEL_READ,voxelWrapNear(cell+pairOrigin));
+        if(withinVoxelGrid(cell)) v=pairRead(voxelWrapNear(cell+pairOrigin));
         pairInput[i]=v;
     }
     barrier();
@@ -82,5 +91,5 @@ void main() {
         for(int axis=0;axis<6;++axis)
             incoming=max(incoming,pairMiddle[pairIndex(center+LW_VOXEL_DIRECTIONS[axis],6)]);
     }
-    imageStore(LW_VOXEL_WRITE,voxelWrapNear(base+local+pairOrigin),pairPropagate(seed,incoming));
+    pairWrite(voxelWrapNear(base+local+pairOrigin),pairPropagate(seed,incoming));
 }

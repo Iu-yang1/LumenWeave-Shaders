@@ -273,10 +273,12 @@ def check_modern_properties(compiler, path):
         if ("indirect.prepare1" in config) != indirect or ("bufferObject.0" in config) != indirect:
             raise ValueError(f"Incorrect indirect dispatch capability gate: {minecraft}/{iris}/{ssbo}")
         smooth=preprocess_properties(compiler,path,{**flags,"SMOOTH_LIGHTING":"1"})
+        if (config.get("indirect.prepare") == "0 393264") != indirect:
+            raise ValueError("Seed scan indirect header mismatch")
         if ("indirect.prepare6" in smooth)!=indirect:
             raise ValueError("History compaction capability gate differs from propagation")
-        if indirect and smooth.get("bufferObject.0")!="393264":
-            raise ValueError("Three indirect lists require three 16-byte headers and 3*32768 uints")
+        if indirect and smooth.get("bufferObject.0")!="524352":
+            raise ValueError("Four indirect lists require four 16-byte headers and 4*32768 uints")
         if config.get("allowConcurrentCompute") != "false":
             raise ValueError("Dependent compute dispatch must be serial")
         if config.get("program.world1/begin1.enabled") != "false":
@@ -556,7 +558,7 @@ def main():
         profiles = preview_profiles(PREVIEW)
         if args.v4_focused:
             check_modern_properties(args.compiler, PREVIEW / "shaders.properties")
-            names = {"prepare_d","prepare_e","prepare5","prepare6","prepare6_a","prepare7","prepare8","deferred","deferred_a","deferred1","deferred2","deferred2_a","composite","composite_a","composite_b","composite1","composite2","composite3","composite4","composite5","composite6","final","gbuffers_terrain","gbuffers_water","gbuffers_weather","dh_terrain","dh_water"}
+            names = {"begin","shadowcomp","prepare","prepare2","prepare4","prepare_d","prepare_e","prepare5","prepare6","prepare6_a","prepare7","prepare8","deferred","deferred_a","deferred1","deferred2","deferred2_a","composite","composite_a","composite_b","composite1","composite2","composite3","composite4","composite5","composite6","final","gbuffers_terrain","gbuffers_water","gbuffers_weather","dh_terrain","dh_water"}
             sources = [p for p in PREVIEW.rglob("*") if p.suffix in STAGES and p.stem in names]
             variants = {
                 "v5-geometry-dynamic": {**profiles["profile.Extreme"],"GEOMETRY_TAAU_SCALE":"75","PROJECTION_JITTER":"2"},
@@ -582,7 +584,7 @@ def main():
                 "v4-taau-history": {**profiles["profile.Extreme"], "GEOMETRY_TAAU_SCALE":"100", "SCENE_TAAU_SCALE":"50", "GI_REUSE_MODE":"2", "DOF_MODE":"3"},
             }
             compile_matrix(args.compiler, PREVIEW, variants, sources=sources, environment=(*VOXEL_FEATURES,"DISTANT_HORIZONS","MC_TEXTURE_FORMAT_LAB_PBR_1_3"))
-            compact=[p for p in sources if p.stem.startswith("prepare")]
+            compact=[p for p in sources if p.stem.startswith("prepare") or p.stem in ("begin","shadowcomp")]
             compile_matrix(args.compiler, PREVIEW, {"modern-ultra-history":profiles["profile.Ultra"],"modern-extreme-history":profiles["profile.Extreme"]}, sources=compact, environment=(*VOXEL_FEATURES,"IRIS_FEATURE_SSBO","LW_TEST_MODERN_IRIS"))
             compile_matrix(args.compiler, PREVIEW, {"v4-fallback":profiles["profile.High"]}, sources=sources)
             compile_matrix(args.compiler,TAAU_PROBE,{f"taau-{scale}":{"TAAU_SCALE":scale} for scale in ("0.5","0.67","0.75","0.85","1.0")})

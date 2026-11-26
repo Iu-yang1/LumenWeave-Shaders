@@ -77,6 +77,7 @@ vec3 motionBlur(vec3 center) {
     // Subpixel/short streaks do not need a fixed eight-tap quadrature.
     // The configured count remains the ceiling for larger motion.
     int tapCount=min(MOTION_BLUR_SAMPLES,max(2,int(ceil(min(pixels,24.0)*0.75))+1));
+    float inverseTapCount=1.0/float(tapCount);
     float depthTolerance=max(0.5,-view.z*0.035);
     vec4 zRow=vec4(projectionInverse[0].z,projectionInverse[1].z,projectionInverse[2].z,projectionInverse[3].z);
     vec4 wRow=vec4(projectionInverse[0].w,projectionInverse[1].w,projectionInverse[2].w,projectionInverse[3].w);
@@ -85,7 +86,7 @@ vec3 motionBlur(vec3 center) {
     float total = 1.0;
     for (int tap = 0; tap < MOTION_BLUR_SAMPLES; ++tap) {
         if(tap>=tapCount) break;
-        float offset = (float(tap) + 0.5) / float(tapCount) - 0.5;
+        float offset = (float(tap) + 0.5) * inverseTapCount - 0.5;
         vec2 uv = texCoord + velocity * offset;
         if (any(lessThanEqual(uv, vec2(0.0))) || any(greaterThanEqual(uv, vec2(1.0)))) {
             continue;
