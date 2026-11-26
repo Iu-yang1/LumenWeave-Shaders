@@ -1,0 +1,10 @@
+# GPU virtual shadow page ABI (OpenGL reference, Vulkan-compatible layout)
+
+All buffers use std430; uint = 32 bit. The host owns allocation, initialization and barriers.
+- Selected bitset is the *budgeted* unique page set; compact requests via compact_shadow_requests.comp. Initialize page table slots and physical owners to 0xffffffff on reset. A page table record is uvec4(slot, revision, valid, reserved).
+- Reset freeCount/cursor/drawCount/overflow each frame. Reclaim physical slots not in selected; storage barrier. Allocate only compacted unique selected requests, reuse revision-matched pages; invalid pages emit (id, slot, revision, ticket). If capacity is exceeded, leave pages invalid and use the reference visibility fallback.
+- Rasterize pages with the required static geometry and fresh dynamic layer. Publish only successful static raster results using the matching frame ticket and ownership; never mark allocated pages valid before drawing. Reuse physical slots only after the previous submission's fence or on one ordered GPU queue.
+- For indirect indexed drawing, command stride is 20 bytes (count, instanceCount, firstIndex, signed baseVertex, baseInstance). Header precedes commands at offset 16. baseInstance refers to a page-specific transform/metadata entry; host shader must consume it. Clamp draw count to capacity. GL_COMMAND_BARRIER_BIT | GL_SHADER_STORAGE_BARRIER_BIT before draw, and appropriate framebuffer/texture visibility barrier before sampling.
+- Static/dynamic page depth is min for forward Z, max for reverse Z. Clear vanished dynamic casters every frame before sampling.
+
+Vulkan implementation must negotiate storage/indirect features, allocate VkImages and image views, use vkCmdPipelineBarrier2 with matching stage/access masks, and timeline semaphore/fence ownership. Hardware RT is a distinct capability (VK_KHR_acceleration_structure, VK_KHR_ray_query or VK_KHR_ray_tracing_pipeline); mesh geometry, not voxel seeds alone, feeds BLAS/TLAS. These experiments do not implement or advertise a Vulkan device or hardware RT pipeline.

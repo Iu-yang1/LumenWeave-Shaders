@@ -27,7 +27,7 @@ jobs:
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y glslang-tools
-          glslangValidator -S comp renderer-extension/gpu/compact_shadow_requests.comp
+          for shader in renderer-extension/gpu/*.comp; do glslangValidator -S comp "$shader"; done
   fabric:
     runs-on: ubuntu-24.04
     timeout-minutes: 20

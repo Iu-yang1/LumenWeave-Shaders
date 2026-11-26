@@ -1,0 +1,21 @@
+#version 430 core
+// Input is a compacted page/caster pair stream. baseInstance indexes the
+// corresponding draw metadata; command and SSBO barriers before indirect draw.
+layout(local_size_x=64) in;
+struct DrawElementsIndirectCommand {uint count;uint instanceCount;uint firstIndex;int baseVertex;uint baseInstance;};
+layout(std430,binding=0) readonly buffer Pairs {uvec4 pairs[];}; // pageId, casterId, metadataIndex, enabled
+layout(std430,binding=1) readonly buffer Casters {ivec4 geometry[];}; // indexCount, firstIndex, baseVertex, reserved
+layout(std430,binding=2) buffer Commands {uint count;uint overflow;uint capacity;uint pad;DrawElementsIndirectCommand commands[];};
+uniform uint pairCount;
+uniform uint casterCount;
+void main(){
+    uint i=gl_GlobalInvocationID.x;
+    if(i>=pairCount)return;
+    uvec4 pair=pairs[i];
+    if(pair.w==0u||pair.y>=casterCount)return;
+    ivec4 g=geometry[pair.y];
+    if(g.x<=0||g.y<0)return;
+    uint index=atomicAdd(count,1u);
+    if(index>=capacity){atomicOr(overflow,1u);return;}
+    commands[index]=DrawElementsIndirectCommand(uint(g.x),1u,uint(g.y),g.z,pair.z);
+}

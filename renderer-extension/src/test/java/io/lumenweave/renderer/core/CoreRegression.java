@@ -6,8 +6,8 @@ public final class CoreRegression {
     static void check(boolean ok,String message){if(!ok)throw new AssertionError(message);}
     static SectionStore.Key key(int x,int y,int z){return new SectionStore.Key(x,y,z);}
     public static void main(String[] args){
-        sections(); drawLists(); shadows(); pages(); backend(); randomized(); atlas();
-        System.out.println("Renderer core: 7 regression groups passed");
+        sections(); drawLists(); shadows(); pages(); backend(); randomized(); atlas(); framePlanner();
+        System.out.println("Renderer core: 8 regression groups passed");
     }
     static void sections(){
         var store=new SectionStore();var a=key(-1,0,0);var b=key(0,0,0);
@@ -85,6 +85,27 @@ public final class CoreRegression {
             for(int x=start;x<start+128;x++)
                 check(SeedAtlasLayout.address(x)==SeedAtlasLayout.sectionAddress(Math.floorDiv(x,16))+Math.floorMod(x,16),"negative ring address");
         }
+    }
+    static void framePlanner(){
+        var planner=new ShadowFramePlanner(4);
+        var basis=new ShadowTileCache.Basis(List.of(5),1);
+        var a=new ShadowTileCache.Tile(0,0,0);var b=new ShadowTileCache.Tile(0,1,0);
+        var required=Map.of(a,2,b,1);
+        var command=new ShadowPageBackend.DrawCommand(6,1,0,0,0);
+        var bounds=new ShadowTileCache.Bounds(0,0,0,0,0);
+        var fixed=new ShadowFramePlanner.Caster(1,bounds,false,command);
+        var moving=new ShadowFramePlanner.Caster(2,bounds,true,command);
+        var first=planner.plan(basis,required,List.of(),List.of(fixed,moving));
+        check(first.work().size()==2&&first.allocation().render().size()==2,"initial pages");
+        planner.complete(first.ticket(),first.allocation().render());
+        var second=planner.plan(basis,required,List.of(),List.of(fixed));
+        check(second.work().size()==1&&second.work().getFirst().tile().equals(a),"old dynamic cleared");
+        check(!second.work().getFirst().redrawStatic()&&second.work().getFirst().clearDynamic(),"static reused");
+        planner.complete(second.ticket(),Set.of());
+        var third=planner.plan(basis,required,List.of(bounds),List.of(fixed));
+        check(third.allocation().render().equals(Set.of(a))&&third.work().getFirst().staticDraws().size()==1,"dirty caster");
+        planner.complete(third.ticket(),Set.of());
+        check(planner.plan(basis,required,List.of(),List.of(fixed)).allocation().render().equals(Set.of(a)),"failed raster not valid");
     }
     static void randomized(){
         var rng=new Random(6201);var cache=new ShadowTileCache();

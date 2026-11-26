@@ -32,6 +32,7 @@ public interface RendererBackend extends AutoCloseable {
     Capabilities capabilities();
     Receipt uploadSeeds(SectionStore.Delta delta);
     default Optional<HardwareRayTracing> rayTracing(){return Optional.empty();}
+    default Optional<ShadowPageBackend> shadowPages(){return Optional.empty();}
     // Normal culling is permitted only after the actual shader-visible independent producer
     // acknowledges complete coverage of this exact frame's grid. Reference models cannot ack it.
     static boolean mayUseNormalCulling(SectionStore.Delta delta,Receipt receipt,Capabilities caps){

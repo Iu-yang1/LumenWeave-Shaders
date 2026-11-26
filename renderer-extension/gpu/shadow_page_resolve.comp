@@ -1,0 +1,16 @@
+#version 430 core
+// Diagnostic depth composition for one page. Runtime receivers can sample
+// the same two layers directly and avoid the output write.
+layout(local_size_x=8,local_size_y=8) in;
+uniform sampler2DArray staticPages;
+uniform sampler2DArray dynamicPages;
+layout(r32f,binding=0) writeonly uniform image2D combinedDepth;
+uniform int pageSlot;
+uniform bool reverseZ;
+void main(){
+    ivec2 p=ivec2(gl_GlobalInvocationID.xy);
+    if(any(greaterThanEqual(p,imageSize(combinedDepth))))return;
+    float a=texelFetch(staticPages,ivec3(p,pageSlot),0).r;
+    float b=texelFetch(dynamicPages,ivec3(p,pageSlot),0).r;
+    imageStore(combinedDepth,p,vec4(reverseZ?max(a,b):min(a,b)));
+}

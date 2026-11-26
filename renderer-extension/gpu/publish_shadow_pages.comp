@@ -1,0 +1,18 @@
+#version 430 core
+// Only successful raster results are submitted; no success on allocation alone.
+layout(local_size_x=64) in;
+layout(std430,binding=0) readonly buffer Completed {uvec4 completed[];};
+layout(std430,binding=1) readonly buffer Owners {uint owner[];};
+layout(std430,binding=2) buffer Table {uvec4 page[];};
+uniform uint completedCount;
+uniform uint virtualCount;
+uniform uint physicalCount;
+uniform uint frameTicket;
+void main(){
+    uint i=gl_GlobalInvocationID.x;
+    if(i>=completedCount)return;
+    uvec4 r=completed[i]; // id, slot, revision, ticket
+    if(r.x>=virtualCount||r.y>=physicalCount||r.w!=frameTicket)return;
+    uvec4 p=page[r.x];
+    if(p.x==r.y&&p.y==r.z&&owner[r.y]==r.x)page[r.x].z=1u;
+}

@@ -38,3 +38,9 @@ The client adapter must be validated in the pinned game with Iris and Sodium. Co
 - Corrected ChunkStatus lookup to client getChunkNow; no forced chunk generation. All changes remain in the extension branch.
 
 Alpha.3 adds direct client chunk packet replacement/unload and block-state change notifications, supplementing Sodium lifecycle events. The new backend gets a full resident snapshot after resource recreation rather than losing unchanged sections. The standalone Java regression remains a required Gradle check task; no JUnit framework is used.
+
+## Native page resources and GPU-driven scheduling experiments
+
+`ShadowFramePlanner` joins page requests, caster binning, static invalidation, per-frame dynamic draws and clearing previously occupied dynamic layers. The new `OpenGlShadowPages` allocates separate depth arrays and exposes private per-layer FBO attachments. No game framebuffer is mutated by this resource class. The backend-neutral `ShadowPageBackend` interface permits Vulkan image views and queue-specific submission in the future.
+
+The isolated GLSL stages implement GPU reclaim, free-list allocation, revision invalidation, bounded draw page generation, completion publication, indirect indexed draw commands and diagnostic static/dynamic depth resolve. See [GPU ABI](gpu/README.md). They are compiled in CI but not yet wired to Iris's caster draw path. Current Iris opaque submission combines terrain layers; correct static/dynamic separation requires mesh/caster classification and actual layer-specific drawing, not a full-map copy that would leave moving geometry cached.
