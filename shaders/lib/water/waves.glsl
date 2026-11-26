@@ -9,7 +9,12 @@ float waterPhaseCos(float phase) {
 float waterPhaseCos(float phase) { return cos(phase); }
 #endif
 #if WATER_HYBRID_WAVES == 1
-uniform sampler2D noisetex;
+uniform sampler2D lwWaterNormal;
+// One-pixel periodic gutters make bilinear filtering continuous even on
+// loaders which clamp raw custom textures. The footprint fades fine bands.
+vec2 lwWaterSlopeTexture(vec2 uv) {
+    return textureLod(lwWaterNormal,(fract(uv)*64.0+1.0)/66.0,0.0).rg-0.5;
+}
 #endif
 vec2 waterWaveSlope(vec2 position, vec2 footprintX, vec2 footprintY, float time, float elapsed) {
     const vec2 directions[8] = vec2[8](
@@ -49,11 +54,11 @@ vec2 waterWaveSlope(vec2 position, vec2 footprintX, vec2 footprintY, float time,
     float footprint=max(length(footprintX),length(footprintY));
     if(WATER_WAVE_DETAIL>=4 && footprint<1.2) {
         vec2 uv=position*0.032+time*WATER_WAVE_SPEED*vec2(0.013,-0.008);
-        vec2 fine=textureGrad(noisetex,uv,footprintX*0.032,footprintY*0.032).rg-0.5;
+        vec2 fine=lwWaterSlopeTexture(uv);
         slope+=fine*0.065*(1.0-smoothstep(0.12,1.2,footprint));
         if(WATER_WAVE_DETAIL>=8 && footprint<0.45) {
             vec2 uv2=position.yx*0.071-time*WATER_WAVE_SPEED*vec2(0.019,0.012);
-            slope+=(textureGrad(noisetex,uv2,footprintX.yx*0.071,footprintY.yx*0.071).rg-0.5)*0.045*(1.0-smoothstep(0.04,0.45,footprint));
+            slope+=lwWaterSlopeTexture(uv2)*0.045*(1.0-smoothstep(0.04,0.45,footprint));
         }
     }
 #endif

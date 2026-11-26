@@ -1,3 +1,5 @@
+#ifndef LW_WET_SURFACE
+#define LW_WET_SURFACE
 // Water-film response; preserve metal and emissive material identity.
 uniform float wetness;
 #ifndef LW_CAMERA_INT_UNIFORM
@@ -26,7 +28,13 @@ void wetSurface(inout vec3 albedo,inout Material material,vec3 normal,vec2 light
     vec2 pos=(worldDirection(viewPosition)+vec3(cameraPositionInt)+cameraPositionFract).xz;
     float basin=smoothstep(0.46,0.72,wetNoise(pos*0.23));
     float puddle=film*film*smoothstep(0.91,0.995,normal.y)*basin*PUDDLE_STRENGTH;
-    albedo*=1.0-film*mix(0.12,0.29,material.roughness);
+    // Porous matte surfaces darken more, while glass-like smooth dielectrics
+    // retain their albedo and do not become a second mirror everywhere.
+    float porous=smoothstep(0.45,0.95,material.roughness);
+    albedo*=1.0-film*mix(0.07,0.29,porous);
+    puddle*=smoothstep(0.18,0.45,material.roughness);
     material.roughness=mix(material.roughness,min(material.roughness,0.38),film);
     material.roughness=mix(material.roughness,min(material.roughness,0.10),puddle);
 }
+
+#endif

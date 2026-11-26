@@ -2,7 +2,7 @@
 
 vec3 physicalWater(vec3 tint, vec3 originalNormal, vec3 viewPosition, vec3 view, vec3 sun, float skyAccess) {
     vec3 position = (gbufferModelViewInverse * vec4(viewPosition, 1.0)).xyz + cameraPosition;
-    vec3 normal = waveNormal(originalNormal, position,skyAccess);
+    vec3 normal = faceforward(waveNormal(originalNormal, position,skyAccess),-view,originalNormal);
     mat3 toView = transpose(mat3(gbufferModelViewInverse));
     vec3 reflected = reflect(-view, normal);
     bool submerged = isEyeInWater == 1;
@@ -19,6 +19,7 @@ vec3 physicalWater(vec3 tint, vec3 originalNormal, vec3 viewPosition, vec3 view,
         if(!submerged && projected<9.0 && steps>8) steps=max(8,steps/2);
 #endif
         vec4 hit = traceScreenReflection(viewPosition+toView*normal*0.045, toView * reflected, steps,hitUv,hitTravel,hitKind);
+        if(submerged && dot(reflected,originalNormal)<=0.0) hit.a=0.0;
         if (submerged && hit.a>0.0) {
             hit.rgb = mix(scatter, hit.rgb, exp(-waterExtinction() * hitTravel));
             float blur=clamp(WATER_ROUGHNESS*WATER_ROUGHNESS*hitTravel*0.16,0.0,0.75);
@@ -30,12 +31,29 @@ vec3 physicalWater(vec3 tint, vec3 originalNormal, vec3 viewPosition, vec3 view,
     if(submerged) {
         vec3 airDirection=waterToAirDirection(-view,normal);
         if(dot(airDirection,airDirection)<0.000001) return reflection;
+        // The perturbed microfacet cannot transmit back into the macro water half-space.
+        if(dot(airDirection,originalNormal)>=0.0) return reflection;
         vec3 through=skyRadiance(airDirection,sun);
 #if WATER_REFLECTION_STEPS > 0
         vec2 transmissionUv;float transmissionTravel;int transmissionKind;
         vec4 airHit=traceScreenReflection(viewPosition+toView*airDirection*0.08,toView*airDirection,
             min(WATER_REFLECTION_STEPS,16),transmissionUv,transmissionTravel,transmissionKind);
-        through=mix(through,airHit.rgb,airHit.a);
+        if(airHit.a>0.0) {
+            vec3 hitPosition;
+#ifdef DISTANT_HORIZONS
+            if(transmissionKind==2) {
+                ivec2 p=depthPixelAtUv(dhDepthTex1,transmissionUv);
+                hitPosition=reconstructProjection(depthPixelUv(dhDepthTex1,p),texelFetch(dhDepthTex1,p,0).r,dhProjectionInverse,true);
+            } else
+#endif
+            {
+                ivec2 p=depthPixelAtUv(depthtex1,transmissionUv);
+                hitPosition=reconstructViewPosition(depthPixelUv(depthtex1,p),texelFetch(depthtex1,p,0).r);
+            }
+            float above=-dot(worldDirection(hitPosition-viewPosition),originalNormal);
+            // Reject bottom and wrong-side depth hits; keep directional sky on misses.
+            through=mix(through,airHit.rgb,airHit.a*smoothstep(0.02,0.30,above));
+        }
 #endif
         return mix(through,reflection,fresnel);
     }

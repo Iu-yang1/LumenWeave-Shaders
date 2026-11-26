@@ -266,7 +266,11 @@ void main() {
 #endif
 #if defined(SCREEN_GI) || defined(LW_VOXEL_DIFFUSE_ACTIVE)
     if(visibleWeight>0.025) {
-    vec3 diffuse = scene.rgb * (1.0 - material.metallic) * (1.0 - material.f0);
+    vec3 bounceAlbedo=scene.rgb;
+#ifdef WET_SURFACES
+    wetSurface(bounceAlbedo,material,normal,geometry.zw,viewPosition);
+#endif
+    vec3 diffuse = bounceAlbedo * (1.0 - material.metallic) * (1.0 - material.f0);
     vec3 bounce = vec3(0.0);
 #ifdef LW_VOXEL_DIFFUSE_ACTIVE
     vec3 position = (gbufferModelViewInverse * vec4(viewPosition, 1.0)).xyz;

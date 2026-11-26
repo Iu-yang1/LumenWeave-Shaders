@@ -88,6 +88,9 @@ ScreenBounce screenBounceRay(vec3 origin, vec3 direction, mat3 toView, vec3 sun,
 #ifdef MC_TEXTURE_FORMAT_LAB_PBR_1_3
                 source = labMaterial(source, albedo, materialDepth.z, materialDepth.w);
 #endif
+#ifdef WET_SURFACES
+                wetSurface(albedo,source,hitNormal,geometry.zw,hitPosition);
+#endif
                 vec3 diffuse = albedo * (1.0 - source.metallic) * (1.0 - source.f0);
                 vec3 light = sun.y >= 0.0 ? sun : -sun;
                 float daylightWeight = max(dot(hitNormal, light), 0.0) * smoothstep(0.56, 1.0, geometry.w);
