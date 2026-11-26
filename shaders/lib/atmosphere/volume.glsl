@@ -39,18 +39,18 @@ float cloudDensity(vec3 position) {
     return layer*smoothstep(threshold,0.78,shape);
 }
 
-vec3 applyCloudVolume(vec3 scene, vec3 origin, vec3 direction, vec3 sun, float maxDistance) {
+vec4 cloudVolumeTransfer(vec3 origin, vec3 direction, vec3 sun, float maxDistance) {
     if (!hasSkylight) {
-        return scene;
+        return vec4(0.0,0.0,0.0,1.0);
     }
     if (abs(direction.y) <= 0.003) {
-        return scene;
+        return vec4(0.0,0.0,0.0,1.0);
     }
     vec2 distances = (vec2(156.0, 174.0) - origin.y) / direction.y;
     float start = max(min(distances.x, distances.y), 0.0);
     float end = min(max(distances.x, distances.y), min(maxDistance, 640.0));
     if (end <= start || start >= 630.0) {
-        return scene;
+        return vec4(0.0,0.0,0.0,1.0);
     }
     float span=end-start;
     // A short visible segment or distant subpixel cloud layer does not need
@@ -81,7 +81,13 @@ vec3 applyCloudVolume(vec3 scene, vec3 origin, vec3 direction, vec3 sun, float m
             break;
         }
     }
-    return mix(scene, scene * transmission + scattering, 1.0 - smoothstep(410.0, 630.0, start));
+    float coverage=1.0-smoothstep(410.0,630.0,start);
+    return vec4(scattering*coverage,mix(1.0,transmission,coverage));
+}
+
+vec3 applyCloudVolume(vec3 scene,vec3 origin,vec3 direction,vec3 sun,float maxDistance) {
+    vec4 transfer=cloudVolumeTransfer(origin,direction,sun,maxDistance);
+    return scene*transfer.a+transfer.rgb;
 }
 
 vec3 applyLightShafts(vec3 scene, vec3 origin, vec3 direction, vec3 sun, float maxDistance) {

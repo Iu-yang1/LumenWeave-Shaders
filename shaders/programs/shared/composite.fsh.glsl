@@ -15,6 +15,10 @@ layout(location = 0) out vec4 outputColor;
 #include "/lib/lighting/lite_shadows.glsl"
 #endif
 #include "/lib/atmosphere/volume.glsl"
+#ifdef LW_CELESTIAL_VOLUME_SPATIAL
+#define LW_VOLUME_SPATIAL_READER
+#include "/lib/atmosphere/volume_spatial.glsl"
+#endif
 #ifdef LW_LOCAL_SCATTER_ACTIVE
 #include "/lib/atmosphere/local_scatter.glsl"
 #include "/lib/atmosphere/scatter_upsample.glsl"
@@ -38,10 +42,15 @@ void main() {
         float distanceToSurface;
         volumeRay(texCoord,direction,distanceToSurface);
         if (hasSkylight) {
+#ifdef LW_CELESTIAL_VOLUME_SPATIAL
+            vec4 transfer=upsampleCelestialVolume(texCoord,direction,distanceToSurface);
+            scene.rgb=scene.rgb*transfer.a+transfer.rgb;
+#else
             vec3 sun = sunDirection();
             vec3 origin = vec3(cameraPositionInt) + cameraPositionFract;
             scene.rgb = applyCloudVolume(scene.rgb, origin, direction, sun, distanceToSurface);
             scene.rgb = applyLightShafts(scene.rgb, origin, direction, sun, distanceToSurface);
+#endif
         }
 #ifdef LW_LOCAL_SCATTER_ACTIVE
 #ifdef LW_SCATTER_UPSAMPLE_ACTIVE

@@ -1,7 +1,13 @@
 #version 330 compatibility
 #include "/lib/quality.glsl"
 #include "/lib/color/scene.glsl"
+#ifdef LW_TAA_DIRECT
+uniform sampler2D colortex4;
+#define LW_POST_SOURCE colortex4
+#else
 uniform sampler2D colortex0;
+#define LW_POST_SOURCE colortex0
+#endif
 in vec2 texCoord;
 layout(location = 0) out vec4 outputColor;
 #ifdef BLOOM
@@ -10,7 +16,7 @@ layout(location = 0) out vec4 outputColor;
 const int colortex11Format = RGBA16F;
 */
 vec3 bloomHighlight(vec2 uv,vec2 texel,float threshold) {
-    vec3 sampleColor=texture(colortex0,clamp(uv,texel*0.5,1.0-texel*0.5)).rgb;
+    vec3 sampleColor=texture(LW_POST_SOURCE,clamp(uv,texel*0.5,1.0-texel*0.5)).rgb;
     // Hue-preserving HDR extraction, including saturated red/orange emitters.
     float brightness=max(luminance(sampleColor),0.50*max(sampleColor.r,max(sampleColor.g,sampleColor.b)));
     float contribution=smoothstep(threshold*0.6,threshold*1.4,brightness);
@@ -20,7 +26,7 @@ vec3 bloomHighlight(vec2 uv,vec2 texel,float threshold) {
     return sampleColor*contribution*min(1.0,excess/max(brightness,0.0001));
 }
 void main() {
-    vec2 texel=1.0/vec2(textureSize(colortex0,0));
+    vec2 texel=1.0/vec2(textureSize(LW_POST_SOURCE,0));
     float threshold=BLOOM_THRESHOLD*exp2(-float(EXPOSURE));
     vec3 result=vec3(0.0);
 #if BLOOM_FILTER == 2
@@ -38,5 +44,5 @@ void main() {
 }
 #else
 /* RENDERTARGETS: 0 */
-void main(){outputColor=texture(colortex0,texCoord);}
+void main(){outputColor=texture(LW_POST_SOURCE,texCoord);}
 #endif

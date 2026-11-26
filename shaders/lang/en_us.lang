@@ -189,3 +189,12 @@ option.VOXEL_FUSION=Fused voxel propagation
 option.VOXEL_FUSION.comment=Combines four iterations into two shared-memory passes, retaining step count and half-float intermediates. Disable for the original four-pass path.
 value.VOXEL_FUSION.0=Four passes
 value.VOXEL_FUSION.1=Fused pairs
+
+option.VOLUME_RECONSTRUCTION=Cloud and shaft reconstruction
+option.VOLUME_RECONSTRUCTION.comment=Fixed-grid Overworld shares the half-resolution GI buffer, with depth-aware full-resolution fallback.
+value.VOLUME_RECONSTRUCTION.0=Full resolution
+value.VOLUME_RECONSTRUCTION.1=Adaptive
+option.HDR_REUSE=HDR frame reuse
+option.HDR_REUSE.comment=Read TAA history RGB directly for display; retain the original path when motion blur is enabled.
+value.HDR_REUSE.0=Original
+value.HDR_REUSE.1=Auto reuse

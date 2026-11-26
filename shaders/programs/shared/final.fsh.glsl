@@ -19,17 +19,23 @@ const int colortex0Format = RGBA16F;
 const vec4 colortex0ClearColor = vec4(0.0, 0.0, 0.0, 1.0);
 */
 
+#ifdef LW_TAA_DIRECT
+uniform sampler2D colortex4;
+#define LW_POST_SOURCE colortex4
+#else
 uniform sampler2D colortex0;
+#define LW_POST_SOURCE colortex0
+#endif
 in vec2 texCoord;
 layout(location = 0) out vec4 outputColor;
 
 void main() {
-    vec3 scene = texture(colortex0, texCoord).rgb;
+    vec3 scene = texture(LW_POST_SOURCE, texCoord).rgb;
 #ifdef LW_FXAA_ACTIVE
-    scene = spatialAntialias(colortex0, texCoord, scene, float(EXPOSURE));
+    scene = spatialAntialias(LW_POST_SOURCE, texCoord, scene, float(EXPOSURE));
 #endif
     if (IMAGE_SHARPENING > 0.0) {
-        scene = sharpenScene(colortex0, texCoord, scene);
+        scene = sharpenScene(LW_POST_SOURCE, texCoord, scene);
     }
 #ifdef BLOOM
 #if BLOOM_FILTER == 0

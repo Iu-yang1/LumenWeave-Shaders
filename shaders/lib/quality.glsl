@@ -23,6 +23,8 @@
 #define ADAPTIVE_SHADOWS
 //#define DH_SHADOWS
 //#define VOLUME_EFFECTS
+#define VOLUME_RECONSTRUCTION 1 // [0 1]
+#define HDR_REUSE 1 // [0 1]
 //#define VOXEL_LIGHTING
 //#define SCREEN_GI
 //#define SCREEN_GI_HISTORY
@@ -121,6 +123,15 @@
 // attachment with half-resolution AO; dynamic projection keeps it full size.
 #if AO_RECONSTRUCTION == 1 && PROJECTION_JITTER == 1 && defined(DEFERRED_LIGHTING) && defined(SCREEN_AO) && defined(SCREEN_GI) && defined(SCREEN_GI_SPATIAL) && !defined(LW_DIMENSION_END) && !defined(LW_DIMENSION_NETHER)
 #define LW_AO_SPATIAL
+#endif
+
+// GI's half-size transient texture is free after deferred shading, provided
+// no cross-frame raw GI reuse is requested. No additional color attachment.
+#if VOLUME_RECONSTRUCTION == 1 && PROJECTION_JITTER == 1 && defined(VOLUME_EFFECTS) && defined(SCREEN_GI) && defined(SCREEN_GI_SPATIAL) && defined(DEFERRED_LIGHTING) && defined(IRIS_FEATURE_COMPUTE_SHADERS) && defined(IRIS_FEATURE_CUSTOM_IMAGES) && !(defined(TEMPORAL_REUSE) && GI_REUSE_MODE == 2 && defined(SCREEN_GI_HISTORY) && defined(LW_TAA_ACTIVE)) && !defined(LW_DIMENSION_END) && !defined(LW_DIMENSION_NETHER)
+#define LW_CELESTIAL_VOLUME_SPATIAL
+#endif
+#if HDR_REUSE == 1 && defined(LW_TAA_ACTIVE) && !defined(MOTION_BLUR)
+#define LW_TAA_DIRECT
 #endif
 
 // Stable native depth only; dynamic reanchoring can shift hit depth.

@@ -189,3 +189,12 @@ option.VOXEL_FUSION=体素传播融合
 option.VOXEL_FUSION.comment=将四次传播合并为两次共享内存计算，保留传播步数和半精度中间结果；关闭可对照原四通道。
 value.VOXEL_FUSION.0=四通道
 value.VOXEL_FUSION.1=两通道融合
+
+option.VOLUME_RECONSTRUCTION=体积云与光束重建
+option.VOLUME_RECONSTRUCTION.comment=固定投影下复用主世界半分辨率GI缓冲计算云和光束，深度边缘自动回退。
+value.VOLUME_RECONSTRUCTION.0=全分辨率
+value.VOLUME_RECONSTRUCTION.1=自适应
+option.HDR_REUSE=HDR帧缓冲复用
+option.HDR_REUSE.comment=TAA后直接从历史色彩缓冲显示，动态模糊开启时保留原路径。
+value.HDR_REUSE.0=原路径
+value.HDR_REUSE.1=自动复用

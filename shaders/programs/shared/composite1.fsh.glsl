@@ -4,7 +4,11 @@
 
 uniform sampler2D colortex0;
 in vec2 texCoord;
+#ifdef LW_TAA_DIRECT
+vec4 sceneColor;
+#else
 layout(location = 0) out vec4 sceneColor;
+#endif
 
 #ifdef LW_TAA_ACTIVE
 #if defined(DEFERRED_LIGHTING)
@@ -23,10 +27,15 @@ const bool colortex5Clear = false;
 const vec4 colortex4ClearColor = vec4(0.0, 0.0, 0.0, 0.0);
 const vec4 colortex5ClearColor = vec4(0.0, 0.0, 0.0, 0.0);
 */
+#ifdef LW_TAA_DIRECT
+/* RENDERTARGETS: 4,5 */
+layout(location=0) out vec4 colorHistory;
+layout(location=1) out vec4 normalHistory;
+#else
 /* RENDERTARGETS: 0,4,5 */
-
-layout(location = 1) out vec4 colorHistory;
-layout(location = 2) out vec4 normalHistory;
+layout(location=1) out vec4 colorHistory;
+layout(location=2) out vec4 normalHistory;
+#endif
 uniform sampler2D colortex1;
 uniform sampler2D colortex2;
 uniform sampler2D colortex4;
@@ -276,7 +285,13 @@ void main() {
     ivec2 size = textureSize(colortex0, 0);
     vec2 stableUv = (vec2(pixel) + 0.5) / vec2(size);
     sceneColor = texelFetch(colortex0, pixel, 0);
+#ifdef LW_TAA_DIRECT
+    // Untouched sky/entities still need display RGB, but zero metadata
+    // rejects these samples from geometry history.
+    colorHistory=vec4(sceneColor.rgb,0.0);
+#else
     colorHistory = vec4(0.0);
+#endif
     normalHistory = vec4(0.0);
     vec3 viewPosition;
     vec2 normal;
