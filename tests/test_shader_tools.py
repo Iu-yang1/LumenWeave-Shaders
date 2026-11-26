@@ -92,7 +92,8 @@ class ShaderToolsTests(unittest.TestCase):
     def test_dimension_entry_points_are_complete(self):
         expected = {path.name for path in (PREVIEW / "world0").iterdir()}
         for dimension in DIMENSIONS:
-            self.assertEqual({path.name for path in (PREVIEW / dimension).iterdir()}, expected)
+            extra = {"gbuffers_clouds.fsh", "gbuffers_clouds.vsh"} if dimension == "world1" else set()
+            self.assertEqual({path.name for path in (PREVIEW / dimension).iterdir()}, expected | extra)
             for entry in (PREVIEW / dimension).iterdir():
                 self.assertTrue(expand(PREVIEW, entry).startswith("#version "))
 

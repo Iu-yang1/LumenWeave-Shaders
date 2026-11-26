@@ -7,3 +7,5 @@ Host contract: allocate a 262176-byte std430 SSBO at binding 0. Dispatch reset (
 The inspected Iris 1.21.1 source branch's ComputeProgram dispatch barrier includes shader storage, image access and texture fetch but not GL_COMMAND_BARRIER_BIT; IrisRenderSystem.dispatchComputeIndirect directly calls OpenGL. The exact Iris 1.8.8 build has not been verified here. Shader memoryBarrierBuffer() is not a substitute for a host command-fetch barrier. Do not enable indirect dispatch in the production pack until the pinned loader and the zero/full/sparse queue GPU readbacks are verified. The production incremental path retains fixed dispatch and workgroup-coherent dirty-mask rejection.
 
 No runtime GPU measurement or loader patch is claimed by this experiment.
+
+P16 production integration: current Iris 26.1 and 26.3 source branches include the command barrier. Modern MC >=26.1 / Iris >=1.11.7 uses the same queue format in prepare_d/e with shader/command barriers supplied by the loader. Legacy Iris retains the fixed grid. GPU readback still required.

@@ -10,6 +10,7 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 
 from package import P0_CONFIG, P0_SHARED, PREVIEW, PROBE
+from compatibility import DIMENSION_DEFINES
 
 STAGES = {".vsh": ".vert", ".fsh": ".frag", ".csh": ".comp"}
 INCLUDE = re.compile(r'\s*#\s*include\s+"([^"]+)"\s*')
@@ -272,8 +273,15 @@ def compiler_source(root, source, options, environment):
         for stage, value in RENDER_STAGES.items()
     )
     macros += "".join(f"#define {macro} 1\n" for macro in environment)
+    marker = DIMENSION_DEFINES.get(source.parent.name)
+    if marker and not re.search(rf"(?m)^#define {marker}(?:\s|$)",body):
+        macros += f"#define {marker}\n"
+    if "LW_TEST_LEGACY_IRIS" in environment:
+        macros += "#define MC_VERSION 12001\n"
+    elif "LW_TEST_MODERN_IRIS" not in environment:
+        macros += "#define MC_VERSION 12101\n"
     if "LW_TEST_MODERN_IRIS" in environment:
-        macros += "#define IRIS_VERSION 11107\n"
+        macros += "#define IRIS_VERSION 11107\n#define MC_VERSION 260300\n"
     if "DISTANT_HORIZONS" in environment and source.name == "dh_shadow.vsh":
         # Iris injects this attribute and mini-ID. Offline compile needs a declaration.
         macros += "#define DH_BLOCK_WATER 1\nin int dhMaterialId;\n"
@@ -433,8 +441,9 @@ def main():
         )
         compile_pack(args.compiler, PREVIEW, {"world-voxels-fallback": voxel_profiles["world-voxels"]})
         compile_pack(args.compiler, PREVIEW, {"modern-compaction": profiles["profile.Ultra"]},
-            [p for d in DIMENSIONS for p in (PREVIEW/d).glob("prepare*.csh")],
             environment=(*VOXEL_FEATURES,"IRIS_FEATURE_SSBO","LW_TEST_MODERN_IRIS"))
+        compile_pack(args.compiler, PREVIEW, {"legacy-1.20": profiles["profile.High"]},
+            environment=("LW_TEST_LEGACY_IRIS",))
 
         compile_pack(args.compiler, PREVIEW, {
             "research-ssr": {**profiles["profile.High"], "MATERIAL_SSR": "true"},
