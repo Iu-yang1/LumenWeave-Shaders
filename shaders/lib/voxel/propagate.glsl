@@ -7,6 +7,9 @@ layout(rgba16f) writeonly uniform image3D LW_VOXEL_WRITE;
 #ifdef LW_VOXEL_INCREMENTAL_ACTIVE
 #include "/lib/voxel/dirty_tiles.glsl"
 #include "/lib/voxel/cache_coordinates.glsl"
+#ifdef LW_GPU_COMPACTION
+#include "/lib/voxel/active_tiles.glsl"
+#endif
 #endif
 
 // 4^3 interior + six 4x4 faces. Corners/edges of the halo are
@@ -33,12 +36,16 @@ int stencilIndex(ivec3 p) {
 }
 
 void main() {
-#ifdef LW_VOXEL_INCREMENTAL_ACTIVE
+#if defined(LW_VOXEL_INCREMENTAL_ACTIVE) && !defined(LW_GPU_COMPACTION)
     if (!voxelTileNeedsUpdate(1)) {
         return;
     }
 #endif
+#ifdef LW_GPU_COMPACTION
+    ivec3 cell=activeTile(1)*4+ivec3(gl_LocalInvocationID);
+#else
     ivec3 cell = ivec3(gl_GlobalInvocationID);
+#endif
     ivec3 local = ivec3(gl_LocalInvocationID);
     ivec3 base = cell-local;
 #ifdef LW_VOXEL_INCREMENTAL_ACTIVE

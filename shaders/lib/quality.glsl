@@ -107,4 +107,7 @@
 #define LW_HIZ_ACTIVE
 #endif
 #endif
+#if defined(LW_VOXEL_INCREMENTAL_ACTIVE) && defined(IRIS_VERSION) && IRIS_VERSION >= 11107 && defined(IRIS_FEATURE_SSBO)
+#define LW_GPU_COMPACTION
+#endif
 #endif

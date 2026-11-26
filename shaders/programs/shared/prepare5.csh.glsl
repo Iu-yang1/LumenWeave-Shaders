@@ -43,15 +43,22 @@ vec3 gatherFace(ivec3 cell, ivec3 direction, vec3 localLight) {
 
 #ifdef LW_VOXEL_INCREMENTAL_ACTIVE
 #include "/lib/voxel/dirty_tiles.glsl"
+#ifdef LW_GPU_COMPACTION
+#include "/lib/voxel/active_tiles.glsl"
+#endif
 #endif
 
 void main() {
-#ifdef LW_VOXEL_INCREMENTAL_ACTIVE
+#if defined(LW_VOXEL_INCREMENTAL_ACTIVE) && !defined(LW_GPU_COMPACTION)
     if (!voxelTileNeedsUpdate(2)) {
         return;
     }
 #endif
+#ifdef LW_GPU_COMPACTION
+    ivec3 cell=activeTile(2)*4+ivec3(gl_LocalInvocationID);
+#else
     ivec3 cell = ivec3(gl_GlobalInvocationID);
+#endif
     vec3 bounce = vec3(0.0);
 #ifdef LW_VOXEL_INCREMENTAL_ACTIVE
     ivec3 storageCell=voxelCacheCell(cell);

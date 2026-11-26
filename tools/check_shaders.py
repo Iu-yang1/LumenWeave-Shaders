@@ -272,6 +272,8 @@ def compiler_source(root, source, options, environment):
         for stage, value in RENDER_STAGES.items()
     )
     macros += "".join(f"#define {macro} 1\n" for macro in environment)
+    if "LW_TEST_MODERN_IRIS" in environment:
+        macros += "#define IRIS_VERSION 11107\n"
     if "DISTANT_HORIZONS" in environment and source.name == "dh_shadow.vsh":
         # Iris injects this attribute and mini-ID. Offline compile needs a declaration.
         macros += "#define DH_BLOCK_WATER 1\nin int dhMaterialId;\n"
@@ -430,6 +432,10 @@ def main():
             environment=(*VOXEL_FEATURES, "MC_TEXTURE_FORMAT_LAB_PBR_1_3"),
         )
         compile_pack(args.compiler, PREVIEW, {"world-voxels-fallback": voxel_profiles["world-voxels"]})
+        compile_pack(args.compiler, PREVIEW, {"modern-compaction": profiles["profile.Ultra"]},
+            [p for d in DIMENSIONS for p in (PREVIEW/d).glob("prepare*.csh")],
+            environment=(*VOXEL_FEATURES,"IRIS_FEATURE_SSBO","LW_TEST_MODERN_IRIS"))
+
         compile_pack(args.compiler, PREVIEW, {
             "research-ssr": {**profiles["profile.High"], "MATERIAL_SSR": "true"},
             "research-ssr-gi": {**profiles["profile.Extreme"], "MATERIAL_SSR": "true", "DH_SHADOWS": "true", "PHYSICAL_ATMOSPHERE": "true", "INCREMENTAL_VOXELS": "true"},
