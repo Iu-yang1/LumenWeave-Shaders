@@ -341,17 +341,26 @@ vec3 resolveCurrent(ivec2 pixel, vec2 stableUv, vec3 position, vec2 normal, bool
         if(weights[i]<=0.00001) continue;
         bool match=all(equal(donor,pixel));
         if(!match && !water && !distant){
-            // Coplanar raw depth shortcut only for matching opaque ownership,
-            // material and normal. Depth variation uses the full check.
+            // Read native donor metadata once. Coplanar near terrain can
+            // skip inverse projection; sloped surfaces reuse the same
+            // depth and normal for the full geometric test.
             float d=texelFetch(depthtex0,donor,0).r;
             vec4 md=texelFetch(colortex2,donor,0);
             vec4 g=texelFetch(colortex1,donor,0);
-            match=d<1.0 && g.z!=-1.0 && abs(d-md.x)<=0.00000012 &&
-                abs(d-texelFetch(depthtex1,donor,0).r)<=0.00000012 &&
-                md.y==sourceMaterial && abs(d-sourceDepth)<=0.00000012 &&
-                dot(referenceNormal,decodeNormal(g.xy))>0.96;
-        }
-        if(!match){
+            if(d<1.0 && g.z!=-1.0 && abs(d-md.x)<=0.00000012 &&
+                abs(d-texelFetch(depthtex1,donor,0).r)<=0.00000012){
+                float alignment=dot(referenceNormal,decodeNormal(g.xy));
+                if(alignment>=0.75){
+                    match=md.y==sourceMaterial && abs(d-sourceDepth)<=0.00000012 &&
+                        alignment>0.96 && -position.z<64.0;
+                    if(!match){
+                        vec2 uv=(vec2(donor)+0.5)/vec2(lowSize);
+                        vec3 p=reconstructViewPosition(uv,d);
+                        match=abs(p.z-position.z)<=max(0.10,-position.z*0.035);
+                    }
+                }
+            }
+        }else if(!match){
             vec2 uv=(vec2(donor)+0.5)/vec2(lowSize);
             vec3 p;vec2 n;mat4 prev;bool donorWater;
             match=temporalGeometry(donor,uv,p,n,prev,donorWater) && donorWater==water &&

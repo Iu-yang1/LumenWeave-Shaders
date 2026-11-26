@@ -21,7 +21,7 @@ vec3 lwLensOptics(sampler2D source,vec2 uv,vec3 scene){
     vec2 radial=(uv-0.5)*size;
     radial=length(radial)>0.001?normalize(radial):vec2(1.0,0.0);
     vec2 tangent=vec2(-radial.y,radial.x);
-    float radius=(3.5*idle+2.0*edge)*scale;
+    float radius=(6.0*idle+2.0*edge)*scale;
     vec2 delta=radial*texel*radius;
     vec2 crossDelta=tangent*texel*radius;
     vec2 lo=texel*0.5,hi=1.0-lo;
@@ -33,6 +33,6 @@ vec3 lwLensOptics(sampler2D source,vec2 uv,vec3 scene){
     // Use the radial donors for subtle wavelength separation; do not darken.
     // Opposed signed differences preserve a constant-color image.
     soft+=vec3(b.r-a.r,0.0,a.b-b.b)*(0.18*edge);
-    float amount=clamp(idle*0.85+edge*0.6,0.0,0.85);
+    float amount=clamp(idle*1.2+edge*0.6,0.0,0.85);
     return mix(scene,max(soft,vec3(0.0)),amount);
 }
