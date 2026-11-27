@@ -5,6 +5,7 @@
 
 #include "/lib/voxel/dispatch.glsl"
 layout(r32ui) readonly uniform uimage3D lwVoxelOccupancy;
+#include "/lib/voxel/seed_source.glsl"
 layout(rgba16f) readonly uniform image3D lwVoxelFirst;
 layout(rgba16f) writeonly uniform image3D lwVoxelSecond;
 
@@ -23,13 +24,13 @@ vec3 gatherFace(ivec3 cell, ivec3 direction, vec3 localLight) {
     if (!withinVoxelGrid(neighbor)) {
         return vec3(0.0);
     }
-    uint seed = imageLoad(lwVoxelOccupancy, neighbor).r;
+    uint seed = voxelSeedAt(neighbor);
     if (seed >= LW_VOXEL_WALL) {
         return wallReflectance(seed) * localLight;
     }
     ivec3 farther = neighbor + direction;
     if (withinVoxelGrid(farther)) {
-        seed = imageLoad(lwVoxelOccupancy, farther).r;
+        seed = voxelSeedAt(farther);
         if (seed >= LW_VOXEL_WALL) {
 #ifdef LW_VOXEL_INCREMENTAL_ACTIVE
             return wallReflectance(seed)*imageLoad(lwVoxelFirst,voxelCacheCell(neighbor)).rgb*0.35;
@@ -73,7 +74,8 @@ void main() {
         return;
     }
     #endif
-    if (imageLoad(lwVoxelOccupancy, cell).r < LW_VOXEL_WALL) {
+    initializeVoxelSeedSource();
+    if (voxelSeedAt(cell) < LW_VOXEL_WALL) {
         vec3 localLight = imageLoad(lwVoxelFirst, storageCell).rgb;
         for (int axis = 0; axis < 6; ++axis) {
             bounce += gatherFace(cell, LW_VOXEL_DIRECTIONS[axis], localLight);

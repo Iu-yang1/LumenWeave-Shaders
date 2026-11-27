@@ -13,7 +13,16 @@
 #define PROJECTION_JITTER 0 // [0 1 2]
 //#define INCREMENTAL_VOXELS
 #define VOXEL_FUSION 1 // [0 1]
-#define EXTENSION_VOXELS 0 // [0 1]
+#define EXTENSION_VOXELS 0 // [0 1 2]
+#define FRAME_LIGHTING_REUSE 1 // [0 1]
+#define SURFACE_REUSE 1 // [0 1]
+#define GI_HISTORY_MODE 0 // [0 1]
+#define GI_EDGE_RECONSTRUCTION 0 // [0 1]
+#define LW_DEFERRED_DIAGNOSTIC 0 // [0 1 2 3 4 5 6 7 8]
+#define WEATHER_COUPLING 1 // [0 1]
+#define WIND_DIRECTION 35.0 // [0.0 35.0 90.0 135.0 180.0 225.0 270.0 315.0]
+#define WIND_GUSTS 0.65 // [0.0 0.35 0.65 1.0]
+#define COLOR_STYLE 0 // [0 1 2]
 //#define PHYSICAL_ATMOSPHERE
 //#define MATERIAL_SSR
 #define HIZ_MODE 1 // [0 1 2]
@@ -151,7 +160,7 @@
 #ifdef INCREMENTAL_VOXELS
 #if defined(VOXEL_LIGHTING) && defined(IRIS_FEATURE_CUSTOM_IMAGES) && defined(IRIS_FEATURE_COMPUTE_SHADERS) && defined(IRIS_FEATURE_BLOCK_EMISSION_ATTRIBUTE) && defined(IRIS_FEATURE_REVERSED_CULLING)
 #define LW_VOXEL_INCREMENTAL_ACTIVE
-#if EXTENSION_VOXELS == 1
+#if EXTENSION_VOXELS > 0
 #define LW_EXTERNAL_VOXEL_ACTIVE
 #endif
 #endif
@@ -220,6 +229,10 @@
 #endif
 #if AA_MODE == 1 || AA_MODE == 3 || (AA_MODE == 2 && !defined(DEFERRED_LIGHTING))
 #define LW_FXAA_ACTIVE
+#endif
+
+#if GI_HISTORY_MODE == 1 && defined(SCREEN_GI) && defined(SCREEN_GI_SPATIAL) && defined(SCREEN_GI_HISTORY) && defined(LW_TAA_ACTIVE) && !defined(LW_DYNAMIC_JITTER) && PROJECTION_JITTER != 2
+#define LW_HALF_GI_HISTORY
 #endif
 
 // Fixed-grid and no-TAA paths share the unused ownership attachment.

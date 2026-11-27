@@ -7,6 +7,7 @@
 #include "/lib/voxel/active_tiles.glsl"
 #endif
 layout(r32ui) readonly uniform uimage3D lwVoxelOccupancy;
+#include "/lib/voxel/seed_source.glsl"
 #include "/lib/voxel/packed_field.glsl"
 #ifdef LW_PAIR_SOURCE_SEED
 layout(r16ui) readonly uniform uimage3D LW_VOXEL_READ;
@@ -60,6 +61,7 @@ void main() {
         pairWrite(voxelWrapNear(base+local+pairOrigin),vec4(0.0));
         return;
     }
+    initializeVoxelSeedSource();
     for(int i=lane;i<512;i+=64) {
         ivec3 p=pairCell(i,8)-2;
         if(pairHaloDistance(p)>2) continue;
@@ -74,7 +76,7 @@ void main() {
         if(pairHaloDistance(p-1)>1) continue;
         ivec3 cell=base+p-1;
         uint seed=LW_VOXEL_WALL;
-        if(withinVoxelGrid(cell)) seed=imageLoad(lwVoxelOccupancy,cell).r;
+        if(withinVoxelGrid(cell)) seed=voxelSeedAt(cell);
         pairSeeds[i]=seed;
         vec4 incoming=vec4(0.0);
         if(seed<LW_VOXEL_WALL) {

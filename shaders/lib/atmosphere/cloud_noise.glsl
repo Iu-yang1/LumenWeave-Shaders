@@ -1,5 +1,6 @@
 #ifndef LW_CLOUD_NOISE
 #define LW_CLOUD_NOISE
+#include "/lib/weather/state.glsl"
 float cloudHash(vec2 cell) {
     vec3 hash = fract(vec3(cell.xyx) * 0.1031);
     hash += dot(hash, hash.yzx + 33.33);
@@ -28,6 +29,6 @@ float cloudNoise(vec2 position) {
 #endif
 }
 vec2 cloudNoisePosition(vec3 position) {
-    return (position.xz+frameTimeCounter*vec2(1.1,0.40))*0.017;
+    return cloudWindPosition(position.xz,frameTimeCounter)*0.017;
 }
 #endif

@@ -13,6 +13,12 @@ vec3 sharpenScene(sampler2D image, vec2 uv, vec3 center) {
 }
 
 vec3 gradeRadiance(vec3 radiance) {
+#if COLOR_STYLE == 1
+    radiance*=vec3(1.035,1.005,0.965);
+#elif COLOR_STYLE == 2
+    float neutral=luminance(radiance);
+    radiance=mix(vec3(neutral),radiance,0.88);
+#endif
     radiance *= vec3(1.0 + WHITE_BALANCE, 1.0, 1.0 - WHITE_BALANCE);
     float brightness = luminance(radiance);
     radiance = mix(vec3(brightness), radiance, COLOR_SATURATION);

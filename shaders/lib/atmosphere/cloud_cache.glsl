@@ -1,10 +1,10 @@
 #ifndef LW_CLOUD_CACHE_COORDS
 #define LW_CLOUD_CACHE_COORDS
+#include "/lib/weather/state.glsl"
 // 512 cells spaced three blocks apart, snapped in 32-cell increments.
 // Wind is part of the world coordinate, not a reason to rebuild the map.
 ivec2 cloudCacheOrigin() {
-    vec2 center=vec2(cameraPositionInt.xz)+cameraPositionFract.xz
-        +frameTimeCounter*vec2(1.1,0.40);
+    vec2 center=cloudWindPosition(vec2(cameraPositionInt.xz)+cameraPositionFract.xz,frameTimeCounter);
     return ivec2(floor(center/96.0))*32-ivec2(256);
 }
 ivec2 cloudWrap(ivec2 p) { return p & ivec2(511); }

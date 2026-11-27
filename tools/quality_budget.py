@@ -23,6 +23,12 @@ def resource_budget(options, width, height):
     voxel_bytes = 20 * size ** 3 if enabled("VOXEL_LIGHTING") else 0
     if voxel_bytes and enabled("INCREMENTAL_VOXELS"):
         voxel_bytes += (18 if options.get("VOXEL_FUSION", "1") == "1" else 34) * size ** 3 + 128 * 32 * 32 + 16
+    bridge_bytes=0
+    if voxel_bytes and enabled("INCREMENTAL_VOXELS") and options.get("EXTENSION_VOXELS","0")!="0":
+        bridge_bytes=4*size**2
+        if options["EXTENSION_VOXELS"]=="2":
+            bridge_bytes+=4*size**2*(size+(size+63)//64)
+        voxel_bytes+=bridge_bytes
     smooth_bytes=8*size**2*(size+5) if voxel_bytes and enabled("INCREMENTAL_VOXELS") and enabled("SMOOTH_LIGHTING") else 0
     rain_column_bytes=8*size**2 if voxel_bytes and enabled("INCREMENTAL_VOXELS") and enabled("WET_SURFACES") and options.get("RAIN_GEOMETRY","1")=="1" and not smooth_bytes else 0
     voxel_bytes+=rain_column_bytes
@@ -45,6 +51,9 @@ def resource_budget(options, width, height):
     volume_noise=1024**2 if enabled("VOLUME_EFFECTS") and options.get("CLOUD_NOISE_MODE")=="1" else 0
     volume_history=8*int(width*1.5)*height if enabled("VOLUME_EFFECTS") and taa and jitter_mode==1 and options.get("VOLUME_RECONSTRUCTION")=="1" and options.get("VOLUME_TEMPORAL")=="1" and not (enabled("TEMPORAL_REUSE") and enabled("SCREEN_GI") and enabled("SCREEN_GI_SPATIAL") and enabled("SCREEN_GI_HISTORY") and options.get("GI_REUSE_MODE")=="2") and not legacy_full else 0
     cloud_cache=bool(enabled("VOLUME_EFFECTS") and options.get("CLOUD_NOISE_MODE")=="1" and options.get("CLOUD_DENSITY_CACHE")=="1" and not (voxel_bytes and enabled("INCREMENTAL_VOXELS") and enabled("PHYSICAL_ATMOSPHERE") and (options.get("VOXEL_FUSION")=="0" or options.get("ATMO_PREBAKED")=="0")))
+    gi_history=enabled("DEFERRED_LIGHTING") and enabled("SCREEN_GI") and enabled("SCREEN_GI_HISTORY")
+    half_gi=gi_history and enabled("SCREEN_GI_SPATIAL") and taa and jitter_mode!=2 and options.get("GI_HISTORY_MODE","0")=="1"
+    gi_history_bytes=16*(width//2)*(height//2) if half_gi else 16*width*height if gi_history else 0
     return {
         "water_normal_mib": 66*100*2/MIB if options.get("WATER_HYBRID_WAVES","1")=="1" else 0,
         "opaque_hdr_single_mib": width*height*4/MIB if enabled("DEFERRED_LIGHTING") and enabled("ADVANCED_WATER") else 0,
@@ -55,6 +64,9 @@ def resource_budget(options, width, height):
         "volume_history_mib": volume_history/MIB,
         "hiz_mib": hiz_bytes / MIB,
         "voxel_mib": voxel_bytes / MIB,
+        "extension_extra_mib": bridge_bytes / MIB,
+        "gi_history_single_mib": gi_history_bytes / MIB,
+        "gi_history_double_mib": 2*gi_history_bytes / MIB,
         "voxel_smooth_mib": smooth_bytes / MIB,
         "voxel_diffuse_smooth_mib": diffuse_smooth_bytes / MIB,
         "rain_column_extra_mib":rain_column_bytes/MIB,

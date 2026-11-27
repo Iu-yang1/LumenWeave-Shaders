@@ -9,6 +9,7 @@ layout(rgba16f) uniform image3D lwVoxelFirst;
 layout(rgba16f) uniform image3D lwVoxelSecond;
 #endif
 layout(r32ui) readonly uniform uimage3D lwVoxelOccupancy;
+#include "/lib/voxel/seed_source.glsl"
 layout(rgba32i) readonly uniform iimage2D lwVoxelMeta;
 layout(r8ui) uniform uimage3D lwVoxelDirtyTiles;
 uniform int frameCounter;
@@ -73,6 +74,7 @@ void main(){
         }
         return;
     }
+    initializeVoxelSeedSource();
     ivec3 local=tile*4+ivec3(gl_LocalInvocationID);
     ivec3 cell=voxelWrapNear(local+origin);
     ivec3 historyCell=cell+ivec3(0,0,LW_GRID_SIZE);
@@ -83,7 +85,7 @@ void main(){
     float decay=dot(target.rgb,vec3(0.2126,0.7152,0.0722))>dot(old.rgb,vec3(0.2126,0.7152,0.0722))?directDecay.x:directDecay.y;
     vec4 value=mix(target,old,decay);
     // New opaque walls must never retain old light. Quantize tiny tails to zero.
-    bool wall=imageLoad(lwVoxelOccupancy,local).r>=LW_VOXEL_WALL;
+    bool wall=voxelSeedAt(local)>=LW_VOXEL_WALL;
     if(wall) value=vec4(0.0);
     bool pending;
     value=settleHistory(value,target,old,wall,pending);

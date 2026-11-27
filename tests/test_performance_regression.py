@@ -76,7 +76,7 @@ class PerformanceRegressionTests(unittest.TestCase):
                 self.assertIn(f"program.{dimension}/{stage}.enabled = false", props)
         source = (ROOT/"lib/voxel/propagate.glsl").read_text()
         self.assertNotIn("atomicOr", source)
-        self.assertLess(source.index("if((tileMask&4u)==0u)"), source.index("uint seed = imageLoad"))
+        self.assertLess(source.index("if((tileMask&4u)==0u)"), source.index("uint seed = voxelSeedAt"))
 
     def test_shared_depth_prepass(self):
         stage = (ROOT/"programs/shared/deferred_a.csh.glsl").read_text()

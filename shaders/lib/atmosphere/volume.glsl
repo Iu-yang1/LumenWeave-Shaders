@@ -55,7 +55,7 @@ float cachedCloudDensity(vec3 position,float detail) {
     float h=(position.y-156.0)/18.0;
     float layer=smoothstep(0.0,0.24,h)*(1.0-smoothstep(0.55,1.0,h));
     if(layer<=0.0) return 0.0;
-    vec2 shape=cloudShapeAt(position.xz+frameTimeCounter*vec2(1.1,0.40));
+    vec2 shape=cloudShapeAt(cloudWindPosition(position.xz,frameTimeCounter));
     return layer*smoothstep(mix(0.48,0.34,rainStrength),0.78,shape.x+mix(0.05,shape.y,detail));
 }
 #endif

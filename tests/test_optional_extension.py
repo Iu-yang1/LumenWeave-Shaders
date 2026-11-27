@@ -11,7 +11,7 @@ from check_shaders import preview_profiles
 class OptionalExtensionTests(unittest.TestCase):
     def test_all_profiles_preserve_standalone_default(self):
         quality = (ROOT / "shaders/lib/quality.glsl").read_text(encoding="utf-8")
-        self.assertIn("#define EXTENSION_VOXELS 0 // [0 1]", quality)
+        self.assertIn("#define EXTENSION_VOXELS 0 // [0 1 2]", quality)
         for name, options in preview_profiles(ROOT / "shaders").items():
             with self.subTest(profile=name):
                 self.assertEqual(options.get("EXTENSION_VOXELS", "0"), "0")
@@ -28,5 +28,5 @@ class OptionalExtensionTests(unittest.TestCase):
         begin = (ROOT / "shaders/programs/shared/begin.csh.glsl").read_text(encoding="utf-8")
         injection = (ROOT / "shaders/lib/voxel/inject.glsl").read_text(encoding="utf-8")
         self.assertIn("imageStore(lwVoxelOccupancy,lwExternalSeedFlagAddress(),uvec4(0u))", begin)
-        self.assertIn("if(imageLoad(lwVoxelOccupancy,lwExternalSeedFlagAddress()).r==1u) return;", injection)
+        self.assertIn("if(imageLoad(lwVoxelOccupancy,lwExternalSeedFlagAddress()).r==uint(EXTENSION_VOXELS)) return;", injection)
         self.assertIn("imageAtomicMax(lwVoxelOccupancy, cell, seed)", injection)
