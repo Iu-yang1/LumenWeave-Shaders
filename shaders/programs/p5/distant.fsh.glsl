@@ -8,6 +8,8 @@
 #endif
 #ifdef LW_DH_WATER
 #include "/lib/water/surface.glsl"
+uniform sampler2D dhDepthTex1;
+uniform mat4 dhProjectionInverse;
 #endif
 
 in vec3 viewPosition;
@@ -82,8 +84,20 @@ void main() {
         vec3 air = dot(airDirection, airDirection) > 0.0 ? skyRadiance(airDirection, sun) : lit;
         lit = mix(air, lit, fresnel);
     } else {
-        lit = mix(lit, skyRadiance(reflected, sun), fresnel)
-            + waterSunGlint(normal, eyeDirection, sun, smoothstep(0.56, 1.0, lightLevels.y) * shadow);
+        vec2 uv=gl_FragCoord.xy/vec2(lwRasterSize(dhDepthTex1));
+        ivec2 pixel=depthPixelAtUv(dhDepthTex1,uv);
+        float depth=texelFetch(dhDepthTex1,pixel,0).r;
+        float thickness=48.0;
+        if(depth<1.0) {
+            vec3 background=reconstructProjection(depthPixelUv(dhDepthTex1,pixel),depth,dhProjectionInverse,true);
+            thickness=clamp(dot(background-viewPosition,normalize(viewPosition)),0.0,48.0);
+        }
+        float opacity=1.0-luminance(exp(-waterExtinction()*thickness));
+        float alpha=max(mix(opacity,1.0,fresnel),0.001);
+        lit=(lit*opacity*(1.0-fresnel)+skyRadiance(reflected,sun)*fresnel
+            +waterSunGlint(normal,eyeDirection,sun,smoothstep(0.56,1.0,lightLevels.y)*shadow))/alpha;
+        outputColor=vec4(applySceneFog(lit,viewPosition),alpha);
+        return;
     }
 #endif
     outputColor = vec4(applySceneFog(lit, viewPosition), vertexColor.a);

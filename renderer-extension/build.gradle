@@ -1,8 +1,22 @@
 plugins {
-    id 'net.fabricmc.fabric-loom' version '1.15.4'
+    id 'net.fabricmc.fabric-loom' version '1.15.4' apply false
+    id 'net.fabricmc.fabric-loom-remap' version '1.15.4' apply false
 }
-version = '0.1.0-alpha.3'
+def targets = [
+    '1.20.1': [java: 17, sodium: '~0.5.11', loader: '0.16.5', legacy: true],
+    '1.21.1': [java: 21, sodium: '~0.6.13', loader: '0.16.5', legacy: true],
+    '26.1.2': [java: 25, sodium: '0.9.2', loader: '0.19.3', legacy: false]
+]
+def targetVersion = providers.gradleProperty('target').getOrElse('26.1.2')
+if (!targets.containsKey(targetVersion)) {
+    throw new GradleException("Unsupported target ${targetVersion}; select ${targets.keySet()}")
+}
+def targetConfig = targets[targetVersion]
+apply plugin: targetConfig.legacy ? 'net.fabricmc.fabric-loom-remap' : 'net.fabricmc.fabric-loom'
+version = '0.1.0-alpha.5'
 group = 'io.lumenweave'
+base.archivesName = "lumenweave-renderer-mc${targetVersion}"
+layout.buildDirectory = layout.projectDirectory.dir("build/${targetVersion}")
 repositories {
     mavenCentral()
     maven { url = 'https://maven.caffeinemc.net/releases' }
@@ -17,21 +31,45 @@ loom {
     }
 }
 dependencies {
-    minecraft 'com.mojang:minecraft:26.1.2'
-    implementation 'net.fabricmc:fabric-loader:0.19.3'
-    compileOnly 'net.caffeinemc:sodium-fabric:0.9.2+mc26.1.2'
+    minecraft "com.mojang:minecraft:${targetVersion}"
+    if (targetConfig.legacy) {
+        mappings loom.officialMojangMappings()
+        modImplementation "net.fabricmc:fabric-loader:${targetConfig.loader}"
+    } else {
+        implementation "net.fabricmc:fabric-loader:${targetConfig.loader}"
+        compileOnly 'net.caffeinemc:sodium-fabric:0.9.2+mc26.1.2'
+    }
 }
+sourceSets.client.java.setSrcDirs([
+    'src/clientShared/java',
+    targetConfig.legacy ? 'src/clientLegacy/java' : 'src/client/java',
+    targetVersion == '1.20.1' ? 'src/client120/java' : 'src/clientChunkPos/java'
+])
 java {
     toolchain.languageVersion = JavaLanguageVersion.of(25)
     withSourcesJar()
 }
 tasks.withType(JavaCompile).configureEach {
     options.encoding = 'UTF-8'
-    options.release = 25
+    options.release = targetConfig.java
 }
 processResources {
     inputs.property 'version', project.version
-    filesMatching('fabric.mod.json') { expand(version: project.version) }
+    inputs.property 'target', targetVersion
+    inputs.property 'javaVersion', targetConfig.java
+    inputs.property 'sodiumVersion', targetConfig.sodium
+    inputs.property 'loaderVersion', targetConfig.loader
+    filesMatching('fabric.mod.json') {
+        expand(version: project.version, minecraft: targetVersion,
+            javaVersion: targetConfig.java, sodiumVersion: targetConfig.sodium,
+            loaderVersion: targetConfig.loader)
+    }
+    filesMatching('lumenweave-renderer.mixins.json') {
+        filter { line ->
+            if (targetConfig.legacy && line.contains('"SodiumSectionMixin"')) return null
+            line.replace('JAVA_25', "JAVA_${targetConfig.java}")
+        }
+    }
     from('gpu') { include 'materialize_external_seeds.comp'; into 'lumenweave' }
 }
 tasks.register('coreRegression', JavaExec) {
@@ -55,12 +93,20 @@ sourceSets {
 dependencies {
     ['lwjgl','lwjgl-glfw','lwjgl-opengl'].each { module ->
         gpuSmokeImplementation "org.lwjgl:${module}:3.3.6"
-        gpuSmokeRuntimeOnly "org.lwjgl:${module}:3.3.6:natives-linux"
+        def nativePlatform = System.getProperty('os.name').toLowerCase().contains('windows') ? 'windows' : 'linux'
+        gpuSmokeRuntimeOnly "org.lwjgl:${module}:3.3.6:natives-${nativePlatform}"
     }
 }
 tasks.register('gpuSmokeTest', JavaExec) {
     dependsOn gpuSmokeClasses, clientClasses
     classpath = sourceSets.gpuSmoke.runtimeClasspath
     mainClass = 'io.lumenweave.renderer.client.NativeGpuSmoke'
+    workingDir = project.projectDir
+}
+tasks.register('gpuCompatSmokeTest', JavaExec) {
+    dependsOn gpuSmokeClasses, clientClasses
+    classpath = sourceSets.gpuSmoke.runtimeClasspath
+    mainClass = 'io.lumenweave.renderer.client.NativeGpuSmoke'
+    args '--compat-context'
     workingDir = project.projectDir
 }

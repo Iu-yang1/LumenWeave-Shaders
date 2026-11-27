@@ -4,3 +4,7 @@
 /docs/
 /.ruff_cache/
 __pycache__/
+/renderer-extension/.gradle/
+/renderer-extension/build/
+/renderer-extension/hs_err_pid*.log
+/renderer-extension/replay_pid*.log

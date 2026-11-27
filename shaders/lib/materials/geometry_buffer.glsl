@@ -10,3 +10,7 @@ vec3 decodeNormal(vec2 encoded) {
     normal.xy -= octant * max(-normal.z, 0.0);
     return normalize(normal);
 }
+
+float geometryNormalAlignment(vec3 normal, vec2 encoded, vec2 donor) {
+    return all(equal(encoded, donor)) ? 1.0 : dot(normal, decodeNormal(donor));
+}

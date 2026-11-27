@@ -23,6 +23,8 @@ bool fullCloudSlab(float height,vec3 direction,float depth,out vec2 interval){
 
 vec4 temporalCelestialVolume(ivec2 p,ivec2 size,vec3 direction,float depth,bool volumeVisible) {
     vec3 sun=sunDirection();
+    float sunHorizontal=abs(sun.x)>abs(sun.z) ? sun.x : sun.z;
+    float sunPhase=atan(sun.y,sign(sunHorizontal)*length(sun.xz));
     vec3 origin=vec3(cameraPositionInt)+cameraPositionFract;
     if(any(lessThan(imageSize(lwVolumeHistory),size*ivec2(3,2)))) {
         return volumeVisible ? celestialVolumeTransfer(direction,depth) : vec4(0,0,0,1);
@@ -77,8 +79,10 @@ vec4 temporalCelestialVolume(ivec2 p,ivec2 size,vec3 direction,float depth,bool 
                     // Depth, time, weather and light direction compatibility.
                     bool depthCompatible=translated ? meta.r>previousInterval.y+2.0 :
                         abs(meta.r-min(depth,640.0))<max(0.15,min(depth,640.0)*0.01);
+                    float sunChange=abs(meta.g-sunPhase);
+                    sunChange=min(sunChange,6.2831853-sunChange);
                     if(donorAligned && abs(meta.a)==volumeFrameTag(frameCounter-1) && depthCompatible &&
-                       abs(meta.g-sun.y)<0.002 && abs(meta.b-rainStrength)<0.005) {
+                       sunChange<0.004 && abs(meta.b-rainStrength)<0.005) {
                         priorShaft=imageLoad(lwVolumeHistory,volumeHistoryPixel(donor,size,1,previousParity));
                         valid=abs(priorShaft.a-windTime)<0.09;
                         if(valid) {
@@ -111,6 +115,6 @@ vec4 temporalCelestialVolume(ivec2 p,ivec2 size,vec3 direction,float depth,bool 
         imageStore(lwVolumeHistory,volumeHistoryPixel(p,size,1,parity),vec4(shaft,windTime));
     }
     imageStore(lwVolumeHistory,volumeHistoryPixel(p,size,2,parity),
-        vec4(min(depth,640.0),sun.y,rainStrength,historyAllowed ? (reuseCloud ? -tag : tag) : 0.0));
+        vec4(min(depth,640.0),sunPhase,rainStrength,historyAllowed ? (reuseCloud ? -tag : tag) : 0.0));
     return vec4(cloud.rgb+shaft,cloud.a);
 }

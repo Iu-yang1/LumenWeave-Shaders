@@ -1,7 +1,6 @@
 package io.lumenweave.renderer.client;
 
 import io.lumenweave.renderer.core.*;
-import org.lwjgl.opengl.GL45C;
 import org.lwjgl.system.MemoryUtil;
 import java.nio.IntBuffer;
 import java.nio.ShortBuffer;

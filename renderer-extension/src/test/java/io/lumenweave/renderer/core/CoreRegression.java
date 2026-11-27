@@ -6,8 +6,36 @@ public final class CoreRegression {
     static void check(boolean ok,String message){if(!ok)throw new AssertionError(message);}
     static SectionStore.Key key(int x,int y,int z){return new SectionStore.Key(x,y,z);}
     public static void main(String[] args){
-        sections(); drawLists(); shadows(); pages(); backend(); randomized(); atlas(); framePlanner();
-        System.out.println("Renderer core: 8 regression groups passed");
+        sections(); stationarySections(); drawLists(); shadows(); pages(); backend(); randomized(); atlas(); framePlanner();
+        System.out.println("Renderer core: 9 regression groups passed");
+    }
+    static void stationarySections(){
+        var store=new SectionStore();var active=key(0,0,0);var outside=key(1,0,0);
+        var window=new SectionStore.Window(0,0,0,16);
+        store.ensureLoaded(active);
+        var first=store.update(window,k->new int[]{SectionStore.entry(0,0,0,17)});
+        SectionStore.Source unused=k->{throw new AssertionError("stationary source read");};
+        var idle=store.update(window,unused);
+        check(idle.upserts().isEmpty()&&idle.removals().isEmpty()&&idle.epoch()==first.epoch(),"do not replay writes");
+        check(store.update(window,unused)==idle,"reuse idle transaction");
+        store.ensureLoaded(active);
+        check(store.update(window,unused)==idle,"existing membership preserves idle");
+        store.added(outside);
+        store.update(window,unused);
+        var moved=store.update(new SectionStore.Window(16,0,0,16),k->new int[0]);
+        check(moved.complete()&&moved.upserts().size()==1&&moved.removals().contains(active),"window invalidation");
+        store.removed(outside);
+        var missing=store.update(moved.window(),unused);
+        check(!missing.complete(),"unload invalidation");
+        store.ensureLoaded(outside);
+        check(store.update(moved.window(),k->null).missing().contains(outside),"temporarily unavailable source");
+        check(store.update(moved.window(),k->new int[0]).complete(),"retry missing without lifecycle event");
+        store.changed(outside);
+        check(store.update(moved.window(),k->new int[]{SectionStore.entry(1,0,0,18)}).upserts().size()==1,"block invalidation");
+        store.invalidateMaterials();
+        check(store.update(moved.window(),k->new int[]{SectionStore.entry(1,0,0,19)}).upserts().size()==1,"material invalidation");
+        store.reset();
+        check(!store.update(window,unused).complete(),"reset invalidation");
     }
     static void sections(){
         var store=new SectionStore();var a=key(-1,0,0);var b=key(0,0,0);
@@ -16,7 +44,7 @@ public final class CoreRegression {
         SectionStore.Source source=k->{reads[0]++;return seed;};
         var first=store.update(window,source);
         check(first.complete()&&first.upserts().size()==1&&reads[0]==1,"first");
-        seed[0]=0;check(first.upserts().getFirst().entries()[0]!=0,"immutable");
+        seed[0]=0;check(first.upserts().get(0).entries()[0]!=0,"immutable");
         check(store.update(window,source).upserts().isEmpty()&&reads[0]==1,"stationary");
         check(store.fullSnapshot().upserts().size()==1&&store.fullSnapshot().epoch()==first.epoch(),"backend rehydration");
         store.changed(a);seed[0]=SectionStore.entry(1,1,1,17);
@@ -99,14 +127,14 @@ public final class CoreRegression {
         check(first.work().size()==2&&first.allocation().render().size()==2,"initial pages");
         planner.complete(first.ticket(),first.allocation().render(),required.keySet());
         var second=planner.plan(basis,required,List.of(),List.of(fixed));
-        check(second.work().size()==1&&second.work().getFirst().tile().equals(a),"old dynamic cleared");
-        check(!second.work().getFirst().redrawStatic()&&second.work().getFirst().clearDynamic(),"static reused");
+        check(second.work().size()==1&&second.work().get(0).tile().equals(a),"old dynamic cleared");
+        check(!second.work().get(0).redrawStatic()&&second.work().get(0).clearDynamic(),"static reused");
         planner.complete(second.ticket(),Set.of(),Set.of());
         var retry=planner.plan(basis,required,List.of(),List.of(fixed));
-        check(retry.work().size()==1&&retry.work().getFirst().clearDynamic(),"failed dynamic clear retries");
+        check(retry.work().size()==1&&retry.work().get(0).clearDynamic(),"failed dynamic clear retries");
         planner.complete(retry.ticket(),Set.of(),Set.of(a));
         var third=planner.plan(basis,required,List.of(bounds),List.of(fixed));
-        check(third.allocation().render().equals(Set.of(a))&&third.work().getFirst().staticDraws().size()==1,"dirty caster");
+        check(third.allocation().render().equals(Set.of(a))&&third.work().get(0).staticDraws().size()==1,"dirty caster");
         planner.complete(third.ticket(),Set.of(),Set.of(a));
         check(planner.plan(basis,required,List.of(),List.of(fixed)).allocation().render().equals(Set.of(a)),"failed raster not valid");
     }

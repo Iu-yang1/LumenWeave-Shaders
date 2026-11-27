@@ -3,7 +3,7 @@ uniform sampler2D colortex9;
 uniform sampler2D colortex10;
 #endif
 
-ScreenBounce spatialScreenBounce(vec3 viewPosition, vec3 normal, vec3 sun, vec2 uv) {
+ScreenBounce spatialScreenBounce(vec3 viewPosition, vec3 normal, vec2 encodedNormal, vec3 sun, vec2 uv) {
     float sceneDepth = -viewPosition.z;
     ScreenBounce bounce = ScreenBounce(vec3(0.0), vec3(0.0), 0.0);
     if (sceneDepth >= 30.0) {
@@ -51,8 +51,7 @@ ScreenBounce spatialScreenBounce(vec3 viewPosition, vec3 normal, vec3 sun, vec2 
                 continue;
             }
             ivec2 pixel = ivec2((vec2(texel) + 0.5) * vec2(fullSize) / vec2(traceSize));
-            vec3 donorNormal = decodeNormal(texelFetch(colortex1, pixel, 0).xy);
-            float alignment=dot(normal,donorNormal);
+            float alignment=geometryNormalAlignment(normal,encodedNormal,texelFetch(colortex1,pixel,0).xy);
             if (alignment <= 0.82) {
                 continue;
             }

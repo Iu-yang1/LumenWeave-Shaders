@@ -3,7 +3,7 @@
 uniform sampler2D colortex6;
 uniform sampler2D colortex7;
 
-vec3 temporalScreenBounce(vec3 current, vec3 viewPosition, vec3 normal, vec2 uv) {
+vec3 temporalScreenBounce(vec3 current, vec3 viewPosition, vec3 normal, vec2 encodedNormal, vec2 uv) {
     vec2 previousUv;
     float expectedDepth;
 #ifdef LW_STABLE_DYNAMIC
@@ -15,6 +15,20 @@ vec3 temporalScreenBounce(vec3 current, vec3 viewPosition, vec3 normal, vec2 uv)
         return current;
     }
     ivec2 size = lwRasterSize(colortex6);
+#if APPROX_REUSE == 1
+    if (length((previousUv - uv) * vec2(size)) < 0.20) {
+        ivec2 nearest = clamp(ivec2(previousUv * vec2(size)), ivec2(0), size - 1);
+        vec4 history = texelFetch(colortex6, nearest, 0);
+        vec4 metadata = texelFetch(colortex7, nearest, 0);
+        if (matchesHistoryDepth(history.a, expectedDepth) &&
+            all(lessThanEqual(abs(metadata.zw - vec2(size)), vec2(1.0))) &&
+            geometryNormalAlignment(normal, encodedNormal, metadata.xy) > 0.96 &&
+            all(lessThanEqual(abs(history.rgb - current), vec3(0.001) + abs(current) * 0.008))) {
+            float weight = 0.78 * (1.0 - smoothstep(26.0, 30.0, expectedDepth));
+            return mix(current, history.rgb, weight);
+        }
+    }
+#endif
     vec2 previousTexel = previousUv * vec2(size) - 0.5;
     ivec2 base = ivec2(floor(previousTexel));
     vec2 fraction = fract(previousTexel);
@@ -32,7 +46,7 @@ vec3 temporalScreenBounce(vec3 current, vec3 viewPosition, vec3 normal, vec2 uv)
             }
             vec4 metadata = texelFetch(colortex7, pixel, 0);
             if (any(greaterThan(abs(metadata.zw - vec2(size)), vec2(1.0))) ||
-                dot(normal, decodeNormal(metadata.xy)) < 0.90) {
+                geometryNormalAlignment(normal, encodedNormal, metadata.xy) < 0.90) {
                 continue;
             }
             vec2 weights = mix(1.0 - fraction, fraction, vec2(column, row));

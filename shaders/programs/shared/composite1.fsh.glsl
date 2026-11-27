@@ -311,7 +311,9 @@ vec3 temporalSky(vec3 current,vec2 uv,ivec2 pixel) {
     vec4 history = filteredHistory(previousUv,0.0,vec2(0.0),false,false,true,current,false,closeHistory);
     if(history.a<=0.0) return current;
     float motion=length((previousUv-uv)*vec2(textureSize(colortex4,0)));
-    return mix(current,clipHistory(pixel,history.rgb),0.85*history.a*(1.0-smoothstep(2.0,24.0,motion)));
+    float change=length(current-history.rgb)/max(length(current)+length(history.rgb),0.02);
+    float reactive=1.0-0.85*smoothstep(0.08,0.45,change);
+    return mix(current,clipHistory(pixel,history.rgb),0.85*history.a*reactive*(1.0-smoothstep(2.0,24.0,motion)));
 }
 #endif
 

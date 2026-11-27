@@ -33,20 +33,28 @@ public final class SectionStore {
     private final Set<Key> removed = new HashSet<>();
     private Window previous;
     private Set<Key> lastMissing=Set.of();
+    private boolean indexChanged=true;
+    private Delta idle;
     private long generation=1, epoch;
-    public void added(Key key) { loaded.add(key); dirty.add(key); }
-    public void ensureLoaded(Key key) { if(loaded.add(key))dirty.add(key); }
-    public void changed(Key key) { if(loaded.contains(key)) dirty.add(key); }
+    public void added(Key key) { loaded.add(key); dirty.add(key); indexChanged=true; }
+    public void ensureLoaded(Key key) {
+        if(loaded.add(key)){dirty.add(key);indexChanged=true;}
+    }
+    public void changed(Key key) {
+        if(loaded.contains(key)){dirty.add(key);indexChanged=true;}
+    }
     public void removed(Key key) {
+        indexChanged=true;
         loaded.remove(key); dirty.remove(key);
         if(resident.remove(key)!=null) removed.add(key);
     }
-    public void invalidateMaterials() { dirty.addAll(loaded); }
+    public void invalidateMaterials() { dirty.addAll(loaded); indexChanged=true; }
     public void reset() {
         loaded.clear(); dirty.clear(); resident.clear(); removed.clear();
-        previous=null; lastMissing=Set.of(); generation++; epoch=0;
+        previous=null; lastMissing=Set.of(); generation++; epoch=0; indexChanged=true; idle=null;
     }
     public Delta update(Window window, Source source) {
+        if(!indexChanged&&window.equals(previous)&&lastMissing.isEmpty())return idle;
         // Iterate only the 8-9 sections per axis intersecting the active volume,
         // not every loaded section and not every voxel on stationary frames.
         if(!window.equals(previous)) {
@@ -77,6 +85,8 @@ public final class SectionStore {
         if(!removed.isEmpty()) ++epoch;
         Delta delta=new Delta(generation,epoch,window,writes,removed,missing,resident.size());
         removed.clear();
+        idle=new Delta(generation,epoch,window,List.of(),Set.of(),missing,resident.size());
+        indexChanged=false;
         return delta;
     }
     /** Rehydrate a newly created backend without depending on the last incremental delta. */

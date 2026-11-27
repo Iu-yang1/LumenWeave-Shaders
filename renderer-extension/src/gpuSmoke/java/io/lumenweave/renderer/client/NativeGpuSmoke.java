@@ -3,6 +3,7 @@ package io.lumenweave.renderer.client;
 import io.lumenweave.renderer.core.*;
 import java.nio.IntBuffer;
 import java.nio.FloatBuffer;
+import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.*;
@@ -15,18 +16,20 @@ import static org.lwjgl.opengl.GL45C.*;
 public final class NativeGpuSmoke {
     private static final int INVALID=-1;
     static void check(boolean ok,String message){if(!ok)throw new AssertionError(message);}
-    public static void main(String[] args)throws Exception{
+    public static void main(String[] args)throws IOException{
         check(glfwInit(),"GLFW init");
         long window=0;
         try{
             glfwWindowHint(GLFW_VISIBLE,GLFW_FALSE);
-            glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR,4);
-            glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR,5);
+            boolean compatibility=Arrays.asList(args).contains("--compat-context");
+            glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR,compatibility?3:4);
+            glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR,compatibility?2:5);
             glfwWindowHint(GLFW_OPENGL_PROFILE,GLFW_OPENGL_CORE_PROFILE);
             window=glfwCreateWindow(32,32,"LumenWeave GL smoke",0,0);
             check(window!=0,"GL context");
             glfwMakeContextCurrent(window);GL.createCapabilities();
             System.out.println("GL renderer: "+glGetString(GL_RENDERER)+"; version: "+glGetString(GL_VERSION));
+            check(OpenGlFeatures.seedBridge(GL.getCapabilities()),"seed bridge features");
             seedAtlas();materializeSeeds();depthPages();pagePipeline();indirect();
             check(glGetError()==GL_NO_ERROR,"GL error");
             System.out.println("Native GPU: seed atlas, depth pages, virtual page lifecycle and indirect draws passed");
@@ -97,7 +100,7 @@ public final class NativeGpuSmoke {
             }finally{MemoryUtil.memFree(data);}
         }
     }
-    static int program(String file)throws Exception{
+    static int program(String file)throws IOException{
         int shader=glCreateShader(GL_COMPUTE_SHADER);
         glShaderSource(shader,Files.readString(Path.of("gpu",file)));
         glCompileShader(shader);check(glGetShaderi(shader,GL_COMPILE_STATUS)!=0,file+": "+glGetShaderInfoLog(shader));
@@ -110,7 +113,7 @@ public final class NativeGpuSmoke {
     static void bind(int... buffers){for(int i=0;i<buffers.length;i++)glBindBufferBase(GL_SHADER_STORAGE_BUFFER,i,buffers[i]);}
     static void uniform(int p,String name,int value){int location=glGetUniformLocation(p,name);check(location>=0,name);glProgramUniform1ui(p,location,value);}
     static void dispatch(int program,int groups){glUseProgram(program);glDispatchCompute(groups,1,1);glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT|GL_BUFFER_UPDATE_BARRIER_BIT|GL_COMMAND_BARRIER_BIT);}
-    static void pagePipeline()throws Exception{
+    static void pagePipeline()throws IOException{
         int compact=program("compact_shadow_requests.comp"),reclaim=program("reclaim_shadow_pages.comp"),
             alloc=program("allocate_shadow_pages.comp"),publish=program("publish_shadow_pages.comp");
         int selected=buffer(new int[]{(1<<0)|(1<<2)|(1<<5)});
@@ -158,7 +161,7 @@ public final class NativeGpuSmoke {
             for(int b:new int[]{selected,requests,owners,table,free,revisions,draws,completed})glDeleteBuffers(b);
         }
     }
-    static void indirect()throws Exception{
+    static void indirect()throws IOException{
         int p=program("shadow_indirect_draws.comp");
         int pairs=buffer(new int[]{0,0,7,1,1,0,8,0,2,1,9,1});
         int casters=buffer(new int[]{6,12,-3,0,9,24,5,0});

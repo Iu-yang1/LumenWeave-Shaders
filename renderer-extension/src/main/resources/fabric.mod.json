@@ -14,10 +14,10 @@
     "lumenweave-renderer.mixins.json"
   ],
   "depends": {
-    "fabricloader": ">=0.19.3",
-    "minecraft": "26.1.2",
-    "java": ">=25",
-    "sodium": "0.9.2"
+    "fabricloader": ">=${loaderVersion}",
+    "minecraft": "${minecraft}",
+    "java": ">=${javaVersion}",
+    "sodium": "${sodiumVersion}"
   },
   "suggests": {
     "iris": "*"

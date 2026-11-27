@@ -38,6 +38,7 @@ public final class RendererExtension implements ClientModInitializer {
     private static boolean reportedNormalCull;
     private static OpenGlSeedAtlas atlas;
     private static long probeFrames;
+    private static long handoffFrames;
     private static Method cameraMethod;
     private static SectionStore.Delta latest;
     @Override public void onInitializeClient(){
@@ -49,10 +50,11 @@ public final class RendererExtension implements ClientModInitializer {
         }catch(ReflectiveOperationException e){
             LOG.info("Iris material map unavailable; independent seed observation inactive");
         }
-        LOG.info("LumenWeave Renderer Extension 0.1: observational section producer; Iris owns rendering");
+        LOG.info("LumenWeave Renderer Extension 0.1: independentSeeds={}, seedProbe={}; Iris owns rendering",INDEPENDENT,GPU_PROBE);
     }
     public static void attach(Object manager,ClientLevel level){
-        if(owner==manager)return;
+        if(owner==manager&&world==level)return;
+        if(world!=level)closeProbe();
         STORE.reset();REFERENCE.close();owner=manager;world=level;materialIds=null;latest=null;sectionWindow=null;externalActive=false;
     }
     // Packet replacement may replace data without creating a new Sodium section.
@@ -60,12 +62,12 @@ public final class RendererExtension implements ClientModInitializer {
         if(chunk==null||world==null||chunk.getLevel()!=world)return;
         var pos=chunk.getPos();
         for(int i=0;i<chunk.getSections().length;i++)
-            STORE.added(new SectionStore.Key(pos.x(),world.getSectionYFromSectionIndex(i),pos.z()));
+            STORE.added(new SectionStore.Key(ClientPlatform.chunkX(pos),world.getSectionYFromSectionIndex(i),ClientPlatform.chunkZ(pos)));
     }
     public static void chunkUnloaded(ClientLevel level,ChunkPos pos){
         if(world!=level)return;
-        for(int y=level.getMinSectionY();y<=level.getMaxSectionY();y++)
-            STORE.removed(new SectionStore.Key(pos.x(),y,pos.z()));
+        for(int y=ClientPlatform.minSection(level);y<=ClientPlatform.maxSection(level);y++)
+            STORE.removed(new SectionStore.Key(ClientPlatform.chunkX(pos),y,ClientPlatform.chunkZ(pos)));
     }
     public static void blockChanged(Level level,BlockPos pos){
         if(world==level)STORE.changed(new SectionStore.Key(Math.floorDiv(pos.getX(),16),Math.floorDiv(pos.getY(),16),Math.floorDiv(pos.getZ(),16)));
@@ -85,6 +87,13 @@ public final class RendererExtension implements ClientModInitializer {
     public static SectionStore.Delta latest(){return latest;}
     public static void tick(){
         Minecraft mc=Minecraft.getInstance();
+        RuntimeSmoke.tick(mc);
+        if(world!=mc.level){
+            closeProbe();
+            if(mc.level==null){
+                STORE.reset();REFERENCE.close();owner=null;world=null;materialIds=null;latest=null;sectionWindow=null;externalActive=false;
+            }else attach(mc,mc.level);
+        }
         if(world==null||mc.level!=world||mc.player==null||materialMethod==null||GPU_PROBE||INDEPENDENT)return;
         Map<?,?> ids;
         try{ids=(Map<?,?>)materialMethod.invoke(settingsField.get(null));}
@@ -94,6 +103,7 @@ public final class RendererExtension implements ClientModInitializer {
         // Observation uses player-centered grid; a final shader handshake must
         // use Iris's actual camera position and active VOXEL_GRID_SIZE.
         var window=new SectionStore.Window(mc.player.getBlockX()-64,mc.player.getBlockY()-64,mc.player.getBlockZ()-64,128);
+        ensureWindowLoaded(window);
         latest=STORE.update(window,RendererExtension::snapshot);
         REFERENCE.uploadSeeds(latest);
         if(++ticks%200==0)LOG.info("Seed observation: resident={}, missing={}, upserts={}, epoch={}",
@@ -112,7 +122,7 @@ public final class RendererExtension implements ClientModInitializer {
         return 0;
     }
     private static boolean ready(){
-        return world!=null&&Minecraft.getInstance().level==world&&cameraMethod!=null&&materialMethod!=null&&GL.getCapabilities().OpenGL45;
+        return world!=null&&Minecraft.getInstance().level==world&&cameraMethod!=null&&materialMethod!=null&&OpenGlFeatures.seedBridge(GL.getCapabilities());
     }
     private static SectionStore.Window prepareAtlas(int n)throws ReflectiveOperationException{
         Map<?,?> ids=(Map<?,?>)materialMethod.invoke(settingsField.get(null));
@@ -120,8 +130,16 @@ public final class RendererExtension implements ClientModInitializer {
         if(ids!=materialIds){materialIds=ids;STORE.invalidateMaterials();}
         Vector3d pos=(Vector3d)cameraMethod.invoke(null);
         var w=new SectionStore.Window((int)Math.floor(pos.x)-n/2,(int)Math.floor(pos.y)-n/2,(int)Math.floor(pos.z)-n/2,n);
-        // Bootstrap every loaded column in the active section range, including
-        // air sections which Sodium may never schedule for mesh generation.
+        ensureWindowLoaded(w);
+        boolean newAtlas=atlas==null;
+        if(newAtlas)atlas=new OpenGlSeedAtlas();
+        latest=STORE.update(w,RendererExtension::snapshot);
+        REFERENCE.uploadSeeds(latest);
+        atlas.uploadSeeds(newAtlas?STORE.fullSnapshot():latest);
+        return w;
+    }
+    private static void ensureWindowLoaded(SectionStore.Window w){
+        int n=w.size();
         var aligned=new SectionStore.Window(Math.floorDiv(w.x(),16)*16,Math.floorDiv(w.y(),16)*16,Math.floorDiv(w.z(),16)*16,n);
         if(!aligned.equals(sectionWindow)){
             int x0=Math.floorDiv(w.x(),16),x1=Math.floorDiv(w.x()+n-1,16);
@@ -131,28 +149,39 @@ public final class RendererExtension implements ClientModInitializer {
             for(int z=z0;z<=Math.max(z1,z0+n/16);z++)for(int x=x0;x<=Math.max(x1,x0+n/16);x++){
                 boolean loaded=world.getChunkSource().getChunkNow(x,z)!=null;
                 for(int y=y0;y<=Math.max(y1,y0+n/16);y++)
-                    if(loaded||y<world.getMinSectionY()||y>world.getMaxSectionY())STORE.ensureLoaded(new SectionStore.Key(x,y,z));
+                    if(loaded||y<ClientPlatform.minSection(world)||y>ClientPlatform.maxSection(world))STORE.ensureLoaded(new SectionStore.Key(x,y,z));
             }
             sectionWindow=aligned;
         }
-        boolean newAtlas=atlas==null;
-        if(newAtlas)atlas=new OpenGlSeedAtlas();
-        latest=STORE.update(w,RendererExtension::snapshot);
-        REFERENCE.uploadSeeds(latest);
-        atlas.uploadSeeds(newAtlas?STORE.fullSnapshot():latest);
-        return w;
     }
     // begin already cleared the previous observation and external flag.
     public static void beforeShadow(Set<?> images){
         externalActive=false;
-        if(!INDEPENDENT||!ready())return;
+        if(!INDEPENDENT)return;
+        boolean report=++handoffFrames%240==0;
+        if(!ready()){
+            if(report)LOG.info("Independent seed readiness: world={}, current={}, camera={}, materials={}, gl45={}, dsa={}, version={}",
+                world!=null,Minecraft.getInstance().level==world,cameraMethod!=null,materialMethod!=null,
+                GL.getCapabilities().OpenGL45,GL.getCapabilities().GL_ARB_direct_state_access,
+                org.lwjgl.opengl.GL11C.glGetString(org.lwjgl.opengl.GL11C.GL_VERSION));
+            return;
+        }
         try{
             int texture=occupancy(images);
-            if(texture==0)return;
+            if(texture==0){
+                if(report)LOG.info("Independent seed producer waiting for occupancy image");
+                return;
+            }
             int n=OpenGlSeedAtlas.width(texture);
-            if(n!=32&&n!=64&&n!=96&&n!=128)return;
-            if(OpenGlSeedAtlas.depth(texture)!=n+(n+63)/64+1)return;
+            int depth=OpenGlSeedAtlas.depth(texture);
+            if((n!=32&&n!=64&&n!=96&&n!=128)||depth!=n+(n+63)/64+1){
+                if(report)LOG.info("Independent seed producer waiting for extension layout: width={}, depth={}",n,depth);
+                return;
+            }
             var window=prepareAtlas(n);
+            if(report && window!=null)
+                LOG.info("Independent seed window: resident={}, missing={}, epoch={}",
+                    latest.resident(),latest.missing().size(),latest.epoch());
             if(window==null||!latest.complete())return;
             var receipt=atlas.materialize(texture,latest);
             externalActive=RendererBackend.mayUseNormalCulling(latest,receipt,atlas.capabilities());
@@ -178,7 +207,7 @@ public final class RendererExtension implements ClientModInitializer {
     }
     public static void closeProbe(){if(atlas!=null){atlas.close();atlas=null;}externalActive=false;sectionWindow=null;}
     private static int[] snapshot(SectionStore.Key key){
-        if(key.y()<world.getMinSectionY()||key.y()>world.getMaxSectionY())return new int[0];
+        if(key.y()<ClientPlatform.minSection(world)||key.y()>ClientPlatform.maxSection(world))return new int[0];
         var chunk=world.getChunkSource().getChunkNow(key.x(),key.z());
         if(chunk==null)return null;
         int index=world.getSectionIndexFromSectionY(key.y());
