@@ -39,6 +39,11 @@ LumenWeave 是面向 Minecraft Java Edition 的 Iris / OpenGL 光影包,追求�
 
 暂时不提供 Vulkan 或 OptiFine 支持.
 
+**Renderer Extension 为可选扩展。** 光影 ZIP 只需要匹配版本的 Iris / Sodium，
+无需安装 LumenWeave Renderer Extension。高级菜单的扩展体素接口默认关闭；
+即使手动开启，未收到完整交接确认时仍使用光影自身的体素注入。
+开发进度与实测边界见 [ROADMAP.md](ROADMAP.md)。
+
 ## 画质预设
 
 | 预设 | 主要定位 | 阴影 / 抗锯齿 |

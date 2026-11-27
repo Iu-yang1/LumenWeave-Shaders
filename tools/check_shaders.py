@@ -682,6 +682,17 @@ def main():
             environment=(*VOXEL_FEATURES, "MC_TEXTURE_FORMAT_LAB_PBR_1_3"),
         )
         compile_matrix(args.compiler, PREVIEW, {"world-voxels-fallback": voxel_profiles["world-voxels"]})
+        bridge_sources = [path for path in PREVIEW.rglob("*")
+                          if path.suffix in STAGES and path.stem in ("begin", "shadow", "prepare")]
+        bridge_profiles = {
+            f"optional-extension-{size}": {
+                **profiles["profile.Extreme"], "EXTENSION_VOXELS": "1", "VOXEL_GRID_SIZE": str(size)
+            } for size in (32, 64, 96, 128)
+        }
+        compile_matrix(args.compiler, PREVIEW, bridge_profiles, sources=bridge_sources,
+                       environment=VOXEL_FEATURES)
+        compile_matrix(args.compiler, PREVIEW, {"optional-extension-no-features": bridge_profiles["optional-extension-32"]},
+                       sources=bridge_sources)
         volume_entries=[p for p in PREVIEW.rglob("*") if p.suffix in STAGES and p.stem in ("deferred","deferred1","composite","composite_a","composite_b","setup","setup1","setup3","setup4","begin1","begin2","begin3","begin4","begin5")]
         compile_matrix(args.compiler, PREVIEW, {"medium-volume-no-gi":profiles["medium-volume-no-gi"],"atmosphere-original":profiles["atmosphere-original"],"cloud-cache-off":profiles["cloud-cache-off"],"sky-original-grid":profiles["sky-original-grid"],"legacy-atmo-and-voxel":profiles["legacy-atmo-and-voxel"]},sources=volume_entries,environment=VOXEL_FEATURES)
         compile_matrix(args.compiler, PREVIEW, {"extreme-volume-hardware":profiles["profile.Extreme"]},sources=volume_entries,
