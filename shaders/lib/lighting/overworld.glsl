@@ -5,7 +5,7 @@ const float sunPathRotation = -30.0;
 
 uniform mat4 gbufferModelViewInverse;
 uniform vec3 sunPosition;
-uniform float lwRain;
+#include "/lib/weather/state.glsl"
 #define rainStrength lwRain
 uniform bool hasSkylight;
 uniform bool hasCeiling;
@@ -60,15 +60,33 @@ vec3 worldDirection(vec3 viewDirection) {
     return mat3(gbufferModelViewInverse) * viewDirection;
 }
 
+#ifdef LW_FRAME_LIGHTING_VERTEX
+flat out vec3 lwFrameSun;
+flat out vec3 lwFrameDirect;
+flat out vec2 lwFrameWeights;
+#elif defined(LW_FRAME_LIGHTING_FRAGMENT)
+flat in vec3 lwFrameSun;
+flat in vec3 lwFrameDirect;
+flat in vec2 lwFrameWeights;
+#endif
+
 vec3 sunDirection() {
+#ifdef LW_FRAME_LIGHTING_FRAGMENT
+    return lwFrameSun;
+#else
     if (!hasSkylight) {
         return vec3(0.0, 1.0, 0.0);
     }
     return normalize(worldDirection(sunPosition));
+#endif
 }
 
 float daylight(vec3 sun) {
+#ifdef LW_FRAME_LIGHTING_FRAGMENT
+    return lwFrameWeights.x;
+#else
     return hasSkylight ? smoothstep(-0.16, 0.18, sun.y) : 0.0;
+#endif
 }
 
 vec3 sunTint(vec3 sun) {
@@ -76,6 +94,9 @@ vec3 sunTint(vec3 sun) {
 }
 
 vec3 celestialIrradiance(vec3 sun) {
+#ifdef LW_FRAME_LIGHTING_FRAGMENT
+    return lwFrameDirect;
+#else
     if (!hasSkylight) {
         return vec3(0.0);
     }
@@ -86,6 +107,15 @@ vec3 celestialIrradiance(vec3 sun) {
     }
 #endif
     return (sun.y >= 0.0 ? sunTint(sun) * 5.4 : vec3(0.095, 0.13, 0.20)) * SUNLIGHT_STRENGTH;
+#endif
+}
+
+float celestialVisibility(vec3 sun) {
+#ifdef LW_FRAME_LIGHTING_FRAGMENT
+    return lwFrameWeights.y;
+#else
+    return hasSkylight ? smoothstep(0.0, 0.18, abs(sun.y)) * mix(1.0, 0.19, rainStrength) : 0.0;
+#endif
 }
 
 float dimensionFogDensity(vec3 direction) {

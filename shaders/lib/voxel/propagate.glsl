@@ -1,6 +1,7 @@
 #include "/lib/voxel/grid.glsl"
 
 layout(r32ui) readonly uniform uimage3D lwVoxelOccupancy;
+#include "/lib/voxel/seed_source.glsl"
 layout(rgba16f) readonly uniform image3D LW_VOXEL_READ;
 layout(rgba16f) writeonly uniform image3D LW_VOXEL_WRITE;
 
@@ -65,7 +66,8 @@ void main() {
         return;
     }
 #endif
-    uint seed = imageLoad(lwVoxelOccupancy, cell).r;
+    initializeVoxelSeedSource();
+    uint seed = voxelSeedAt(cell);
 
     // Reuse classification from the seed pass rather than doing 64
     // contended atomics and two extra barriers per propagation stage.

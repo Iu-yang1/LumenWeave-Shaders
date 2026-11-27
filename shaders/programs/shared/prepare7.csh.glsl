@@ -5,6 +5,7 @@ const ivec3 workGroups=ivec3(16,16,1);
 #ifdef LW_VOXEL_WEATHER_ACTIVE
 #include "/lib/voxel/grid.glsl"
 layout(r32ui) readonly uniform uimage3D lwVoxelOccupancy;
+#include "/lib/voxel/seed_source.glsl"
 layout(rgba16f) writeonly uniform image3D lwVoxelFirst;
 uniform float wetness;
 uniform float lwRain;
@@ -13,6 +14,7 @@ void main(){
     ivec2 column=ivec2(gl_GlobalInvocationID.xy);
     if(any(greaterThanEqual(column,ivec2(LW_GRID_SIZE)))) return;
     if(max(wetness,lwRain)<=0.001) return;
+    initializeVoxelSeedSource();
     // Local x/z column, not the world-wrapped light cache. Negative height
     // represents unknown geometry, never proof of an open column.
     float top=-1.0;
@@ -23,7 +25,7 @@ void main(){
     int lower=max(0,int(ceil(-height+float(LW_GRID_SIZE)*0.5+cameraPositionFract.y-0.5)));
     if(dot(relative,relative)<radius*radius){
         for(int y=upper;y>=lower;--y){
-            if(imageLoad(lwVoxelOccupancy,ivec3(column.x,y,column.y)).r>=LW_VOXEL_WALL){
+            if(voxelSeedAt(ivec3(column.x,y,column.y))>=LW_VOXEL_WALL){
                 top=float(y+1);
                 break;
             }

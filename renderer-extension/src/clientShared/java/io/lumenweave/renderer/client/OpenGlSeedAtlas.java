@@ -17,6 +17,12 @@ public final class OpenGlSeedAtlas implements RendererBackend {
     private long generation=-1;
     private final Map<SectionStore.Key,Long> bricks=new HashMap<>();
     private int brickBuffer,brickCount,materializeProgram;
+    private int materializeOrigin,materializeSize;
+    private int patchProgram,publishProgram,patchBuffer,patchOrigin,patchResidue,patchSize,publishOrigin,publishSize,publishRebuild;
+    private int persistentTarget;
+    private SectionStore.Window persistentWindow;
+    private final Set<SectionStore.Key> pendingSections=new HashSet<>();
+    private int lastPatchedBricks;
     private boolean brickListDirty=true;
     public OpenGlSeedAtlas(){
         texture=glCreateTextures(GL_TEXTURE_3D);
@@ -30,11 +36,14 @@ public final class OpenGlSeedAtlas implements RendererBackend {
     public static int depth(int texture){return glGetTextureLevelParameteri(texture,0,GL_TEXTURE_DEPTH);}
     @Override public Capabilities capabilities(){return new Capabilities(Api.OPENGL,Set.of(Feature.SECTION_SEEDS),0);}
     @Override public Receipt uploadSeeds(SectionStore.Delta d){
-        if(generation!=d.generation()){clear();generation=d.generation();bricks.clear();brickListDirty=true;}
+        if(generation!=d.generation()){
+            clear();generation=d.generation();bricks.clear();brickListDirty=true;
+            persistentWindow=null;pendingSections.clear();
+        }
         if(!d.upserts().isEmpty()||!d.removals().isEmpty()){
             try(var unpack=new PixelTransfer(false)){
                 // Deletes precede upserts; different resident sections never alias.
-                for(var k:d.removals()){zero();upload(k);bricks.remove(k);}
+                for(var k:d.removals()){zero();upload(k);bricks.remove(k);pendingSections.add(k);}
                 for(var s:d.upserts()){
                     zero();long occupied=0;
                     for(int e:s.entries()){
@@ -44,6 +53,7 @@ public final class OpenGlSeedAtlas implements RendererBackend {
                     }
                     if(occupied==0)bricks.remove(s.key());else bricks.put(s.key(),occupied);
                     upload(s.key());
+                    pendingSections.add(s.key());
                 }
                 brickListDirty=true;
             }
@@ -79,8 +89,14 @@ public final class OpenGlSeedAtlas implements RendererBackend {
     }
     private int program(){
         if(materializeProgram!=0)return materializeProgram;
+        materializeProgram=loadProgram("materialize_external_seeds.comp");
+        materializeOrigin=glGetUniformLocation(materializeProgram,"gridOrigin");
+        materializeSize=glGetUniformLocation(materializeProgram,"gridSize");
+        return materializeProgram;
+    }
+    private int loadProgram(String resource){
         String source;
-        try(var in=OpenGlSeedAtlas.class.getResourceAsStream("/lumenweave/materialize_external_seeds.comp")){
+        try(var in=OpenGlSeedAtlas.class.getResourceAsStream("/lumenweave/"+resource)){
             if(in==null)throw new IllegalStateException("external seed kernel missing");
             source=new String(in.readAllBytes(),StandardCharsets.UTF_8);
         }catch(IOException e){throw new IllegalStateException(e);}
@@ -90,33 +106,28 @@ public final class OpenGlSeedAtlas implements RendererBackend {
             if(glGetShaderi(shader,GL_COMPILE_STATUS)==0)throw new IllegalStateException(glGetShaderInfoLog(shader));
             int p=glCreateProgram();glAttachShader(p,shader);glLinkProgram(p);
             if(glGetProgrami(p,GL_LINK_STATUS)==0){String error=glGetProgramInfoLog(p);glDeleteProgram(p);throw new IllegalStateException(error);}
-            materializeProgram=p;return p;
+            return p;
         }finally{glDeleteShader(shader);}
     }
     /** Materialize only nonempty 4³ world bricks into the current Iris observation. */
     public Receipt materialize(int occupancy,SectionStore.Delta d){
         var w=d.window();int n=w.size(),flag=n+(n+63)/64;
-        if(!d.complete()||depth(occupancy)!=flag+1)
+        if(!d.complete())
             return new Receipt(d.generation(),d.epoch(),w,false,false,false);
         int p=program();prepareBrickList();
-        int oldProgram=glGetInteger(GL_CURRENT_PROGRAM);
-        int oldGeneric=glGetInteger(GL_SHADER_STORAGE_BUFFER_BINDING),oldBuffer=glGetIntegeri(GL_SHADER_STORAGE_BUFFER_BINDING,0);
-        long oldStart=glGetInteger64i(GL_SHADER_STORAGE_BUFFER_START,0),oldSize=glGetInteger64i(GL_SHADER_STORAGE_BUFFER_SIZE,0);
-        int[][] images=new int[2][6];
-        int[] names={GL_IMAGE_BINDING_NAME,GL_IMAGE_BINDING_LEVEL,GL_IMAGE_BINDING_LAYERED,GL_IMAGE_BINDING_LAYER,GL_IMAGE_BINDING_ACCESS,GL_IMAGE_BINDING_FORMAT};
-        for(int i=0;i<2;i++)for(int j=0;j<names.length;j++)images[i][j]=glGetIntegeri(names[j],i);
-        try{
+        try(var bindings=new ComputeBindings()){
             if(brickCount!=0){
                 glUseProgram(p);glBindBufferBase(GL_SHADER_STORAGE_BUFFER,0,brickBuffer);
                 glBindImageTexture(0,texture,0,true,0,GL_READ_ONLY,GL_R16UI);
                 glBindImageTexture(1,occupancy,0,true,0,GL_READ_WRITE,GL_R32UI);
-                glUniform3i(glGetUniformLocation(p,"gridOrigin"),w.x(),w.y(),w.z());
-                glUniform1i(glGetUniformLocation(p,"gridSize"),n);
+                glUniform3i(materializeOrigin,w.x(),w.y(),w.z());
+                glUniform1i(materializeSize,n);
                 glDispatchCompute(brickCount,1,1);
             }
             glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT|GL_TEXTURE_UPDATE_BARRIER_BIT);
             glClearTexSubImage(occupancy,0,0,0,flag,1,1,1,GL_RED_INTEGER,GL_UNSIGNED_INT,new int[]{1});
             glMemoryBarrier(GL_TEXTURE_UPDATE_BARRIER_BIT|GL_SHADER_IMAGE_ACCESS_BARRIER_BIT|GL_TEXTURE_FETCH_BARRIER_BIT);
+            persistentWindow=null;pendingSections.clear();
             return new Receipt(d.generation(),d.epoch(),w,true,true,true);
         }catch(RuntimeException e){
             // The fallback must not inherit partial external seeds.
@@ -124,32 +135,127 @@ public final class OpenGlSeedAtlas implements RendererBackend {
             glClearTexSubImage(occupancy,0,0,0,flag,1,1,1,GL_RED_INTEGER,GL_UNSIGNED_INT,new int[]{0});
             glMemoryBarrier(GL_TEXTURE_UPDATE_BARRIER_BIT|GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
             throw e;
-        }finally{
-            for(int i=0;i<2;i++){int[] v=images[i];glBindImageTexture(i,v[0],v[1],v[2]!=0,v[3],v[4]==0?GL_READ_ONLY:v[4],v[5]==0?GL_R32UI:v[5]);}
-            if(oldBuffer!=0&&oldSize>0)glBindBufferRange(GL_SHADER_STORAGE_BUFFER,0,oldBuffer,oldStart,oldSize);
-            else glBindBufferBase(GL_SHADER_STORAGE_BUFFER,0,oldBuffer);
-            glBindBuffer(GL_SHADER_STORAGE_BUFFER,oldGeneric);glUseProgram(oldProgram);
+        }
+    }
+    public int lastPatchedBricks(){return lastPatchedBricks;}
+    public Receipt materializeIncremental(int occupancy,SectionStore.Delta delta){
+        var window=delta.window();
+        var layout=new IncrementalSeedLayout(window.size());
+        if(!delta.complete())return new Receipt(delta.generation(),delta.epoch(),window,false,false,false);
+        boolean rebuild=persistentTarget!=occupancy||persistentWindow==null||!persistentWindow.equals(window);
+        var patches=SeedPatchPlan.build(window,persistentTarget==occupancy?persistentWindow:null,pendingSections);
+        lastPatchedBricks=patches.size();
+        try(var bindings=new ComputeBindings()){
+            prepareIncrementalPrograms();
+            glBindImageTexture(0,texture,0,true,0,GL_READ_ONLY,GL_R16UI);
+            glBindImageTexture(1,occupancy,0,true,0,GL_READ_WRITE,GL_R32UI);
+            if(!patches.isEmpty()){
+                IntBuffer list=MemoryUtil.memAllocInt(patches.size()*4);
+                try{
+                    for(var brick:patches){
+                        int packed=Math.floorMod(brick.x(),SeedAtlasLayout.SIDE)|
+                            (Math.floorMod(brick.y(),SeedAtlasLayout.SIDE)<<8)|
+                            (Math.floorMod(brick.z(),SeedAtlasLayout.SIDE)<<16);
+                        list.put(brick.x()).put(brick.y()).put(brick.z()).put(packed);
+                    }
+                    list.flip();
+                    if(patchBuffer==0)patchBuffer=glCreateBuffers();
+                    glNamedBufferData(patchBuffer,list,GL_DYNAMIC_DRAW);
+                }finally{MemoryUtil.memFree(list);}
+                glUseProgram(patchProgram);glBindBufferBase(GL_SHADER_STORAGE_BUFFER,0,patchBuffer);
+                glUniform3i(patchOrigin,window.x(),window.y(),window.z());
+                glUniform3i(patchResidue,Math.floorMod(window.x(),window.size()),Math.floorMod(window.y(),window.size()),Math.floorMod(window.z(),window.size()));
+                glUniform1i(patchSize,window.size());
+                glDispatchCompute(patches.size(),1,1);
+                glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
+            }
+            glUseProgram(publishProgram);
+            glUniform3i(publishOrigin,Math.floorMod(window.x(),window.size()),Math.floorMod(window.y(),window.size()),Math.floorMod(window.z(),window.size()));
+            glUniform1i(publishSize,window.size());glUniform1i(publishRebuild,rebuild?1:0);
+            int side=window.size()/4;
+            glDispatchCompute((side*side*side+63)/64,1,1);
+            glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT|GL_TEXTURE_UPDATE_BARRIER_BIT);
+            glClearTexSubImage(occupancy,0,0,0,layout.flag(),1,1,1,GL_RED_INTEGER,GL_UNSIGNED_INT,new int[]{2});
+            glMemoryBarrier(GL_TEXTURE_UPDATE_BARRIER_BIT|GL_SHADER_IMAGE_ACCESS_BARRIER_BIT|GL_TEXTURE_FETCH_BARRIER_BIT);
+            persistentTarget=occupancy;persistentWindow=window;pendingSections.clear();
+            return new Receipt(delta.generation(),delta.epoch(),window,true,true,true);
+        }catch(RuntimeException error){
+            persistentWindow=null;
+            glClearTexSubImage(occupancy,0,0,0,layout.flag(),1,1,1,GL_RED_INTEGER,GL_UNSIGNED_INT,new int[]{0});
+            glMemoryBarrier(GL_TEXTURE_UPDATE_BARRIER_BIT|GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
+            throw error;
+        }
+    }
+    private void prepareIncrementalPrograms(){
+        if(patchProgram==0){
+            patchProgram=loadProgram("patch_external_seeds.comp");
+            patchOrigin=glGetUniformLocation(patchProgram,"gridOrigin");
+            patchResidue=glGetUniformLocation(patchProgram,"gridOriginResidue");
+            patchSize=glGetUniformLocation(patchProgram,"gridSize");
+        }
+        if(publishProgram==0){
+            publishProgram=loadProgram("publish_external_tiles.comp");
+            publishOrigin=glGetUniformLocation(publishProgram,"gridOriginResidue");
+            publishSize=glGetUniformLocation(publishProgram,"gridSize");
+            publishRebuild=glGetUniformLocation(publishProgram,"rebuildSupport");
         }
     }
     /** Diagnostic synchronous readback, not part of the performance path. */
     public Difference compare(int reference,SectionStore.Window w){
+        return compare(reference,w,false);
+    }
+    public Difference comparePersistent(int reference,SectionStore.Window w){
+        return compare(reference,w,true);
+    }
+    private Difference compare(int reference,SectionStore.Window w,boolean persistent){
         int n=w.size(),s=SeedAtlasLayout.SIDE;
         IntBuffer original=MemoryUtil.memAllocInt(n*n*n);
         ShortBuffer candidate=MemoryUtil.memAllocShort(s*s*s);
         try(var pack=new PixelTransfer(true)){
             glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT|GL_TEXTURE_UPDATE_BARRIER_BIT);
-            glGetTextureSubImage(reference,0,0,0,0,n,n,n,GL_RED_INTEGER,GL_UNSIGNED_INT,original);
+            int base=persistent?new IncrementalSeedLayout(n).persistentBase():0;
+            glGetTextureSubImage(reference,0,0,0,base,n,n,n,GL_RED_INTEGER,GL_UNSIGNED_INT,original);
             glGetTextureImage(texture,0,GL_RED_INTEGER,GL_UNSIGNED_SHORT,candidate);
             long diff=0,a=0,b=0;
             for(int z=0;z<n;z++)for(int y=0;y<n;y++)for(int x=0;x<n;x++){
-                int u=original.get(x+n*(y+n*z));
+                int index=persistent?Math.floorMod(w.x()+x,n)+n*(Math.floorMod(w.y()+y,n)+n*Math.floorMod(w.z()+z,n)):x+n*(y+n*z);
+                int u=original.get(index);
                 int v=Short.toUnsignedInt(candidate.get(SeedAtlasLayout.index(w.x()+x,w.y()+y,w.z()+z)));
-                if(u!=v)diff++;if(u!=0)a++;if(v!=0)b++;
+                if(u!=v){
+                    diff++;
+                }
+                if(u!=0)a++;if(v!=0)b++;
             }
             return new Difference(diff,a,b);
         }finally{MemoryUtil.memFree(original);MemoryUtil.memFree(candidate);}
     }
-    @Override public void close(){glDeleteTextures(texture);MemoryUtil.memFree(section);if(brickBuffer!=0)glDeleteBuffers(brickBuffer);if(materializeProgram!=0)glDeleteProgram(materializeProgram);}
+    @Override public void close(){
+        glDeleteTextures(texture);MemoryUtil.memFree(section);
+        if(brickBuffer!=0)glDeleteBuffers(brickBuffer);if(materializeProgram!=0)glDeleteProgram(materializeProgram);
+        if(patchBuffer!=0)glDeleteBuffers(patchBuffer);if(patchProgram!=0)glDeleteProgram(patchProgram);
+        if(publishProgram!=0)glDeleteProgram(publishProgram);
+    }
+    private static final class ComputeBindings implements AutoCloseable {
+        private final int program=glGetInteger(GL_CURRENT_PROGRAM);
+        private final int generic=glGetInteger(GL_SHADER_STORAGE_BUFFER_BINDING);
+        private final int buffer=glGetIntegeri(GL_SHADER_STORAGE_BUFFER_BINDING,0);
+        private final long start=glGetInteger64i(GL_SHADER_STORAGE_BUFFER_START,0),size=glGetInteger64i(GL_SHADER_STORAGE_BUFFER_SIZE,0);
+        private final int[][] images=new int[2][6];
+        ComputeBindings(){
+            int[] names={GL_IMAGE_BINDING_NAME,GL_IMAGE_BINDING_LEVEL,GL_IMAGE_BINDING_LAYERED,GL_IMAGE_BINDING_LAYER,GL_IMAGE_BINDING_ACCESS,GL_IMAGE_BINDING_FORMAT};
+            for(int image=0;image<2;image++)for(int field=0;field<names.length;field++)
+                images[image][field]=glGetIntegeri(names[field],image);
+        }
+        @Override public void close(){
+            for(int image=0;image<2;image++){
+                int[] state=images[image];
+                glBindImageTexture(image,state[0],state[1],state[2]!=0,state[3],state[4]==0?GL_READ_ONLY:state[4],state[5]==0?GL_R32UI:state[5]);
+            }
+            if(buffer!=0&&size>0)glBindBufferRange(GL_SHADER_STORAGE_BUFFER,0,buffer,start,size);
+            else glBindBufferBase(GL_SHADER_STORAGE_BUFFER,0,buffer);
+            glBindBuffer(GL_SHADER_STORAGE_BUFFER,generic);glUseProgram(program);
+        }
+    }
     /** Preserve GL pixel-buffer and packing state around a native transfer. */
     private static final class PixelTransfer implements AutoCloseable {
         private final int target,binding;

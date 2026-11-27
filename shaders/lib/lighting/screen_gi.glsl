@@ -99,7 +99,7 @@ ScreenBounce screenBounceRay(vec3 origin, vec3 direction, mat3 toView, vec3 sun,
                 vec3 diffuse = albedo * (1.0 - source.metallic) * (1.0 - source.f0);
                 vec3 light = sun.y >= 0.0 ? sun : -sun;
                 float daylightWeight = max(dot(hitNormal, light), 0.0) * smoothstep(0.56, 1.0, geometry.w);
-                daylightWeight *= smoothstep(0.0, 0.18, abs(sun.y)) * mix(1.0, 0.19, rainStrength);
+                daylightWeight *= celestialVisibility(sun);
 #if defined(SCENE_SHADOWS) || defined(LW_VOXEL_DIFFUSE_ACTIVE)
                 vec3 worldPosition = (gbufferModelViewInverse * vec4(hitPosition, 1.0)).xyz;
 #endif

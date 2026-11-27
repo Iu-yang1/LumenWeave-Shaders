@@ -1,5 +1,23 @@
 
 #include "/lib/quality.glsl"
+#if LW_DEFERRED_DIAGNOSTIC == 1
+#undef SCREEN_AO
+#elif LW_DEFERRED_DIAGNOSTIC == 2
+#define LW_DIAGNOSTIC_NO_SHADOW
+#elif LW_DEFERRED_DIAGNOSTIC == 3
+#define LW_DIAGNOSTIC_NO_VOXEL_DIRECT
+#elif LW_DEFERRED_DIAGNOSTIC == 4
+#undef SCREEN_GI
+#elif LW_DEFERRED_DIAGNOSTIC == 5
+#undef VOXEL_GI
+#elif LW_DEFERRED_DIAGNOSTIC == 6
+#undef WET_SURFACES
+#elif LW_DEFERRED_DIAGNOSTIC == 7
+#define LW_DIAGNOSTIC_NO_ENVIRONMENT
+#endif
+#if FRAME_LIGHTING_REUSE == 1
+#define LW_FRAME_LIGHTING_FRAGMENT
+#endif
 #include "/lib/coordinates/raster_grid.glsl"
 
 uniform sampler2D colortex0;
@@ -7,7 +25,7 @@ in vec2 texCoord;
 layout(location = 0) out vec4 outputColor;
 
 #ifdef SCREEN_GI_HISTORY
-#if defined(SCREEN_GI) && defined(DEFERRED_LIGHTING)
+#if defined(SCREEN_GI) && defined(DEFERRED_LIGHTING) && !defined(LW_HALF_GI_HISTORY)
 #define LW_SCREEN_GI_HISTORY_ACTIVE
 #endif
 #endif
@@ -259,22 +277,38 @@ void main() {
     }
 #endif
     vec3 sun = sunDirection();
+#if SURFACE_REUSE == 1
+    PreparedSurface prepared=prepareSurface(scene.rgb,material,normal,geometry.zw,viewPosition);
+#endif
 #ifdef LW_MATERIAL_SSR_ACTIVE
+#if SURFACE_REUSE == 1
+    vec3 lit = preparedSurfaceRadiance(prepared,eyeDirection,sun,geometry.zw,viewPosition,specularMetadata,specularEnvironment);
+#else
     vec3 lit = surfaceRadiance(scene.rgb, material, normal, eyeDirection, sun, geometry.zw, viewPosition, specularMetadata, specularEnvironment);
+#endif
     // Fade both terms of the SSR replacement, not just reflected radiance.
     float reflectionFade=smoothstep(0.025,0.10,visibleWeight);
     specularMetadata.rgb*=reflectionFade;
     specularEnvironment.rgb*=reflectionFade;
 #else
+#if SURFACE_REUSE == 1
+    vec4 unusedMetadata,unusedEnvironment;
+    vec3 lit = preparedSurfaceRadiance(prepared,eyeDirection,sun,geometry.zw,viewPosition,unusedMetadata,unusedEnvironment);
+#else
     vec3 lit = surfaceRadiance(scene.rgb, material, normal, eyeDirection, sun, geometry.zw, viewPosition);
+#endif
 #endif
 #if defined(SCREEN_GI) || defined(LW_VOXEL_DIFFUSE_ACTIVE)
     if(visibleWeight>0.025) {
+#if SURFACE_REUSE == 1
+    vec3 diffuse = prepared.albedo * (1.0 - prepared.material.metallic) * (1.0 - prepared.material.f0);
+#else
     vec3 bounceAlbedo=scene.rgb;
 #ifdef WET_SURFACES
     wetSurface(bounceAlbedo,material,normal,geometry.zw,viewPosition);
 #endif
     vec3 diffuse = bounceAlbedo * (1.0 - material.metallic) * (1.0 - material.f0);
+#endif
     vec3 bounce = vec3(0.0);
 #ifdef LW_VOXEL_DIFFUSE_ACTIVE
     vec3 position = (gbufferModelViewInverse * vec4(viewPosition, 1.0)).xyz;
@@ -304,7 +338,11 @@ void main() {
     lit += diffuse * bounce * smoothstep(0.025,0.10,visibleWeight);
     }
 #endif
+#if LW_DEFERRED_DIAGNOSTIC == 8
+    writeScene(vec4(lit,scene.a));
+#else
     writeScene(vec4(applySceneFog(lit, viewPosition), scene.a));
+#endif
 #ifdef ADVANCED_WATER
     opaqueScene = vec4(lit, scene.a);
 #endif

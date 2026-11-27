@@ -12,15 +12,28 @@
 #include "/lib/weather/wet_surface.glsl"
 #endif
 
-vec3 surfaceRadiance(vec3 albedo, Material material, vec3 normal, vec3 view, vec3 sun, vec2 lightLevels, vec3 viewPosition, out vec4 specularMetadata, out vec4 specularEnvironment) {
-    specularMetadata = vec4(0.0);
-    specularEnvironment = vec4(0.0);
+struct PreparedSurface {
+    vec3 albedo;
+    Material material;
+    vec3 normal;
+};
+
+PreparedSurface prepareSurface(vec3 albedo,Material material,vec3 normal,vec2 lightLevels,vec3 viewPosition) {
     #ifdef WET_SURFACES
     vec2 wetResponse=wetFilmAndPuddle(normal,lightLevels,viewPosition);
     vec3 wetNormal=wetRippleNormalFromResponse(normal,viewPosition,material,wetResponse);
     wetSurfaceFromResponse(albedo,material,wetResponse);
     normal=wetNormal;
     #endif
+    return PreparedSurface(albedo,material,normal);
+}
+
+vec3 preparedSurfaceRadiance(PreparedSurface prepared,vec3 view,vec3 sun,vec2 lightLevels,vec3 viewPosition,out vec4 specularMetadata,out vec4 specularEnvironment) {
+    vec3 albedo=prepared.albedo;
+    Material material=prepared.material;
+    vec3 normal=prepared.normal;
+    specularMetadata = vec4(0.0);
+    specularEnvironment = vec4(0.0);
     vec3 normalDx = dFdx(normal);
     vec3 normalDy = dFdy(normal);
     float normalVariance = 0.25 * (dot(normalDx, normalDx) + dot(normalDy, normalDy));
@@ -30,12 +43,12 @@ vec3 surfaceRadiance(vec3 albedo, Material material, vec3 normal, vec3 view, vec
     float skyAccess = smoothstep(0.56, 1.0, lightLevels.y);
     vec3 light = sun.y >= 0.0 ? sun : -sun;
     float normalLight = max(dot(normal, light), 0.0);
-    float visibility = hasSkylight ? smoothstep(0.0, 0.18, abs(sun.y)) * mix(1.0, 0.19, rainStrength) : 0.0;
+    float visibility = celestialVisibility(sun);
     float shadow = 1.0;
 #if defined(SCENE_SHADOWS) || defined(LW_VOXEL_ACTIVE)
     vec3 position = (gbufferModelViewInverse * vec4(viewPosition, 1.0)).xyz;
 #endif
-#ifdef SCENE_SHADOWS
+#if defined(SCENE_SHADOWS) && !defined(LW_DIAGNOSTIC_NO_SHADOW)
     if (skyAccess * visibility * normalLight > 0.0) {
         shadow = sceneShadow(position, normal, light);
     }
@@ -45,7 +58,7 @@ vec3 surfaceRadiance(vec3 albedo, Material material, vec3 normal, vec3 view, vec
     float occludedSky = mix(1.0, mix(0.40, 1.0, shadow), daylight(sun) * (1.0 - rainStrength));
     skyAmbient *= occludedSky;
     vec3 blockAmbient = blockLightIrradiance(lightLevels.x);
-#ifdef LW_VOXEL_ACTIVE
+#if defined(LW_VOXEL_ACTIVE) && !defined(LW_DIAGNOSTIC_NO_VOXEL_DIRECT)
 #ifdef LW_VOXEL_SMOOTH_ACTIVE
     vec3 coloredLight,rawLight;
     voxelDirectPair(position,normal,coloredLight,rawLight);
@@ -70,6 +83,7 @@ vec3 surfaceRadiance(vec3 albedo, Material material, vec3 normal, vec3 view, vec
     vec3 viewFresnel=material.roughness<0.65 ? fresnelSchlick(clamp(dot(normal,view),0.0,1.0),f0) : f0;
 #endif
     // Analytic environment specular for smooth materials; no additional screen-space pass.
+#ifndef LW_DIAGNOSTIC_NO_ENVIRONMENT
     if (hasSkylight && material.roughness < 0.65 && lightLevels.y > 0.0) {
         vec3 reflected = reflect(-view, normal);
 #if BRDF_REUSE == 1
@@ -94,6 +108,7 @@ vec3 surfaceRadiance(vec3 albedo, Material material, vec3 normal, vec3 view, vec
         environmentContribution = f0 * mix(0.27, 0.50, material.roughness) * ambient;
         indirect += environmentContribution;
     }
+#endif
     specularEnvironment = vec4(environmentContribution,1.0);
 #ifdef LW_MATERIAL_SSR_ACTIVE
     // The screen ray has its own visibility; do not attenuate it by sky access.
@@ -117,6 +132,11 @@ vec3 surfaceRadiance(vec3 albedo, Material material, vec3 normal, vec3 view, vec
     vec3 directResponse = directBrdf(albedo, material, normal, view, light, f0);
 #endif
     return indirect + material.emission + directResponse * celestialIrradiance(sun) * (skyAccess * visibility * shadow);
+}
+
+vec3 surfaceRadiance(vec3 albedo, Material material, vec3 normal, vec3 view, vec3 sun, vec2 lightLevels, vec3 viewPosition, out vec4 specularMetadata, out vec4 specularEnvironment) {
+    return preparedSurfaceRadiance(prepareSurface(albedo,material,normal,lightLevels,viewPosition),
+        view,sun,lightLevels,viewPosition,specularMetadata,specularEnvironment);
 }
 
 vec3 surfaceRadiance(vec3 albedo, Material material, vec3 normal, vec3 view, vec3 sun, vec2 lightLevels, vec3 viewPosition) {

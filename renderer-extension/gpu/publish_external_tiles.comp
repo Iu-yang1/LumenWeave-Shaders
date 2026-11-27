@@ -1,0 +1,27 @@
+#version 430 core
+layout(local_size_x=64) in;
+layout(r32ui,binding=1) coherent uniform uimage3D occupancy;
+uniform ivec3 gridOriginResidue;
+uniform int gridSize;
+uniform int rebuildSupport;
+void main(){
+    int index=int(gl_GlobalInvocationID.x);
+    int side=gridSize/4;
+    if(index>=side*side*side)return;
+    int planes=(gridSize+63)/64;
+    ivec3 address=ivec3(index%gridSize,(index/gridSize)%gridSize,gridSize+index/(gridSize*gridSize));
+    ivec3 support=address+ivec3(0,0,gridSize+planes+1);
+    uint mask=imageLoad(occupancy,support).r;
+    if(rebuildSupport!=0||(mask&2u)!=0u){
+        ivec3 tile=ivec3(index%side,(index/side)%side,index/(side*side));
+        mask=0u;
+        for(int z=0;z<4&&mask==0u;z++)for(int y=0;y<4&&mask==0u;y++)for(int x=0;x<4;x++){
+            ivec3 target=gridOriginResidue+tile*4+ivec3(x,y,z);
+            target-=ivec3(greaterThanEqual(target,ivec3(gridSize)))*gridSize;
+            target.z+=gridSize+planes+1;
+            if(imageLoad(occupancy,target).r!=0u){mask=1u;break;}
+        }
+        imageStore(occupancy,support,uvec4(mask));
+    }
+    imageAtomicOr(occupancy,address,mask&1u);
+}

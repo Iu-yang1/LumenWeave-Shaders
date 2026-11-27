@@ -1,4 +1,10 @@
 uniform sampler2D colortex9;
+#ifdef LW_HALF_GI_HISTORY
+uniform sampler2D colortex6;
+#define LW_GI_SPATIAL_SOURCE colortex6
+#else
+#define LW_GI_SPATIAL_SOURCE colortex9
+#endif
 #ifdef LW_VOXEL_DIFFUSE_ACTIVE
 uniform sampler2D colortex10;
 #endif
@@ -9,12 +15,16 @@ ScreenBounce spatialScreenBounce(vec3 viewPosition, vec3 normal, vec2 encodedNor
     if (sceneDepth >= 30.0) {
         return bounce;
     }
-    ivec2 traceSize = lwRasterSize(colortex9);
+    ivec2 traceSize = lwRasterSize(LW_GI_SPATIAL_SOURCE);
     ivec2 fullSize = lwRasterSize(colortex1);
     vec2 samplePosition = uv * vec2(traceSize) - 0.5;
     ivec2 base = ivec2(floor(samplePosition));
     vec2 fraction = fract(samplePosition);
     float tolerance = max(0.12, sceneDepth * 0.022);
+#if defined(LW_HALF_GI_HISTORY) && GI_EDGE_RECONSTRUCTION == 1
+    vec3 planeNormal=transpose(mat3(gbufferModelViewInverse))*normal;
+    float planeDistance=dot(planeNormal,viewPosition);
+#endif
     float coverage = 0.0;
 #if LOW_FREQ_CACHE == 1
     // Order by bilinear weight. At an exact 2x upscale, the first two
@@ -45,17 +55,41 @@ ScreenBounce spatialScreenBounce(vec3 viewPosition, vec3 normal, vec2 encodedNor
             }
             vec2 weights = mix(1.0 - fraction, fraction, vec2(column, row));
             if (weights.x * weights.y <= 0.00001) continue;
-            vec4 sky = texelFetch(colortex9, texel, 0);
-            float depthDifference = abs(sky.a - sceneDepth);
+            vec4 sky = texelFetch(LW_GI_SPATIAL_SOURCE, texel, 0);
+            ivec2 pixel = clamp(ivec2((vec2(texel) + 0.5) * vec2(fullSize) / vec2(traceSize)),ivec2(0),fullSize-1);
+            float donorDepth=sceneDepth;
+#if defined(LW_HALF_GI_HISTORY) && GI_EDGE_RECONSTRUCTION == 1
+            if(abs(sky.a-sceneDepth)>=tolerance*0.35) {
+                vec2 donorUv=(vec2(pixel)+0.5)/vec2(fullSize);
+#ifdef LW_STABLE_DYNAMIC
+                vec2 rayUv=donorUv;
+#else
+                vec2 rayUv=unjitteredUv(donorUv,true);
+#endif
+                vec3 donorRay=(gbufferProjectionInverse*vec4(rayUv*2.0-1.0,1.0,1.0)).xyz;
+                float denominator=dot(planeNormal,donorRay);
+                if(denominator*denominator>0.0004*dot(donorRay,donorRay)) {
+                    float intersection=-donorRay.z*planeDistance/denominator;
+                    if(intersection>0.0 && abs(intersection-sceneDepth)<max(0.25,sceneDepth*0.12))
+                        donorDepth=intersection;
+                }
+            }
+#endif
+            float depthDifference = abs(sky.a - donorDepth);
             if (sky.a <= 0.0 || depthDifference >= tolerance) {
                 continue;
             }
-            ivec2 pixel = ivec2((vec2(texel) + 0.5) * vec2(fullSize) / vec2(traceSize));
             float alignment=geometryNormalAlignment(normal,encodedNormal,texelFetch(colortex1,pixel,0).xy);
+#if defined(LW_HALF_GI_HISTORY) && GI_EDGE_RECONSTRUCTION == 1
+            if(alignment<=0.90) continue;
+#endif
             if (alignment <= 0.82) {
                 continue;
             }
             float weight = weights.x * weights.y * (1.0 - smoothstep(0.35, 1.0, depthDifference / tolerance));
+#if defined(LW_HALF_GI_HISTORY) && GI_EDGE_RECONSTRUCTION == 1
+            weight*=smoothstep(0.90,0.99,alignment);
+#endif
             coverage += weight;
             bounce.sky += sky.rgb * weight;
 #ifdef LW_VOXEL_DIFFUSE_ACTIVE

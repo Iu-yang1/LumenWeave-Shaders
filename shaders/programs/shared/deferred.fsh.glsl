@@ -1,6 +1,9 @@
 #version 330 compatibility
 
 #include "/lib/quality.glsl"
+#if FRAME_LIGHTING_REUSE == 1
+#define LW_FRAME_LIGHTING_FRAGMENT
+#endif
 #include "/lib/coordinates/raster_grid.glsl"
 
 layout(location = 0) out vec4 skyTrace;
@@ -26,6 +29,17 @@ uniform sampler2D depthtex0;
 uniform mat4 gbufferProjection;
 
 #include "/lib/lighting/screen_gi.glsl"
+#ifdef LW_HALF_GI_HISTORY
+#include "/lib/temporal/screen_gi_history.glsl"
+/*
+const int colortex6Format = RGBA16F;
+const int colortex7Format = RGBA16F;
+const bool colortex6Clear = false;
+const bool colortex7Clear = false;
+const vec4 colortex6ClearColor = vec4(0.0, 0.0, 0.0, 0.0);
+const vec4 colortex7ClearColor = vec4(0.0, 0.0, 0.0, 0.0);
+*/
+#endif
 #ifdef LW_AO_SPATIAL
 #include "/lib/lighting/gtao.glsl"
 /*
@@ -38,7 +52,9 @@ const vec4 colortex3ClearColor = vec4(1.0,0.0,0.0,0.0);
 #define LW_GI_REUSE
 #include "/lib/temporal/reproject.glsl"
 uniform sampler2D colortex9;
+#ifndef LW_HALF_GI_HISTORY
 uniform sampler2D colortex7;
+#endif
 #ifdef LW_VOXEL_DIFFUSE_ACTIVE
 uniform sampler2D colortex10;
 #endif
@@ -51,10 +67,12 @@ const vec4 colortex9ClearColor = vec4(0.0, 0.0, 0.0, 0.0);
 */
 #if PERCEPTUAL_GI > 0 && defined(SCREEN_GI_HISTORY) && defined(LW_TAA_ACTIVE) && !defined(LW_DYNAMIC_JITTER) && PROJECTION_JITTER != 2
 #define LW_PERCEPTUAL_GI
+#ifndef LW_HALF_GI_HISTORY
 uniform sampler2D colortex6;
 #ifndef LW_GI_REUSE
 #include "/lib/temporal/reproject.glsl"
 uniform sampler2D colortex7;
+#endif
 #endif
 #endif
 #ifdef LW_GI_REUSE
@@ -64,9 +82,21 @@ const bool colortex9Clear = false;
 layout(location = 1) out vec4 blockTrace;
 #ifdef LW_AO_SPATIAL
 layout(location = 2) out vec2 aoTrace;
+#ifdef LW_HALF_GI_HISTORY
+layout(location = 3) out vec4 resolvedHistory;
+layout(location = 4) out vec4 resolvedGeometry;
+/* RENDERTARGETS: 9,10,3,6,7 */
+#else
 /* RENDERTARGETS: 9,10,3 */
+#endif
+#else
+#ifdef LW_HALF_GI_HISTORY
+layout(location = 2) out vec4 resolvedHistory;
+layout(location = 3) out vec4 resolvedGeometry;
+/* RENDERTARGETS: 9,10,6,7 */
 #else
 /* RENDERTARGETS: 9,10 */
+#endif
 #endif
 /*
 const int colortex10Format = RGBA16F;
@@ -78,11 +108,32 @@ const bool colortex10Clear = false;
 #else
 #ifdef LW_AO_SPATIAL
 layout(location = 1) out vec2 aoTrace;
+#ifdef LW_HALF_GI_HISTORY
+layout(location = 2) out vec4 resolvedHistory;
+layout(location = 3) out vec4 resolvedGeometry;
+/* RENDERTARGETS: 9,3,6,7 */
+#else
 /* RENDERTARGETS: 9,3 */
+#endif
+#else
+#ifdef LW_HALF_GI_HISTORY
+layout(location = 1) out vec4 resolvedHistory;
+layout(location = 2) out vec4 resolvedGeometry;
+/* RENDERTARGETS: 9,6,7 */
 #else
 /* RENDERTARGETS: 9 */
 #endif
 #endif
+#endif
+
+void finishSkyTrace(vec3 radiance,vec3 position,vec3 normal,vec2 encodedNormal,vec2 uv) {
+    skyTrace=vec4(radiance,-position.z);
+#ifdef LW_HALF_GI_HISTORY
+    if(int(gl_FragCoord.y)==0 && int(gl_FragCoord.x)<2) return;
+    resolvedHistory=vec4(temporalScreenBounce(radiance,position,normal,encodedNormal,uv),-position.z);
+    resolvedGeometry=vec4(encodedNormal,vec2(lwRasterSize(colortex6)));
+#endif
+}
 
 void main() {
     ivec2 fullSize = lwRasterSize(depthtex0);
@@ -93,6 +144,14 @@ void main() {
     float depth = texelFetch(depthtex0, pixel, 0).r;
     float terrainDepth = texelFetch(colortex2, pixel, 0).r;
     skyTrace = vec4(0.0);
+#ifdef LW_HALF_GI_HISTORY
+    resolvedHistory=vec4(0.0);
+    resolvedGeometry=vec4(0.0);
+    if(all(equal(ivec2(gl_FragCoord.xy),ivec2(0))))
+        resolvedGeometry=vec4(vec2(lwRasterSize(colortex6)),giHistoryFrameTag(frameCounter));
+    if(all(equal(ivec2(gl_FragCoord.xy),ivec2(1,0))))
+        resolvedGeometry=vec4(mod(lwGiHistoryTime,64.0),floor(lwGiHistoryTime/64.0),0.0,0.0);
+#endif
 #ifdef LW_AO_SPATIAL
     aoTrace=vec2(1.0,0.0);
 #endif
@@ -109,7 +168,8 @@ void main() {
 #else
     if(viewDepth>=30.0) return;
 #endif
-    vec3 normal = decodeNormal(texelFetch(colortex1, pixel, 0).xy);
+    vec2 encodedNormal=texelFetch(colortex1,pixel,0).xy;
+    vec3 normal = decodeNormal(encodedNormal);
 #ifdef LW_AO_SPATIAL
     if(viewDepth>=4.0) {
         vec3 normalView=transpose(mat3(gbufferModelViewInverse))*normal;
@@ -128,6 +188,9 @@ void main() {
     vec3 cameraDelta=vec3(cameraPositionInt-previousCameraPositionInt)
         +cameraPositionFract-previousCameraPositionFract;
     if(((tile.x+tile.y+frameCounter)&1)==0 && -viewPosition.z>3.0 &&
+#ifdef LW_HALF_GI_HISTORY
+        giHistoryFresh() &&
+#endif
         dot(cameraDelta,cameraDelta)<0.0004 &&
 #ifdef LW_GEOMETRY_TAAU
         reprojectTerrain(viewPosition,previousUv,expectedDepth) &&
@@ -137,11 +200,13 @@ void main() {
         length((previousUv-sampleUv)*vec2(fullSize))<0.35 &&
         all(lessThan(tile,lwRasterSize(colortex9)))) {
         vec4 previous=texelFetch(colortex9,tile,0);
-        vec4 metadata=texelFetch(colortex7,pixel,0);
+        ivec2 historySize=lwRasterSize(colortex7);
+        ivec2 historyPixel=clamp(ivec2(sampleUv*vec2(historySize)),ivec2(0),historySize-1);
+        vec4 metadata=texelFetch(colortex7,historyPixel,0);
         if(matchesHistoryDepth(previous.a,expectedDepth) &&
-            all(lessThanEqual(abs(metadata.zw-vec2(fullSize)),vec2(1.0))) &&
+            all(lessThanEqual(abs(metadata.zw-vec2(historySize)),vec2(1.0))) &&
             dot(normal,decodeNormal(metadata.xy))>0.92) {
-            skyTrace=vec4(previous.rgb,-viewPosition.z);
+            finishSkyTrace(previous.rgb,viewPosition,normal,encodedNormal,sampleUv);
 #ifdef LW_VOXEL_DIFFUSE_ACTIVE
             blockTrace=texelFetch(colortex10,tile,0);
 #endif
@@ -160,16 +225,20 @@ void main() {
     vec2 priorUv=vec2(0.0);float priorDepth=0.0;
     bool canReduce=false;vec3 priorGI=vec3(0.0);
     if(!scheduled && viewDepth>3.0 &&
+#ifdef LW_HALF_GI_HISTORY
+        giHistoryFresh() &&
+#endif
 #ifdef LW_GEOMETRY_TAAU
         reprojectTerrain(viewPosition,priorUv,priorDepth) &&
 #else
         reprojectStableTerrain(viewPosition,priorUv,priorDepth,gbufferPreviousProjection) &&
 #endif
         length((priorUv-sampleUv)*vec2(fullSize))<1.5){
-        ivec2 p=clamp(ivec2(priorUv*vec2(fullSize)),ivec2(0),fullSize-1);
+        ivec2 historySize=lwRasterSize(colortex6);
+        ivec2 p=clamp(ivec2(priorUv*vec2(historySize)),ivec2(0),historySize-1);
         vec4 old=texelFetch(colortex6,p,0),meta=texelFetch(colortex7,p,0);
         canReduce=matchesHistoryDepth(old.a,priorDepth) &&
-            all(lessThanEqual(abs(meta.zw-vec2(fullSize)),vec2(1.0))) &&
+            all(lessThanEqual(abs(meta.zw-vec2(historySize)),vec2(1.0))) &&
             dot(normal,decodeNormal(meta.xy))>0.94;
         priorGI=old.rgb;
     }
@@ -192,7 +261,7 @@ void main() {
 #else
     bounce=screenDiffuseBounce(viewPosition,normal,sun);
 #endif
-    skyTrace = vec4(bounce.sky, -viewPosition.z);
+    finishSkyTrace(bounce.sky,viewPosition,normal,encodedNormal,sampleUv);
 #ifdef LW_VOXEL_DIFFUSE_ACTIVE
     blockTrace = vec4(bounce.block, bounce.blockConfidence);
 #endif

@@ -1,13 +1,36 @@
-# LumenWeave Renderer Extension 0.1 alpha.5
+# LumenWeave Renderer Extension 0.1 alpha.7
 
 Independent companion mod development branch. Existing shader packs continue to run unchanged.
 Version-specific artifacts share the section/page core and OpenGL implementation.
+
+Alpha.7 caches seed decoding by canonical block-state identity. Palette queries
+skip sections with no contributing states before the 4096-cell scan; dirty
+sections retain the original cell order and seed encoding. Material-map changes
+and world resets clear the cache. This reduces repeated CPU decoding, not GPU
+propagation work, and introduces no new shader ABI. See
+`NATURAL-ENVIRONMENT-PLAN.md` at repository root for the joint development plan.
 
 Alpha.5 reuses the immutable empty transaction for a stationary, complete voxel
 window. Packet replacement, block edits, unloads, material changes, world resets
 and camera movement invalidate it. Missing sections are retried even without a
 new lifecycle event. The shader pack works without this mod; the experimental
 bridge remains disabled by default and requires a complete per-frame handoff.
+
+Alpha.6 stops collecting CPU seed snapshots unless observation or a GPU bridge
+is explicitly requested. Enable `-Dlumenweave.renderer.observeSeeds=true` for
+CPU observation. The new `EXTENSION_VOXELS=2` shader option selects a persistent
+seed ring: initial windows are populated completely, while subsequent frames
+patch dirty sections and newly exposed cells. Unchanged windows patch zero
+bricks; cached tile support is still published for every current frame.
+`EXTENSION_VOXELS=1` retains the reference materialization path for comparison.
+Both require `-Dlumenweave.renderer.independentSeeds=true`; the pack's default
+remains `EXTENSION_VOXELS=0`.
+
+The shader and mod preserve original shadow injection when a current, complete
+handoff is unavailable. Persistent seeds include hidden solid blocks just like
+the previous independent producer; this does not make either independent
+producer equivalent to the original vertex-derived seed field. See
+`RESOURCE-REUSE-20261127.md` at repository root for this candidate's measurements.
 
 | Target | Minimum Java | Minimum Fabric Loader | Sodium contract |
 | --- | --- | --- | --- |

@@ -6,8 +6,50 @@ public final class CoreRegression {
     static void check(boolean ok,String message){if(!ok)throw new AssertionError(message);}
     static SectionStore.Key key(int x,int y,int z){return new SectionStore.Key(x,y,z);}
     public static void main(String[] args){
-        sections(); stationarySections(); drawLists(); shadows(); pages(); backend(); randomized(); atlas(); framePlanner();
-        System.out.println("Renderer core: 9 regression groups passed");
+        sections(); stationarySections(); drawLists(); shadows(); pages(); backend(); randomized(); atlas(); framePlanner(); seedPatches();
+        seedPalette();
+        System.out.println("Renderer core: 11 regression groups passed");
+    }
+    static void seedPalette(){
+        int[] reads={0};
+        var seeds=new SeedPalette<String>(state->{reads[0]++;return state.isEmpty()?0:259;});
+        String first=new String("solid"),equal=new String("solid"),empty=new String("");
+        for(int index=0;index<4096;index++) {
+            check(seeds.seed(first)==259,"palette seed preserved");
+            check(seeds.seed(empty)==0,"palette zero cached");
+        }
+        check(reads[0]==2&&seeds.size()==2,"decode per unique identity");
+        check(seeds.seed(equal)==259&&reads[0]==3,"distinct state identities");
+        seeds.clear();
+        check(seeds.size()==0&&seeds.seed(first)==259&&reads[0]==4,"material generation reset");
+    }
+    static void seedPatches(){
+        var rng=new Random(6206);
+        int size=32;
+        for(int trial=0;trial<120;trial++){
+            var old=new SectionStore.Window(rng.nextInt(70)-35,rng.nextInt(70)-35,rng.nextInt(70)-35,size);
+            var current=new SectionStore.Window(old.x()+rng.nextInt(11)-5,old.y()+rng.nextInt(11)-5,old.z()+rng.nextInt(11)-5,size);
+            var dirty=Set.of(key(Math.floorDiv(current.x()+8,16),Math.floorDiv(current.y()+8,16),Math.floorDiv(current.z()+8,16)));
+            var patches=SeedPatchPlan.build(current,old,dirty);
+            var cells=new HashSet<String>();
+            for(var brick:patches){
+                check(Math.floorMod(brick.x(),4)==0&&Math.floorMod(brick.y(),4)==0&&Math.floorMod(brick.z(),4)==0,"aligned patch");
+                for(int z=brick.z();z<brick.z()+4;z++)for(int y=brick.y();y<brick.y()+4;y++)for(int x=brick.x();x<brick.x()+4;x++)
+                    if(x>=current.x()&&x<current.x()+size&&y>=current.y()&&y<current.y()+size&&z>=current.z()&&z<current.z()+size)
+                        check(cells.add(x+","+y+","+z),"patches do not overlap");
+            }
+            for(int z=current.z();z<current.z()+size;z++)for(int y=current.y();y<current.y()+size;y++)for(int x=current.x();x<current.x()+size;x++){
+                boolean entered=x<old.x()||x>=old.x()+size||y<old.y()||y>=old.y()+size||z<old.z()||z>=old.z()+size;
+                boolean changed=dirty.contains(key(Math.floorDiv(x,16),Math.floorDiv(y,16),Math.floorDiv(z,16)));
+                check(!(entered||changed)||cells.contains(x+","+y+","+z),"all exposed and dirty cells patched");
+            }
+            check(SeedPatchPlan.build(current,current,Set.of()).isEmpty(),"stationary has no writes");
+        }
+        for(int grid:new int[]{32,64,96,128}){
+            var layout=new IncrementalSeedLayout(grid);
+            check(layout.flag()<layout.persistentBase()&&layout.persistentBase()+grid==layout.supportBase(),"disjoint seed planes");
+            check(layout.depth()>layout.supportBase(),"support allocation");
+        }
     }
     static void stationarySections(){
         var store=new SectionStore();var active=key(0,0,0);var outside=key(1,0,0);

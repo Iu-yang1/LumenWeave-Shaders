@@ -5,6 +5,7 @@
 
 #include "/lib/voxel/dispatch.glsl"
 layout(r32ui) readonly uniform uimage3D lwVoxelOccupancy;
+#include "/lib/voxel/seed_source.glsl"
 #ifdef LW_VOXEL_INCREMENTAL_ACTIVE
 #if VOXEL_FUSION == 1
 layout(r16ui) writeonly uniform uimage3D lwVoxelStage0;
@@ -55,7 +56,8 @@ void main() {
             imageStore(lwVoxelDirtyTiles, tile, uvec4(0u));
         return;
     }
-    uint seed = imageLoad(lwVoxelOccupancy, cell).r;
+    initializeVoxelSeedSource();
+    uint seed = voxelSeedAt(cell);
     ivec3 movement=lwMovement;
     ivec3 previousLocal = cell + movement;
     ivec3 cacheCell = voxelWrapNear(cell+lwCacheOrigin);
@@ -101,7 +103,8 @@ void main() {
         imageStore(lwVoxelDirtyTiles,tile,uvec4(mask));
     }
 #else
-    uint seed = imageLoad(lwVoxelOccupancy, cell).r;
+    initializeVoxelSeedSource();
+    uint seed = voxelSeedAt(cell);
     vec3 source=seed < LW_VOXEL_WALL ? voxelSeedEmission(seed) : vec3(0.0);
     imageStore(lwVoxelFirst, cell, vec4(source,float(any(greaterThan(source,vec3(0.0))))));
 #endif

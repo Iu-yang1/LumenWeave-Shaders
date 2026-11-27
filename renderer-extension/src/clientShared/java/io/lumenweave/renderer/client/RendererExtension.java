@@ -28,11 +28,17 @@ public final class RendererExtension implements ClientModInitializer {
     private static Object owner;
     private static ClientLevel world;
     private static Map<?,?> materialIds;
+    private static final SeedPalette<BlockState> SEED_PALETTE=new SeedPalette<>(state->{
+        if(state.isAir())return 0;
+        Object id=materialIds.get(state);
+        return SectionStore.seed(id instanceof Number number?number.intValue():-1,state.getLightEmission());
+    });
     private static Field settingsField;
     private static Method materialMethod;
     private static long ticks;
     private static final boolean GPU_PROBE=Boolean.getBoolean("lumenweave.renderer.seedProbe");
     private static final boolean INDEPENDENT=Boolean.getBoolean("lumenweave.renderer.independentSeeds");
+    private static final boolean OBSERVE=Boolean.getBoolean("lumenweave.renderer.observeSeeds");
     private static boolean externalActive;
     private static SectionStore.Window sectionWindow;
     private static boolean reportedNormalCull;
@@ -41,6 +47,8 @@ public final class RendererExtension implements ClientModInitializer {
     private static long handoffFrames;
     private static Method cameraMethod;
     private static SectionStore.Delta latest;
+    private static Set<?> imageOwner;
+    private static int occupancyTexture,occupancySize,occupancyDepth;
     @Override public void onInitializeClient(){
         try{
             Class<?> settings=Class.forName("net.irisshaders.iris.shaderpack.materialmap.WorldRenderingSettings");
@@ -55,7 +63,7 @@ public final class RendererExtension implements ClientModInitializer {
     public static void attach(Object manager,ClientLevel level){
         if(owner==manager&&world==level)return;
         if(world!=level)closeProbe();
-        STORE.reset();REFERENCE.close();owner=manager;world=level;materialIds=null;latest=null;sectionWindow=null;externalActive=false;
+        STORE.reset();REFERENCE.close();SEED_PALETTE.clear();owner=manager;world=level;materialIds=null;latest=null;sectionWindow=null;externalActive=false;
     }
     // Packet replacement may replace data without creating a new Sodium section.
     public static void chunkLoaded(LevelChunk chunk){
@@ -82,7 +90,7 @@ public final class RendererExtension implements ClientModInitializer {
         if(owner==manager)STORE.changed(new SectionStore.Key(x,y,z));
     }
     public static void destroy(Object manager){
-        if(owner==manager){STORE.reset();REFERENCE.close();owner=null;world=null;materialIds=null;latest=null;sectionWindow=null;externalActive=false;}
+        if(owner==manager){STORE.reset();REFERENCE.close();SEED_PALETTE.clear();owner=null;world=null;materialIds=null;latest=null;sectionWindow=null;externalActive=false;}
     }
     public static SectionStore.Delta latest(){return latest;}
     public static void tick(){
@@ -91,14 +99,14 @@ public final class RendererExtension implements ClientModInitializer {
         if(world!=mc.level){
             closeProbe();
             if(mc.level==null){
-                STORE.reset();REFERENCE.close();owner=null;world=null;materialIds=null;latest=null;sectionWindow=null;externalActive=false;
+                STORE.reset();REFERENCE.close();SEED_PALETTE.clear();owner=null;world=null;materialIds=null;latest=null;sectionWindow=null;externalActive=false;
             }else attach(mc,mc.level);
         }
-        if(world==null||mc.level!=world||mc.player==null||materialMethod==null||GPU_PROBE||INDEPENDENT)return;
+        if(!OBSERVE||world==null||mc.level!=world||mc.player==null||materialMethod==null||GPU_PROBE||INDEPENDENT)return;
         Map<?,?> ids;
         try{ids=(Map<?,?>)materialMethod.invoke(settingsField.get(null));}
         catch(ReflectiveOperationException e){LOG.warn("Iris material map read failed; producer disabled",e);materialMethod=null;return;}
-        if(ids!=materialIds){materialIds=ids;STORE.invalidateMaterials();}
+        if(ids!=materialIds){materialIds=ids;SEED_PALETTE.clear();STORE.invalidateMaterials();}
         if(ids==null)return;
         // Observation uses player-centered grid; a final shader handshake must
         // use Iris's actual camera position and active VOXEL_GRID_SIZE.
@@ -117,9 +125,17 @@ public final class RendererExtension implements ClientModInitializer {
         return safeZone&&!externalActive;
     }
     private static int occupancy(Set<?> images)throws ReflectiveOperationException{
-        for(Object image:images)if("lwVoxelOccupancy".equals(image.getClass().getMethod("getName").invoke(image)))
-            return (int)image.getClass().getMethod("getId").invoke(image);
-        return 0;
+        if(imageOwner!=images){
+            occupancyTexture=0;occupancySize=0;occupancyDepth=0;
+            for(Object image:images)if("lwVoxelOccupancy".equals(image.getClass().getMethod("getName").invoke(image))){
+                occupancyTexture=(int)image.getClass().getMethod("getId").invoke(image);
+                occupancySize=OpenGlSeedAtlas.width(occupancyTexture);
+                occupancyDepth=OpenGlSeedAtlas.depth(occupancyTexture);
+                break;
+            }
+            imageOwner=images;
+        }
+        return occupancyTexture;
     }
     private static boolean ready(){
         return world!=null&&Minecraft.getInstance().level==world&&cameraMethod!=null&&materialMethod!=null&&OpenGlFeatures.seedBridge(GL.getCapabilities());
@@ -127,14 +143,14 @@ public final class RendererExtension implements ClientModInitializer {
     private static SectionStore.Window prepareAtlas(int n)throws ReflectiveOperationException{
         Map<?,?> ids=(Map<?,?>)materialMethod.invoke(settingsField.get(null));
         if(ids==null)return null;
-        if(ids!=materialIds){materialIds=ids;STORE.invalidateMaterials();}
+        if(ids!=materialIds){materialIds=ids;SEED_PALETTE.clear();STORE.invalidateMaterials();}
         Vector3d pos=(Vector3d)cameraMethod.invoke(null);
         var w=new SectionStore.Window((int)Math.floor(pos.x)-n/2,(int)Math.floor(pos.y)-n/2,(int)Math.floor(pos.z)-n/2,n);
         ensureWindowLoaded(w);
         boolean newAtlas=atlas==null;
         if(newAtlas)atlas=new OpenGlSeedAtlas();
         latest=STORE.update(w,RendererExtension::snapshot);
-        REFERENCE.uploadSeeds(latest);
+        if(GPU_PROBE||OBSERVE)REFERENCE.uploadSeeds(latest);
         atlas.uploadSeeds(newAtlas?STORE.fullSnapshot():latest);
         return w;
     }
@@ -172,9 +188,10 @@ public final class RendererExtension implements ClientModInitializer {
                 if(report)LOG.info("Independent seed producer waiting for occupancy image");
                 return;
             }
-            int n=OpenGlSeedAtlas.width(texture);
-            int depth=OpenGlSeedAtlas.depth(texture);
-            if((n!=32&&n!=64&&n!=96&&n!=128)||depth!=n+(n+63)/64+1){
+            int n=occupancySize;
+            int depth=occupancyDepth;
+            if((n!=32&&n!=64&&n!=96&&n!=128)||
+                (depth!=n+(n+63)/64+1&&depth!=new IncrementalSeedLayout(n).depth())){
                 if(report)LOG.info("Independent seed producer waiting for extension layout: width={}, depth={}",n,depth);
                 return;
             }
@@ -183,8 +200,11 @@ public final class RendererExtension implements ClientModInitializer {
                 LOG.info("Independent seed window: resident={}, missing={}, epoch={}",
                     latest.resident(),latest.missing().size(),latest.epoch());
             if(window==null||!latest.complete())return;
-            var receipt=atlas.materialize(texture,latest);
+            var receipt=depth==new IncrementalSeedLayout(n).depth()
+                ?atlas.materializeIncremental(texture,latest):atlas.materialize(texture,latest);
             externalActive=RendererBackend.mayUseNormalCulling(latest,receipt,atlas.capabilities());
+            if(report&&depth==new IncrementalSeedLayout(n).depth())
+                LOG.info("Persistent seed handoff: active={}, patchedBricks={}, epoch={}",externalActive,atlas.lastPatchedBricks(),latest.epoch());
         }catch(ReflectiveOperationException|RuntimeException e){
             LOG.warn("External voxel handoff failed; original shadow producer retained",e);
         }
@@ -195,7 +215,7 @@ public final class RendererExtension implements ClientModInitializer {
         try{
             int texture=occupancy(images);
             if(texture==0)return;
-            int n=OpenGlSeedAtlas.width(texture);
+            int n=occupancySize;
             if(n!=32&&n!=64&&n!=96&&n!=128)return;
             var window=prepareAtlas(n);
             if(window!=null&&++probeFrames%120==0){
@@ -205,7 +225,10 @@ public final class RendererExtension implements ClientModInitializer {
             }
         }catch(ReflectiveOperationException|RuntimeException e){LOG.warn("Iris seed probe failed",e);}
     }
-    public static void closeProbe(){if(atlas!=null){atlas.close();atlas=null;}externalActive=false;sectionWindow=null;}
+    public static void closeProbe(){
+        if(atlas!=null){atlas.close();atlas=null;}
+        externalActive=false;sectionWindow=null;imageOwner=null;occupancyTexture=0;occupancySize=0;occupancyDepth=0;
+    }
     private static int[] snapshot(SectionStore.Key key){
         if(key.y()<ClientPlatform.minSection(world)||key.y()>ClientPlatform.maxSection(world))return new int[0];
         var chunk=world.getChunkSource().getChunkNow(key.x(),key.z());
@@ -214,13 +237,12 @@ public final class RendererExtension implements ClientModInitializer {
         var sections=chunk.getSections();
         if(index<0||index>=sections.length)return null;
         var section=sections[index];
-        if(section.hasOnlyAir())return new int[0];
+        if(section.hasOnlyAir()||!section.maybeHas(state->SEED_PALETTE.seed(state)!=0))return new int[0];
         int[] entries=new int[4096];int count=0;
         for(int z=0;z<16;z++)for(int y=0;y<16;y++)for(int x=0;x<16;x++){
             BlockState state=section.getBlockState(x,y,z);
             if(state.isAir())continue;
-            Object id=materialIds.get(state);
-            int seed=SectionStore.seed(id instanceof Number n?n.intValue():-1,state.getLightEmission());
+            int seed=SEED_PALETTE.seed(state);
             if(seed!=0)entries[count++]=SectionStore.entry(x,y,z,seed);
         }
         return Arrays.copyOf(entries,count);

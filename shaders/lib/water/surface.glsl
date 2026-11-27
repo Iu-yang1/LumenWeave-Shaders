@@ -20,7 +20,15 @@ float waterThickness(vec3 viewPosition, vec2 screen) {
 vec3 waveNormal(vec3 normal, vec3 position, float skyAccess) {
     vec2 footprintX = dFdx(position.xz);
     vec2 footprintY = dFdy(position.xz);
+#if WEATHER_COUPLING == 1
+    vec2 crosswind=vec2(-lwWindDirection.y,lwWindDirection.x);
+    mat2 windFrame=mat2(lwWindDirection,crosswind);
+    vec2 wavePosition=position.xz*windFrame;
+    vec2 slope=windFrame*waterWaveSlope(wavePosition,footprintX*windFrame,footprintY*windFrame,lwWindTime,frameTime*WIND_SPEED);
+    slope*=mix(0.68,1.12,clamp(skyAccess,0.0,1.0))*mix(0.80,1.25,weatherGust(position.xz));
+#else
     vec2 slope = waterWaveSlope(position.xz, footprintX, footprintY, frameTimeCounter, frameTime);
+#endif
     float rain=rainStrength*skyAccess*float(hasSkylight);
     slope *= mix(1.0,1.35,rain);
 #if RAIN_RIPPLES > 0

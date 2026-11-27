@@ -1,3 +1,5 @@
+#ifndef LW_REPROJECT
+#define LW_REPROJECT
 uniform mat4 gbufferPreviousModelView;
 uniform mat4 gbufferPreviousProjection;
 #ifndef LW_CAMERA_INT_UNIFORM
@@ -50,3 +52,4 @@ bool reprojectTerrain(vec3 viewPosition, out vec2 previousUv, out float expected
 bool matchesHistoryDepth(float depth, float expectedDepth) {
     return depth > 0.0 && abs(depth - expectedDepth) <= max(0.07, expectedDepth * 0.012);
 }
+#endif

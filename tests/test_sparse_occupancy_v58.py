@@ -86,7 +86,7 @@ class SparseOccupancyTests(unittest.TestCase):
         self.assertIn("uint previous = imageAtomicMax", inject)
         self.assertIn("if (previous == 0u)", inject)
         self.assertIn("lwEmptyTile = !lwFullRebuild && lwStationary", prepare)
-        self.assertLess(prepare.index("if (lwEmptyTile)"), prepare.index("uint seed = imageLoad"))
+        self.assertLess(prepare.index("if (lwEmptyTile)"), prepare.index("uint seed = voxelSeedAt"))
 
 
 class SharedMathTests(unittest.TestCase):

@@ -13,7 +13,7 @@ if (!targets.containsKey(targetVersion)) {
 }
 def targetConfig = targets[targetVersion]
 apply plugin: targetConfig.legacy ? 'net.fabricmc.fabric-loom-remap' : 'net.fabricmc.fabric-loom'
-version = '0.1.0-alpha.5'
+version = '0.1.0-alpha.7'
 group = 'io.lumenweave'
 base.archivesName = "lumenweave-renderer-mc${targetVersion}"
 layout.buildDirectory = layout.projectDirectory.dir("build/${targetVersion}")
@@ -70,7 +70,7 @@ processResources {
             line.replace('JAVA_25', "JAVA_${targetConfig.java}")
         }
     }
-    from('gpu') { include 'materialize_external_seeds.comp'; into 'lumenweave' }
+    from('gpu') { include '*external*.comp'; into 'lumenweave' }
 }
 tasks.register('coreRegression', JavaExec) {
     dependsOn testClasses

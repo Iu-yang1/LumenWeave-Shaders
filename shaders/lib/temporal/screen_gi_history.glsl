@@ -1,9 +1,28 @@
 #include "/lib/temporal/reproject.glsl"
 
+#ifndef LW_GI_HISTORY_SAMPLERS
+#define LW_GI_HISTORY_SAMPLERS
 uniform sampler2D colortex6;
 uniform sampler2D colortex7;
+#endif
+
+#ifdef LW_HALF_GI_HISTORY
+uniform float lwGiHistoryTime;
+vec2 giHistoryFrameTag(int frame) { return vec2((frame&1023)+1,((frame>>10)&1023)+1); }
+bool giHistoryFresh() {
+    vec4 state=texelFetch(colortex7,ivec2(0),0);
+    vec2 clock=texelFetch(colortex7,ivec2(1,0),0).xy;
+    float age=abs(clock.x+64.0*clock.y-lwGiHistoryTime);
+    age=min(age,3600.0-age);
+    return all(equal(state.xy,vec2(lwRasterSize(colortex6)))) &&
+        all(equal(state.zw,giHistoryFrameTag(frameCounter-1))) && age<0.10;
+}
+#endif
 
 vec3 temporalScreenBounce(vec3 current, vec3 viewPosition, vec3 normal, vec2 encodedNormal, vec2 uv) {
+#ifdef LW_HALF_GI_HISTORY
+    if(!giHistoryFresh()) return current;
+#endif
     vec2 previousUv;
     float expectedDepth;
 #ifdef LW_STABLE_DYNAMIC
@@ -15,8 +34,9 @@ vec3 temporalScreenBounce(vec3 current, vec3 viewPosition, vec3 normal, vec2 enc
         return current;
     }
     ivec2 size = lwRasterSize(colortex6);
+    vec2 motionSize=vec2(lwRasterSize(depthtex0));
 #if APPROX_REUSE == 1
-    if (length((previousUv - uv) * vec2(size)) < 0.20) {
+    if (length((previousUv - uv) * motionSize) < 0.20) {
         ivec2 nearest = clamp(ivec2(previousUv * vec2(size)), ivec2(0), size - 1);
         vec4 history = texelFetch(colortex6, nearest, 0);
         vec4 metadata = texelFetch(colortex7, nearest, 0);
@@ -61,8 +81,12 @@ vec3 temporalScreenBounce(vec3 current, vec3 viewPosition, vec3 normal, vec2 enc
     vec3 history = accumulated / coverage;
     vec3 disagreement = abs(history - current) / max(max(history, current), vec3(0.006));
     vec3 agreement = 1.0 - smoothstep(vec3(0.17), vec3(0.45), disagreement);
-    float motion = length((previousUv - uv) * vec2(size));
+    float motion = length((previousUv - uv) * motionSize);
     float weight = 0.78 * coverage * (1.0 - smoothstep(2.0, 20.0, motion));
+#if defined(LW_HALF_GI_HISTORY) && GI_EDGE_RECONSTRUCTION == 1
+    weight*=smoothstep(0.25,0.75,coverage);
+    weight*=1.0-smoothstep(0.5,8.0,motion)*0.35;
+#endif
     weight *= 1.0 - smoothstep(26.0, 30.0, expectedDepth);
     return mix(current, min(history, current * 1.45 + vec3(0.002)), weight * agreement);
 }
