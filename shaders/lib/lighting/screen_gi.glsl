@@ -29,6 +29,9 @@ ScreenBounce screenBounceRay(vec3 origin, vec3 direction, mat3 toView, vec3 sun,
     }
 #endif
     for (int tap = firstTap; tap < 8; ++tap) {
+        if (travel >= 3.9) {
+            break;
+        }
         vec3 position = origin + direction * travel;
         if (position.z >= -0.12) {
             break;
@@ -80,6 +83,11 @@ ScreenBounce screenBounceRay(vec3 origin, vec3 direction, mat3 toView, vec3 sun,
                 if (facing <= 0.0) {
                     break;
                 }
+                float confidence = facing * smoothstep(0.0, 0.08, min(edge.x, edge.y));
+                confidence *= (1.0 - smoothstep(1.3, 3.9, travel)) * (1.0 - smoothstep(0.6, 1.0, delta / thickness));
+                if (confidence <= 0.0) {
+                    break;
+                }
                 vec3 albedo = texelFetch(colortex0, pixel, 0).rgb;
                 Material source = vanillaMaterial(int(materialDepth.y), albedo);
 #ifdef MC_TEXTURE_FORMAT_LAB_PBR_1_3
@@ -108,8 +116,6 @@ ScreenBounce screenBounceRay(vec3 origin, vec3 direction, mat3 toView, vec3 sun,
 #endif
                 vec3 sky = max(ambientIrradiance(vec2(0.0, geometry.w), hitNormal.y, sun)
                     - vec3(ambientFloor()), vec3(0.0));
-                float confidence = facing * smoothstep(0.0, 0.08, min(edge.x, edge.y));
-                confidence *= (1.0 - smoothstep(1.3, 3.9, travel)) * (1.0 - smoothstep(0.6, 1.0, delta / thickness));
                 ScreenBounce hit = ScreenBounce(diffuse * (direct * daylightWeight / LW_PI + sky * 0.5) * confidence, vec3(0.0), 0.0);
 #ifdef LW_VOXEL_DIFFUSE_ACTIVE
                 vec3 blockLight = voxelIrradiance(worldPosition, hitNormal);
@@ -161,7 +167,7 @@ ScreenBounce screenDiffuseBouncePair(vec3 viewPosition, vec3 normal, vec3 sun,in
     const vec2 rayBasis[4]=vec2[4](vec2(1,1),vec2(-1,1),vec2(-1,-1),vec2(1,-1));
     for (int ray = 0; ray < rayCount; ++ray) {
         vec2 basis=rayBasis[rayCount==4?ray:((ray*stride+pairPhase)&3)]*0.7071067812;
-        vec3 direction=normalize(normal+tangent*basis.x+bitangent*basis.y);
+        vec3 direction=(normal+tangent*basis.x+bitangent*basis.y)*0.7071067812;
         ScreenBounce hit = screenBounceRay(origin, toView * direction, toView, sun, direct);
         bounce.sky += hit.sky;
         bounce.block += hit.block;

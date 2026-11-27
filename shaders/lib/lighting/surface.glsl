@@ -21,6 +21,11 @@ vec3 surfaceRadiance(vec3 albedo, Material material, vec3 normal, vec3 view, vec
     wetSurfaceFromResponse(albedo,material,wetResponse);
     normal=wetNormal;
     #endif
+    vec3 normalDx = dFdx(normal);
+    vec3 normalDy = dFdy(normal);
+    float normalVariance = 0.25 * (dot(normalDx, normalDx) + dot(normalDy, normalDy));
+    float alpha = material.roughness * material.roughness;
+    material.roughness = sqrt(sqrt(clamp(alpha * alpha + normalVariance, 0.000001, 1.0)));
     vec3 f0 = material.f0;
     float skyAccess = smoothstep(0.56, 1.0, lightLevels.y);
     vec3 light = sun.y >= 0.0 ? sun : -sun;

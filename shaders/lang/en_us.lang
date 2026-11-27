@@ -380,3 +380,8 @@ option.HDR_TILE_FUSION=Motion / DOF tile fusion
 option.HDR_TILE_FUSION.comment=Experimental disk DOF plus motion blur compute path. Compare GPU timing; cross-tile motion donors may cost more than the saved reads.
 value.HDR_TILE_FUSION.0=Reference
 value.HDR_TILE_FUSION.1=Fused
+
+option.EXTENSION_VOXELS=Renderer Extension voxel bridge
+option.EXTENSION_VOXELS.comment=Experimental external section producer. Requires the companion mod and its independentSeeds JVM option. Without a complete handoff the original shadow producer remains active.
+value.EXTENSION_VOXELS.0=Original
+value.EXTENSION_VOXELS.1=Extension

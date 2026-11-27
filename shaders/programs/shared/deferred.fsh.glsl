@@ -124,7 +124,7 @@ void main() {
 #ifdef LW_GI_REUSE
     // Every tile receives a fresh trace at least every other frame.
     ivec2 tile=ivec2(gl_FragCoord.xy);
-    vec2 previousUv;float expectedDepth;
+    vec2 previousUv=vec2(0.0);float expectedDepth=0.0;
     vec3 cameraDelta=vec3(cameraPositionInt-previousCameraPositionInt)
         +cameraPositionFract-previousCameraPositionFract;
     if(((tile.x+tile.y+frameCounter)&1)==0 && -viewPosition.z>3.0 &&
@@ -157,7 +157,7 @@ void main() {
     ivec2 giTile=ivec2(gl_FragCoord.xy);
     int period=PERCEPTUAL_GI==2?4:2;
     bool scheduled=((giTile.x+giTile.y+frameCounter)%period)==0;
-    vec2 priorUv;float priorDepth;
+    vec2 priorUv=vec2(0.0);float priorDepth=0.0;
     bool canReduce=false;vec3 priorGI=vec3(0.0);
     if(!scheduled && viewDepth>3.0 &&
 #ifdef LW_GEOMETRY_TAAU

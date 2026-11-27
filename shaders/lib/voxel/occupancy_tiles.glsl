@@ -8,4 +8,10 @@ ivec3 lwOccupancyTileAddress(ivec3 tile) {
     int index = tile.x + side * (tile.y + side * tile.z);
     return ivec3(index % n, (index / n) % n, n + index / (n * n));
 }
+#ifdef LW_EXTERNAL_VOXEL_ACTIVE
+ivec3 lwExternalSeedFlagAddress() {
+    const int n=VOXEL_GRID_SIZE;
+    return ivec3(0,0,n+(n+63)/64);
+}
+#endif
 #endif

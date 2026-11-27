@@ -13,6 +13,9 @@ shared bool clearTile;
 #endif
 void main() {
     if (gl_LocalInvocationIndex == 0u) {
+#ifdef LW_EXTERNAL_VOXEL_ACTIVE
+        if(all(equal(gl_WorkGroupID,uvec3(0)))) imageStore(lwVoxelOccupancy,lwExternalSeedFlagAddress(),uvec4(0u));
+#endif
         #ifdef LW_GPU_COMPACTION
         if(all(equal(gl_WorkGroupID,uvec3(0)))) {
             count0=0u; y0=1u; z0=1u; pad0=0u;

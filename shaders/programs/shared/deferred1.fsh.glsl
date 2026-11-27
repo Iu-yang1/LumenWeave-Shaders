@@ -282,14 +282,14 @@ void main() {
 #endif
 #ifdef SCREEN_GI
 #ifdef SCREEN_GI_SPATIAL
-    ScreenBounce screenBounce = spatialScreenBounce(viewPosition, normal, sun, texCoord);
+    ScreenBounce screenBounce = spatialScreenBounce(viewPosition, normal, geometry.xy, sun, texCoord);
 #else
     ScreenBounce screenBounce = screenDiffuseBounce(viewPosition, normal, sun);
 #endif
     bounce = screenBounce.sky;
 #ifdef LW_SCREEN_GI_HISTORY_ACTIVE
     if (-viewPosition.z < 30.0) {
-        bounce = temporalScreenBounce(bounce, viewPosition, normal, texCoord);
+        bounce = temporalScreenBounce(bounce, viewPosition, normal, geometry.xy, texCoord);
         skyBounceHistory = vec4(bounce, -viewPosition.z);
         bounceNormalHistory = vec4(geometry.xy, vec2(lwRasterSize(depthtex0)));
     }

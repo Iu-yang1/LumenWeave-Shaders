@@ -16,6 +16,9 @@ void injectTerrainVoxel(vec3 shadowView) {
     if (strength == 0u && !wall) {
         return;
     }
+    #ifdef LW_EXTERNAL_VOXEL_ACTIVE
+    if(imageLoad(lwVoxelOccupancy,lwExternalSeedFlagAddress()).r==1u) return;
+    #endif
     vec3 position = (shadowModelViewInverse * vec4(shadowView, 1.0)).xyz;
     vec3 center = position + at_midBlock.xyz / 64.0;
     ivec3 cell = voxelCell(center, cameraPositionFract);
