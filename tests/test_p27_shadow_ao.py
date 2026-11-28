@@ -50,7 +50,7 @@ class ShadowAoTests(unittest.TestCase):
 
     def test_shared_ao_geometry_and_full_resolution_fallback(self):
         q=(ROOT/"lib/quality.glsl").read_text()
-        self.assertIn("AO_RECONSTRUCTION == 1 && (PROJECTION_JITTER == 1 || AA_MODE < 2 || defined(LW_GEOMETRY_TAAU))",q)
+        self.assertIn("AO_RECONSTRUCTION == 1 && (PROJECTION_JITTER == 1 || AA_MODE < 2 || defined(LW_GEOMETRY_TAAU) || defined(LW_AO_NEAR_GRID))",q)
         self.assertIn("!defined(LW_DIMENSION_END) && !defined(LW_DIMENSION_NETHER)",q)
         props=(ROOT/"shaders.properties").read_text()
         self.assertIn("size.buffer.colortex3 = 0.5 0.5",props)

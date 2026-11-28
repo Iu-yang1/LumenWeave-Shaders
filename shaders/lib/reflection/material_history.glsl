@@ -16,12 +16,13 @@ vec3 temporalReflectionCorrection(vec3 current,float confidence,vec3 position,ve
     for(int y=0;y<2;++y)for(int x=0;x<2;++x) {
         ivec2 pixel=base+ivec2(x,y);
         if(any(lessThan(pixel,ivec2(0))) || any(greaterThanEqual(pixel,size))) continue;
-        vec4 sampleColor=texelFetch(colortex14,pixel,0);
-        vec4 metadata=texelFetch(colortex15,pixel,0);
-        if(!matchesHistoryDepth(sampleColor.a,expectedDepth) ||
-            any(greaterThan(abs(metadata.zw-vec2(size)),vec2(1.0))) ||
-            dot(decodeNormal(metadata.xy),normal)<0.92) continue;
         vec2 weights=mix(1.0-f,f,vec2(x,y));float w=weights.x*weights.y;
+        if(w<=0.0) continue;
+        vec4 sampleColor=texelFetch(colortex14,pixel,0);
+        if(!matchesHistoryDepth(sampleColor.a,expectedDepth)) continue;
+        vec4 metadata=texelFetch(colortex15,pixel,0);
+        if(any(greaterThan(abs(metadata.zw-vec2(size)),vec2(1.0))) ||
+            dot(decodeNormal(metadata.xy),normal)<0.92) continue;
         accumulated+=sampleColor.rgb*w;total+=w;
     }
     if(total<0.25) return current;

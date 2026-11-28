@@ -22,10 +22,13 @@ class QualityBudgetTests(unittest.TestCase):
                 self.assertEqual(result["hiz_mib"], 67 * 37 * 8 / MIB)
                 self.assertEqual(result["extra_color_single_mib"], 28 * 1920 * 1080 / MIB)
             else:
-                self.assertTrue(all(value == 0 for key,value in result.items() if key not in ("hiz_mib","end_nebula_mib","water_normal_mib","opaque_hdr_single_mib")))
+                self.assertTrue(all(value == 0 for key,value in result.items() if key not in ("hiz_mib","end_nebula_mib","water_normal_mib","opaque_hdr_single_mib","ao_shared_single_mib","ao_shared_double_mib")))
                 self.assertEqual(result["hiz_mib"], 0)
                 self.assertEqual(result["voxel_diffuse_smooth_mib"],0)
             self.assertEqual(result["opaque_hdr_single_mib"],1920*1080*4/MIB if options.get("DEFERRED_LIGHTING")==options.get("ADVANCED_WATER")=="true" else 0)
+            ao_bytes=0 if tier in ("Potato","Low") else 960*540*4
+            self.assertEqual(result["ao_shared_single_mib"],ao_bytes/MIB)
+            self.assertEqual(result["ao_shared_double_mib"],2*ao_bytes/MIB)
 
     def test_fixed_mode_removes_dynamic_owner_payload(self):
         options = preview_profiles(PREVIEW)["profile.Ultra"]

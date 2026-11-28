@@ -116,12 +116,12 @@ ScreenBounce screenBounceRay(vec3 origin, vec3 direction, mat3 toView, vec3 sun,
 #endif
                 vec3 sky = max(ambientIrradiance(vec2(0.0, geometry.w), hitNormal.y, sun)
                     - vec3(ambientFloor()), vec3(0.0));
-                ScreenBounce hit = ScreenBounce(diffuse * (direct * daylightWeight / LW_PI + sky * 0.5) * confidence, vec3(0.0), 0.0);
+                ScreenBounce hit = ScreenBounce(diffuse * (direct * daylightWeight / LW_PI + sky * (0.5 * source.occlusion)) * confidence, vec3(0.0), 0.0);
 #ifdef LW_VOXEL_DIFFUSE_ACTIVE
                 vec3 blockLight = voxelIrradiance(worldPosition, hitNormal);
                 float strength = max(blockLight.r, max(blockLight.g, blockLight.b));
                 hit.blockConfidence = confidence * smoothstep(0.01, 0.12, strength);
-                hit.block = blockLight * diffuse * hit.blockConfidence;
+                hit.block = blockLight * diffuse * hit.blockConfidence * source.occlusion;
 #endif
                 return hit;
             }

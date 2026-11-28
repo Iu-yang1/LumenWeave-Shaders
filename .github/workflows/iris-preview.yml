@@ -35,6 +35,8 @@ jobs:
           glslangValidator --version
       - name: Validate geometry and scene feature combinations
         run: python -u tools/check_shaders.py --v4-focused
+      - name: Validate near AO and adaptive GI reconstruction
+        run: python -u tools/check_ao_gi_reconstruction.py --compiler glslangValidator
   compile:
     if: github.event_name != 'workflow_dispatch' || github.ref == 'refs/heads/develop'
     runs-on: ubuntu-24.04

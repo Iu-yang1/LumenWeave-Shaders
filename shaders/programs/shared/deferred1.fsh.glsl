@@ -264,6 +264,7 @@ void main() {
 #ifdef MC_TEXTURE_FORMAT_LAB_PBR_1_3
     material = labMaterial(material, scene.rgb, materialDepth.z, materialDepth.w);
 #endif
+    float materialVisibility=material.occlusion;
 #ifdef SCREEN_AO
     vec3 normalInView = transpose(mat3(gbufferModelViewInverse)) * normal;
     // In dense fog the AO contrast is already attenuated; keep full near detail.
@@ -274,6 +275,10 @@ void main() {
         float ao=groundTruthOcclusion(texCoord,viewPosition,normalInView);
         #endif
         material.occlusion*=mix(1.0,mix(0.23,1.0,ao),smoothstep(0.035,0.12,visibleWeight));
+#if LW_DEFERRED_DIAGNOSTIC == 9
+        writeScene(vec4(vec3(ao),1.0));
+        return;
+#endif
     }
 #endif
     vec3 sun = sunDirection();
@@ -301,14 +306,15 @@ void main() {
 #if defined(SCREEN_GI) || defined(LW_VOXEL_DIFFUSE_ACTIVE)
     if(visibleWeight>0.025) {
 #if SURFACE_REUSE == 1
-    vec3 diffuse = prepared.albedo * (1.0 - prepared.material.metallic) * (1.0 - prepared.material.f0);
+    vec3 diffuse = prepared.albedo * (1.0 - prepared.material.metallic) * (1.0 - prepared.material.f0) * materialVisibility;
 #else
     vec3 bounceAlbedo=scene.rgb;
 #ifdef WET_SURFACES
     wetSurface(bounceAlbedo,material,normal,geometry.zw,viewPosition);
 #endif
-    vec3 diffuse = bounceAlbedo * (1.0 - material.metallic) * (1.0 - material.f0);
+    vec3 diffuse = bounceAlbedo * (1.0 - material.metallic) * (1.0 - material.f0) * materialVisibility;
 #endif
+    if(any(greaterThan(diffuse,vec3(0.0)))) {
     vec3 bounce = vec3(0.0);
 #ifdef LW_VOXEL_DIFFUSE_ACTIVE
     vec3 position = (gbufferModelViewInverse * vec4(viewPosition, 1.0)).xyz;
@@ -336,6 +342,7 @@ void main() {
     bounce += min(blockBounce, vec3(0.25));
 #endif
     lit += diffuse * bounce * smoothstep(0.025,0.10,visibleWeight);
+    }
     }
 #endif
 #if LW_DEFERRED_DIAGNOSTIC == 8

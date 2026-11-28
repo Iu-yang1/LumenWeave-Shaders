@@ -17,8 +17,9 @@
 #define FRAME_LIGHTING_REUSE 1 // [0 1]
 #define SURFACE_REUSE 1 // [0 1]
 #define GI_HISTORY_MODE 0 // [0 1]
-#define GI_EDGE_RECONSTRUCTION 0 // [0 1]
-#define LW_DEFERRED_DIAGNOSTIC 0 // [0 1 2 3 4 5 6 7 8]
+#define GI_EDGE_RECONSTRUCTION 0 // [0 1 2]
+#define AO_NEAR_RECONSTRUCTION 0 // [0 1]
+#define LW_DEFERRED_DIAGNOSTIC 0 // [0 1 2 3 4 5 6 7 8 9]
 #define WEATHER_COUPLING 1 // [0 1]
 #define WIND_DIRECTION 35.0 // [0.0 35.0 90.0 135.0 180.0 225.0 270.0 315.0]
 #define WIND_GUSTS 0.65 // [0.0 0.35 0.65 1.0]
@@ -237,7 +238,10 @@
 
 // Fixed-grid and no-TAA paths share the unused ownership attachment.
 // AO-only presets can now use the existing deferred prepass without SSGI.
-#if AO_RECONSTRUCTION == 1 && (PROJECTION_JITTER == 1 || AA_MODE < 2 || defined(LW_GEOMETRY_TAAU)) && defined(DEFERRED_LIGHTING) && defined(SCREEN_AO) && !defined(LW_DIMENSION_END) && !defined(LW_DIMENSION_NETHER)
+#if AO_NEAR_RECONSTRUCTION == 1 && !defined(LW_DYNAMIC_JITTER)
+#define LW_AO_NEAR_GRID
+#endif
+#if AO_RECONSTRUCTION == 1 && (PROJECTION_JITTER == 1 || AA_MODE < 2 || defined(LW_GEOMETRY_TAAU) || defined(LW_AO_NEAR_GRID)) && defined(DEFERRED_LIGHTING) && defined(SCREEN_AO) && !defined(LW_DIMENSION_END) && !defined(LW_DIMENSION_NETHER)
 #define LW_AO_SPATIAL
 #endif
 
