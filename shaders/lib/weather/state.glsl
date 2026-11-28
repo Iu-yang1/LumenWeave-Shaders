@@ -18,4 +18,14 @@ vec2 cloudWindPosition(vec2 position,float time) {
     return position+time*vec2(1.1,0.40);
 #endif
 }
+
+vec2 cloudWindHistoryOffset(float elapsed) {
+#if WEATHER_COUPLING == 1
+    float delta=elapsed*WIND_SPEED;
+    float travel=delta-4.0*WIND_GUSTS*cos((lwWindTime-delta*0.5)*0.11)*sin(delta*0.055);
+    return -lwWindDirection*travel;
+#else
+    return vec2(1.1,0.40)*elapsed;
+#endif
+}
 #endif

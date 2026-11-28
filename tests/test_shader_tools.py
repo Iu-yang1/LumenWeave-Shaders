@@ -10,6 +10,12 @@ from package import P0_CONFIG, PREVIEW
 
 
 class ShaderToolsTests(unittest.TestCase):
+    def test_iris_parser_reserved_identifiers(self):
+        for identifier in ("coherent","volatile","restrict","readonly","writeonly"):
+            with self.subTest(identifier=identifier), self.assertRaisesRegex(ValueError,"reserves identifier"):
+                check_iris_directives(f"bool {identifier}=true;","deferred1.fsh")
+        check_iris_directives("coherent uniform image3D light; bool supportCoherent=true;","prepare.csh")
+
     def test_iris_clear_color_rejects_scalar_constructor(self):
         with self.assertRaisesRegex(ValueError, "four explicit"):
             check_iris_directives("const vec4 colortex4ClearColor = vec4(0.0);", "composite")

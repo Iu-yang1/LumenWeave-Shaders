@@ -88,6 +88,12 @@ def expand(root, path, ancestry=()):
 
 
 def check_iris_directives(text, path):
+    declaration = re.search(
+        r"\b(?:bool|float|int|uint|[biud]?vec[234]|[d]?mat[234](?:x[234])?)\s+"
+        r"(coherent|volatile|restrict|readonly|writeonly)\s*(?=[=;,\[)])", text
+    )
+    if declaration:
+        raise ValueError(f"Iris GLSL parser reserves identifier {declaration[1]}: {path}")
     # Iris ComputeDirectiveParser splits constructor arguments by comma and
     # indexes each component, even after logging a wrong argument count.
     # GLSL scalar splats and constant expressions compile but can crash Iris.

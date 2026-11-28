@@ -171,7 +171,11 @@ void main() {
     vec2 encodedNormal=texelFetch(colortex1,pixel,0).xy;
     vec3 normal = decodeNormal(encodedNormal);
 #ifdef LW_AO_SPATIAL
+#if AO_NEAR_RECONSTRUCTION == 1
+    if(viewDepth>=0.35) {
+#else
     if(viewDepth>=4.0) {
+#endif
         vec3 normalView=transpose(mat3(gbufferModelViewInverse))*normal;
         aoTrace=vec2(groundTruthOcclusion(sampleUv,viewPosition,normalView),viewDepth);
     }
@@ -287,7 +291,11 @@ void main() {
     if(depth>=1.0 || abs(depth-texelFetch(colortex2,pixel,0).r)>0.00000012) return;
     vec2 uv=depthPixelUv(depthtex0,pixel);
     vec3 position=reconstructViewPosition(uv,depth);
+#if AO_NEAR_RECONSTRUCTION == 1
+    if(-position.z<0.35 || -position.z>=52.0) return;
+#else
     if(-position.z<4.0 || -position.z>=52.0) return;
+#endif
     vec3 normal=transpose(mat3(gbufferModelViewInverse))*decodeNormal(texelFetch(colortex1,pixel,0).xy);
     skyTrace=vec4(groundTruthOcclusion(uv,position,normal),-position.z,0.0,0.0);
 }

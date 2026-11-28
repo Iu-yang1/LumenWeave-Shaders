@@ -1,4 +1,7 @@
 uniform sampler2D colortex9;
+#if defined(LW_HALF_GI_HISTORY) && GI_EDGE_RECONSTRUCTION >= 1
+#include "/lib/lighting/donor_plane.glsl"
+#endif
 #ifdef LW_HALF_GI_HISTORY
 uniform sampler2D colortex6;
 #define LW_GI_SPATIAL_SOURCE colortex6
@@ -21,9 +24,8 @@ ScreenBounce spatialScreenBounce(vec3 viewPosition, vec3 normal, vec2 encodedNor
     ivec2 base = ivec2(floor(samplePosition));
     vec2 fraction = fract(samplePosition);
     float tolerance = max(0.12, sceneDepth * 0.022);
-#if defined(LW_HALF_GI_HISTORY) && GI_EDGE_RECONSTRUCTION == 1
+#if defined(LW_HALF_GI_HISTORY) && GI_EDGE_RECONSTRUCTION >= 1
     vec3 planeNormal=transpose(mat3(gbufferModelViewInverse))*normal;
-    float planeDistance=dot(planeNormal,viewPosition);
 #endif
     float coverage = 0.0;
 #if LOW_FREQ_CACHE == 1
@@ -58,21 +60,10 @@ ScreenBounce spatialScreenBounce(vec3 viewPosition, vec3 normal, vec2 encodedNor
             vec4 sky = texelFetch(LW_GI_SPATIAL_SOURCE, texel, 0);
             ivec2 pixel = clamp(ivec2((vec2(texel) + 0.5) * vec2(fullSize) / vec2(traceSize)),ivec2(0),fullSize-1);
             float donorDepth=sceneDepth;
-#if defined(LW_HALF_GI_HISTORY) && GI_EDGE_RECONSTRUCTION == 1
+#if defined(LW_HALF_GI_HISTORY) && GI_EDGE_RECONSTRUCTION >= 1
             if(abs(sky.a-sceneDepth)>=tolerance*0.35) {
                 vec2 donorUv=(vec2(pixel)+0.5)/vec2(fullSize);
-#ifdef LW_STABLE_DYNAMIC
-                vec2 rayUv=donorUv;
-#else
-                vec2 rayUv=unjitteredUv(donorUv,true);
-#endif
-                vec3 donorRay=(gbufferProjectionInverse*vec4(rayUv*2.0-1.0,1.0,1.0)).xyz;
-                float denominator=dot(planeNormal,donorRay);
-                if(denominator*denominator>0.0004*dot(donorRay,donorRay)) {
-                    float intersection=-donorRay.z*planeDistance/denominator;
-                    if(intersection>0.0 && abs(intersection-sceneDepth)<max(0.25,sceneDepth*0.12))
-                        donorDepth=intersection;
-                }
+                if(!donorPlaneDepth(viewPosition,planeNormal,donorUv,donorDepth)) continue;
             }
 #endif
             float depthDifference = abs(sky.a - donorDepth);
@@ -80,14 +71,14 @@ ScreenBounce spatialScreenBounce(vec3 viewPosition, vec3 normal, vec2 encodedNor
                 continue;
             }
             float alignment=geometryNormalAlignment(normal,encodedNormal,texelFetch(colortex1,pixel,0).xy);
-#if defined(LW_HALF_GI_HISTORY) && GI_EDGE_RECONSTRUCTION == 1
+#if defined(LW_HALF_GI_HISTORY) && GI_EDGE_RECONSTRUCTION >= 1
             if(alignment<=0.90) continue;
 #endif
             if (alignment <= 0.82) {
                 continue;
             }
             float weight = weights.x * weights.y * (1.0 - smoothstep(0.35, 1.0, depthDifference / tolerance));
-#if defined(LW_HALF_GI_HISTORY) && GI_EDGE_RECONSTRUCTION == 1
+#if defined(LW_HALF_GI_HISTORY) && GI_EDGE_RECONSTRUCTION >= 1
             weight*=smoothstep(0.90,0.99,alignment);
 #endif
             coverage += weight;
@@ -116,6 +107,51 @@ ScreenBounce spatialScreenBounce(vec3 viewPosition, vec3 normal, vec2 encodedNor
 #endif
         }
 #if LOW_FREQ_CACHE == 0
+    }
+#endif
+#if defined(LW_HALF_GI_HISTORY) && GI_EDGE_RECONSTRUCTION == 2
+    if(coverage<0.012) {
+        ivec2 nearest=ivec2(greaterThanEqual(fraction,vec2(0.5)));
+        ScreenBounce extended=ScreenBounce(vec3(0.0),vec3(0.0),0.0);
+        vec3 firstRadiance=vec3(0.0);
+        vec4 firstVoxel=vec4(0.0);
+        float support=0.0;
+        int donors=0;
+        bool supportCoherent=true;
+        for(int index=0;index<4;++index) {
+            ivec2 offset=index<2 ? ivec2(index==0?-1:2,nearest.y) : ivec2(nearest.x,index==2?-1:2);
+            ivec2 texel=base+offset;
+            if(any(lessThan(texel,ivec2(0))) || any(greaterThanEqual(texel,traceSize))) continue;
+            vec4 sky=texelFetch(LW_GI_SPATIAL_SOURCE,texel,0);
+            if(sky.a<=0.0) continue;
+            ivec2 pixel=clamp(ivec2((vec2(texel)+0.5)*vec2(fullSize)/vec2(traceSize)),ivec2(0),fullSize-1);
+            if(geometryNormalAlignment(normal,encodedNormal,texelFetch(colortex1,pixel,0).xy)<0.98) continue;
+            float expected=sceneDepth;
+            if(!donorPlaneDepth(viewPosition,planeNormal,(vec2(pixel)+0.5)/vec2(fullSize),expected) ||
+                abs(sky.a-expected)>=tolerance*0.35) continue;
+            vec4 block=vec4(0.0);
+#ifdef LW_VOXEL_DIFFUSE_ACTIVE
+            block=texelFetch(colortex10,texel,0);
+#endif
+            if(donors==0) {
+                firstRadiance=sky.rgb;
+                firstVoxel=block;
+            } else {
+                supportCoherent=supportCoherent &&
+                    all(lessThanEqual(abs(sky.rgb-firstRadiance),vec3(0.002)+max(abs(sky.rgb),abs(firstRadiance))*0.04)) &&
+                    all(lessThanEqual(abs(block-firstVoxel),vec4(0.002)+max(abs(block),abs(firstVoxel))*0.04));
+                if(!supportCoherent) break;
+            }
+            vec2 distance=vec2(offset)-fraction;
+            float weight=1.0/(1.0+dot(distance,distance));
+            extended.sky+=sky.rgb*weight;
+            extended.block+=block.rgb*weight;
+            extended.blockConfidence+=block.a*weight;
+            support+=weight;
+            ++donors;
+        }
+        if(donors>=2 && supportCoherent)
+            return ScreenBounce(extended.sky/support,extended.block/support,extended.blockConfidence/support);
     }
 #endif
 #if APPROX_REUSE == 1

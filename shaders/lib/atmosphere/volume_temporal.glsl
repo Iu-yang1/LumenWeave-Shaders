@@ -49,7 +49,8 @@ vec4 temporalCelestialVolume(ivec2 p,ivec2 size,vec3 direction,float depth,bool 
     if(recordable && !rotationOnly && dot(delta,delta)<1.0 && fullCloudSlab(origin.y,direction,depth,interval)){
         float anchor=0.5*(interval.x+interval.y);
         // Wind advection aligns the density coordinates at the middle of the slab.
-        vec3 wind=vec3(1.1,0.0,0.40)*frameTime;
+        vec2 windOffset=cloudWindHistoryOffset(frameTime);
+        vec3 wind=vec3(windOffset.x,0.0,windOffset.y);
         previousDirection=normalize(direction*anchor+delta+wind);
         float span=interval.y-interval.x;
         // Bound parallax mismatch across the slab, not only at the anchor.

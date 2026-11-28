@@ -54,7 +54,13 @@ def resource_budget(options, width, height):
     gi_history=enabled("DEFERRED_LIGHTING") and enabled("SCREEN_GI") and enabled("SCREEN_GI_HISTORY")
     half_gi=gi_history and enabled("SCREEN_GI_SPATIAL") and taa and jitter_mode!=2 and options.get("GI_HISTORY_MODE","0")=="1"
     gi_history_bytes=16*(width//2)*(height//2) if half_gi else 16*width*height if gi_history else 0
+    geometry_taau=taa and int(options.get("GEOMETRY_TAAU_SCALE","100"))<100
+    near_grid=options.get("AO_NEAR_RECONSTRUCTION","0")=="1" and not (taa and not geometry_taau and (jitter_mode==2 or auto_dynamic))
+    spatial_ao=options.get("AO_RECONSTRUCTION","1")=="1" and enabled("DEFERRED_LIGHTING") and enabled("SCREEN_AO") and (jitter_mode==1 or int(options["AA_MODE"])<2 or geometry_taau or near_grid)
+    ao_bytes=4*(width//2)*(height//2) if spatial_ao else 0
     return {
+        "ao_shared_single_mib":ao_bytes/MIB,
+        "ao_shared_double_mib":2*ao_bytes/MIB,
         "water_normal_mib": 66*100*2/MIB if options.get("WATER_HYBRID_WAVES","1")=="1" else 0,
         "opaque_hdr_single_mib": width*height*4/MIB if enabled("DEFERRED_LIGHTING") and enabled("ADVANCED_WATER") else 0,
         "water_phase_mib": 514/MIB if enabled("ADVANCED_WATER") and options.get("WATER_PHASE_LUT")=="1" else 0,
